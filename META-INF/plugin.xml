@@ -1,19 +1,19 @@
 <idea-plugin version="2">
   <id>org.zkoss.zkidea</id>
-  <name>ZK Editor for Intellij</name>
+  <name>ZK</name>
   <version>0.1.0</version>
   <vendor email="info@zkoss.org" url="http://www.zkoss.org">ZK Framework</vendor>
 
   <description><![CDATA[
-      Enter short description for your plugin here.<br>
-      <em>most HTML tags may be used</em>
+       A ZK framework plugin for IntelliJ that helps developer to work with ZK Java Web Framework.
+       The ZUL editor is exceptionally powerful providing content assistance for both the MVC and MVVM patterns.
     ]]></description>
 
-  <change-notes><![CDATA[
-      Add change notes here.<br>
-      <em>most HTML tags may be used</em>
-    ]]>
-  </change-notes>
+  <!--<change-notes><![CDATA[-->
+      <!--Add change notes here.<br>-->
+      <!--<em>most HTML tags may be used</em>-->
+    <!--]]>-->
+  <!--</change-notes>-->
 
   <!-- please see https://confluence.jetbrains.com/display/IDEADEV/Build+Number+Ranges for description -->
   <idea-version since-build="131"/>
