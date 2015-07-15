@@ -12,7 +12,7 @@ ZK IntelliJ IDEA Plugin
 
 ### Download
 
- * [Plugins home](https://plugins.jetbrains.com/plugin/7855)
+ * [IntelliJ plugins home](https://plugins.jetbrains.com/plugin/7855)
 
 ### Demo
 
