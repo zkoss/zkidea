@@ -3,8 +3,8 @@ ZK IntelliJ IDEA Plugin
 
 ### Features
 
- * ZUL editor supports content assistant
- * ZUL editor supports syntax checking
+ * ZUL content assist
+ * ZUL syntax check
 
 ### License
 
@@ -12,6 +12,7 @@ ZK IntelliJ IDEA Plugin
 
 ### Download
 
+ * You can install and update ZK IntelliJ Plugin by following the standard procedures provided by IntelliJ Plugins Manager.
  * [IntelliJ plugins home](https://plugins.jetbrains.com/plugin/7855)
 
 ### Demo
