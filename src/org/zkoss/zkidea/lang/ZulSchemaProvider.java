@@ -20,8 +20,9 @@ import com.intellij.javaee.StandardResourceProvider;
  */
 public class ZulSchemaProvider implements StandardResourceProvider {
 	public static final String ZUL_PROJECT_SCHEMA_URL = "http://www.zkoss.org/2005/zul/zul.xsd";
+	public static final String ZUL_PROJECT_SCHEMA_PATH = "/org/zkoss/zkidea/lang/resources/zul.xsd";
 
 	public void registerResources(ResourceRegistrar registrar) {
-		registrar.addStdResource(ZUL_PROJECT_SCHEMA_URL, "/org/zkoss/zkidea/lang/resources/zul.xsd", getClass());
+		registrar.addStdResource(ZUL_PROJECT_SCHEMA_URL, ZUL_PROJECT_SCHEMA_PATH, getClass());
 	}
 }

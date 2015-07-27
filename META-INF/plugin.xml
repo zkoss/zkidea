@@ -1,18 +1,18 @@
 <idea-plugin version="2">
   <id>org.zkoss.zkidea</id>
   <name>ZK</name>
-  <version>0.1.1</version>
+  <version>0.1.2</version>
   <vendor email="info@zkoss.org" url="http://www.zkoss.org">ZK Framework</vendor>
-
+  <depends>org.jetbrains.idea.maven</depends>
   <description><![CDATA[
        A ZK framework plugin for IntelliJ that helps developer to work with ZK Java Web Framework.
        The ZUL editor is exceptionally powerful providing content assistance for both the MVC and MVVM patterns.
     ]]></description>
 
   <!--<change-notes><![CDATA[-->
-      <!--Add change notes here.<br>-->
-      <!--<em>most HTML tags may be used</em>-->
-    <!--]]>-->
+  <!--Add change notes here.<br>-->
+  <!--<em>most HTML tags may be used</em>-->
+  <!--]]>-->
   <!--</change-notes>-->
 
   <!-- please see https://confluence.jetbrains.com/display/IDEADEV/Build+Number+Ranges for description -->
@@ -27,7 +27,9 @@
   <extensions defaultExtensionNs="com.intellij">
     <!-- Add your extensions here -->
     <standardResourceProvider implementation="org.zkoss.zkidea.lang.ZulSchemaProvider"/>
-
+    <typedHandler implementation="org.zkoss.zkidea.editorActions.ZulTypedHandler" id="zul"/>
+    <completion.contributor language="XML"
+                            implementationClass="org.zkoss.zkidea.completion.MVVMAnnotationCompletionProvider" order="first"/>
     <!-- refer from Maven Plugin -->
     <fileTypeFactory implementation="org.zkoss.zkidea.lang.ZulFileTypeFactory"/>
     <fileIconProvider implementation="org.zkoss.zkidea.lang.ZulIconProvider"/>
@@ -40,7 +42,10 @@
   </application-components>
 
   <project-components>
-    <!-- Add your project components here -->
+    <component>
+      <implementation-class>org.zkoss.zkidea.project.ZKProjectsManager</implementation-class>
+      <loadForDefaultProject/>
+    </component>
   </project-components>
 
   <actions>
