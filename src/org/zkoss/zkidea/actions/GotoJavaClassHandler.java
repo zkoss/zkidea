@@ -31,8 +31,32 @@ public class GotoJavaClassHandler implements GotoDeclarationHandler {
 		if (reference != null) {
 			Object[] variants = reference.getVariants();
 			if (variants != null && variants.length > 0) {
-				LookupElement element = (LookupElement)variants[0];
-				return new PsiElement[]{element.getPsiElement()};
+				String className = reference.getCanonicalText().trim();
+				if (className.endsWith("\"") || className.endsWith("'"))
+					className = className.substring(0, className.length()-1);
+				LookupElement simulation = null;
+				for (Object o : variants) {
+					if (o instanceof LookupElement) {
+						LookupElement element = (LookupElement) o;
+						final String lookup = element.getLookupString();
+						if (className.equals(lookup)) {
+							return new PsiElement[]{element.getPsiElement()};
+						}
+						if (className.startsWith(lookup)) {
+							if (simulation != null) {
+								// more accurate
+								if (simulation.getLookupString().length() < lookup.length()) {
+									simulation = element;
+								}
+							} else {
+								simulation = element;
+							}
+						}
+					}
+				}
+				if (simulation != null) {
+					return new PsiElement[]{simulation.getPsiElement()};
+				}
 			}
 		}
 		return null;

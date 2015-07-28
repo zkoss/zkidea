@@ -5,8 +5,9 @@
   <vendor email="info@zkoss.org" url="http://www.zkoss.org">ZK Framework</vendor>
   <depends>org.jetbrains.idea.maven</depends>
   <description><![CDATA[
-       A ZK framework plugin for IntelliJ that helps developer to work with ZK Java Web Framework.
-       The ZUL editor is exceptionally powerful providing content assistance for both the MVC and MVVM patterns.
+       <p>A ZK framework plugin for IntelliJ that helps developer to work with ZK Java Web Framework.
+       The ZUL editor is exceptionally powerful providing content assistance for both the MVC and MVVM patterns.</p>
+       <p> This plugin can be installed on IntelliJ platform 141.1532 or greater. </p>
     ]]></description>
 
   <!--<change-notes><![CDATA[-->
