@@ -1,6 +1,10 @@
 # zkidea
 ZK IntelliJ IDEA Plugin
 
+### IntelliJ Version
+
+This plugin can support on IntelliJ platform 141.1532 or greater
+
 ### Features
 
  * ZUL content assist
