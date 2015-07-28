@@ -25,6 +25,7 @@ import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.zkoss.zkidea.lang.ZulSchemaProvider;
+import org.zkoss.zkidea.maven.ZKMavenArchetypesProvider;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -62,26 +63,48 @@ public class ZKProjectsManager extends AbstractProjectComponent {
 				MavenUtil.runWhenInitialized(this.myProject, new DumbAwareRunnable() {
 					public void run() {
 						// TODO: support with project's ZK version
-						try {
-							LOG.info("Downloading latest zul file: " + ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL);
-							File fileSrc = new File(System.getProperty("idea.plugins.path"), "zkidea/classes/" + ZulSchemaProvider.ZUL_PROJECT_SCHEMA_PATH);
-							if (!fileSrc.isFile() || fileSrc.lastModified() > new Date().getTime()) {
-								return;// won't support this case
-							}
-							File fileTmp = new File(fileSrc.getAbsolutePath() + ".tmp");
-							HttpRequests.request(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL).saveToFile(fileTmp, ProgressManager.getGlobalProgressIndicator());
-							double origin = getSchemaVersion(fileSrc);
-							double newone = getSchemaVersion(fileTmp);
-							if (newone > origin) {
-								FileUtil.copy(fileTmp, fileSrc);
-								fileSrc.setLastModified(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
-							}
-						} catch (IOException e) {
-						}
-
+						updateZulSchema();
+						updateMavenArchetype();
 					}
 				});
 			}
+		}
+	}
+
+	private void updateZulSchema() {
+		try {
+			LOG.info("Downloading latest zul file: " + ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL);
+			File fileSrc = new File(System.getProperty("idea.plugins.path"), "zkidea/classes/" + ZulSchemaProvider.ZUL_PROJECT_SCHEMA_PATH);
+			if (!fileSrc.isFile() || fileSrc.lastModified() > new Date().getTime()) {
+				return;// won't support this case
+			}
+			File fileTmp = new File(fileSrc.getAbsolutePath() + ".tmp");
+			HttpRequests.request(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL).saveToFile(fileTmp, ProgressManager.getGlobalProgressIndicator());
+			double origin = getSchemaVersion(fileSrc);
+			double newone = getSchemaVersion(fileTmp);
+			if (newone > origin) {
+				FileUtil.copy(fileTmp, fileSrc);
+			}
+			fileSrc.setLastModified(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
+		} catch (IOException e) {
+		}
+	}
+
+	private void updateMavenArchetype() {
+		try {
+			LOG.info("Downloading latest maven archetype file: " + ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_PATH);
+			File fileSrc = new File(System.getProperty("idea.plugins.path"), "zkidea/classes/" + ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_PATH);
+			if (!fileSrc.isFile() || fileSrc.lastModified() > new Date().getTime()) {
+				return;// won't support this case
+			}
+			File fileTmp = new File(fileSrc.getAbsolutePath() + ".tmp");
+			HttpRequests.request(ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_URL).saveToFile(fileTmp, ProgressManager.getGlobalProgressIndicator());
+
+			if (fileTmp.length() > fileSrc.length()) {
+				FileUtil.copy(fileTmp, fileSrc);
+			}
+			fileSrc.setLastModified(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
+		} catch (IOException e) {
 		}
 	}
 
