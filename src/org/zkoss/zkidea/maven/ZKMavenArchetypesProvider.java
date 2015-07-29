@@ -50,7 +50,7 @@ public class ZKMavenArchetypesProvider implements MavenArchetypesProvider {
 			NodeList archetypes = parse.getElementsByTagName("archetype");
 			List list = new LinkedList<org.jetbrains.idea.maven.model.MavenArchetype>();
 			for (int i = 0; i < archetypes.getLength(); i++) {
-				Node item = archetypes.item(0);
+				Node item = archetypes.item(i);
 
 				NodeList childNodes = item.getChildNodes();
 				String groupId = null;
