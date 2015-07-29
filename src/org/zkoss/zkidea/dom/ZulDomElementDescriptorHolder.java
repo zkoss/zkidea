@@ -12,6 +12,10 @@ Copyright (C) 2015 Potix Corporation. All Rights Reserved.
 */
 package org.zkoss.zkidea.dom;
 
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Map;
+
 import com.intellij.javaee.ExternalResourceManager;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
@@ -32,10 +36,6 @@ import gnu.trove.THashMap;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.zkoss.zkidea.lang.ZulSchemaProvider;
-
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Map;
 
 /**
  * @author by jumperchen
@@ -91,7 +91,7 @@ public class ZulDomElementDescriptorHolder {
 	@Nullable
 	private XmlNSDescriptorImpl doCreateDescriptor(ZulDomElementDescriptorHolder.FileKind kind) {
 		String schemaUrl = kind.getSchemaUrl();
-		String location = ExternalResourceManager.getInstance().getResourceLocation(schemaUrl);
+		String location = ExternalResourceManager.getInstance().getResourceLocation(schemaUrl, "");
 		if (schemaUrl.equals(location)) {
 			return null;
 		} else {
@@ -101,7 +101,6 @@ public class ZulDomElementDescriptorHolder {
 			} catch (MalformedURLException var7) {
 				return null;
 			}
-
 			if (schema == null) {
 				return null;
 			} else {

@@ -16,6 +16,7 @@ import org.jetbrains.idea.maven.indices.MavenArchetypesProvider;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.zkoss.zkidea.project.ZKPathManager;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -37,9 +38,12 @@ public class ZKMavenArchetypesProvider implements MavenArchetypesProvider {
 
 	@Override
 	public Collection<org.jetbrains.idea.maven.model.MavenArchetype> getArchetypes() {
-		File fileSrc = new File(System.getProperty("idea.plugins.path"), "zkidea/classes/" + ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_PATH);
-		if (!fileSrc.isFile())
+		File fileSrc = new File(ZKPathManager.getPluginResourcePath(ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_PATH));
+
+		if (!fileSrc.isFile()) {
+			LOG.info(fileSrc + " is not found!");
 			return Collections.EMPTY_LIST;
+		}
 		try {
 			DocumentBuilderFactory instance = DocumentBuilderFactory.newInstance();
 			//Using factory get an instance of document builder

@@ -11,6 +11,15 @@ Copyright (C) 2015 Potix Corporation. All Rights Reserved.
 */
 package org.zkoss.zkidea.project;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Date;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
 import com.intellij.ide.startup.StartupManagerEx;
 import com.intellij.openapi.components.AbstractProjectComponent;
 import com.intellij.openapi.diagnostic.Logger;
@@ -26,13 +35,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.zkoss.zkidea.lang.ZulSchemaProvider;
 import org.zkoss.zkidea.maven.ZKMavenArchetypesProvider;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.File;
-import java.io.IOException;
-import java.util.Date;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author by jumperchen
@@ -71,19 +73,55 @@ public class ZKProjectsManager extends AbstractProjectComponent {
 		}
 	}
 
+	private void copyResourceToFile(String path, File toFile) {
+		InputStream in = getClass().getClassLoader().getResourceAsStream(path);
+		FileOutputStream out = null;
+		try {
+			if (!toFile.exists())
+				toFile.createNewFile();
+
+			out = new FileOutputStream(toFile);
+			if (in != null) {
+				FileUtil.copy(in, out);
+			}
+		} catch (Exception e) {
+			LOG.error(e);
+		} finally {
+			if (in != null) {
+				try {
+					in.close();
+				} catch (IOException e) {
+				}
+			}
+			if (out != null) {
+				try {
+					out.close();
+				} catch (IOException e) {
+				}
+			}
+		}
+	}
+
 	private void updateZulSchema() {
 		try {
-			LOG.info("Downloading latest zul file: " + ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL);
-			File fileSrc = new File(System.getProperty("idea.plugins.path"), "zkidea/classes/" + ZulSchemaProvider.ZUL_PROJECT_SCHEMA_PATH);
-			if (!fileSrc.isFile() || fileSrc.lastModified() > new Date().getTime()) {
+			File fileSrc = new File(ZKPathManager.getPluginResourcePath(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_PATH));
+			if (!fileSrc.isFile() || fileSrc.length() < 20) {
+				// copy from jar file.
+				copyResourceToFile(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_PATH, fileSrc);
+			}
+			if (fileSrc.lastModified() > new Date().getTime()) {
 				return;// won't support this case
 			}
+
+			LOG.info("Downloading latest zul file: " + ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL);
+
 			File fileTmp = new File(fileSrc.getAbsolutePath() + ".tmp");
 			HttpRequests.request(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL).saveToFile(fileTmp, ProgressManager.getGlobalProgressIndicator());
 			double origin = getSchemaVersion(fileSrc);
 			double newone = getSchemaVersion(fileTmp);
 			if (newone > origin) {
 				FileUtil.copy(fileTmp, fileSrc);
+				fileTmp.deleteOnExit();
 			}
 			fileSrc.setLastModified(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
 		} catch (IOException e) {
@@ -92,16 +130,23 @@ public class ZKProjectsManager extends AbstractProjectComponent {
 
 	private void updateMavenArchetype() {
 		try {
-			LOG.info("Downloading latest maven archetype file: " + ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_PATH);
-			File fileSrc = new File(System.getProperty("idea.plugins.path"), "zkidea/classes/" + ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_PATH);
-			if (!fileSrc.isFile() || fileSrc.lastModified() > new Date().getTime()) {
+			File fileSrc = new File(ZKPathManager.getPluginResourcePath(ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_PATH));
+			if (!fileSrc.isFile() || fileSrc.length() < 20) {
+				// copy from jar file.
+				copyResourceToFile(ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_PATH, fileSrc);
+			}
+
+			if (fileSrc.lastModified() > new Date().getTime()) {
 				return;// won't support this case
 			}
+			LOG.info("Downloading latest maven archetype file: " + ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_PATH);
+
 			File fileTmp = new File(fileSrc.getAbsolutePath() + ".tmp");
 			HttpRequests.request(ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_URL).saveToFile(fileTmp, ProgressManager.getGlobalProgressIndicator());
 
 			if (fileTmp.length() > fileSrc.length()) {
 				FileUtil.copy(fileTmp, fileSrc);
+				fileTmp.deleteOnExit();
 			}
 			fileSrc.setLastModified(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
 		} catch (IOException e) {
