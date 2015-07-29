@@ -1,7 +1,7 @@
 <idea-plugin version="2">
   <id>org.zkoss.zkidea</id>
   <name>ZK</name>
-  <version>0.1.3</version>
+  <version>0.1.4</version>
   <vendor email="info@zkoss.org" url="http://www.zkoss.org">ZK Framework</vendor>
   <depends>org.jetbrains.idea.maven</depends>
 

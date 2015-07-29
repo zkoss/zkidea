@@ -16,11 +16,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import com.intellij.ide.startup.StartupManagerEx;
+import com.intellij.javaee.ExternalResourceManager;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.AbstractProjectComponent;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProgressManager;
@@ -104,6 +107,19 @@ public class ZKProjectsManager extends AbstractProjectComponent {
 
 	private void updateZulSchema() {
 		try {
+			final String pluginResourcePath = "file:" + ZKPathManager.getPluginResourcePath(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_PATH);
+			LOG.debug("PluginResourcePath: " + pluginResourcePath);
+
+			ExternalResourceManager instance = ExternalResourceManager.getInstance();
+			if (!Objects.equals(pluginResourcePath, instance.getResourceLocation(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_PATH, ""))) {
+				ApplicationManager.getApplication().runWriteAction(new Runnable() {
+					@Override
+					public void run() {
+						ExternalResourceManager.getInstance().addResource(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL, pluginResourcePath);
+					}
+				});
+			}
+
 			File fileSrc = new File(ZKPathManager.getPluginResourcePath(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_PATH));
 			if (!fileSrc.isFile() || fileSrc.length() < 20) {
 				// copy from jar file.
