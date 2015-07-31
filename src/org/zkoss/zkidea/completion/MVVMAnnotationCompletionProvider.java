@@ -11,6 +11,9 @@ Copyright (C) 2015 Potix Corporation. All Rights Reserved.
 */
 package org.zkoss.zkidea.completion;
 
+import java.util.Arrays;
+import java.util.List;
+
 import com.intellij.codeInsight.completion.CompletionContributor;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
@@ -22,9 +25,6 @@ import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlFile;
 import org.zkoss.zkidea.dom.ZulDomUtil;
-
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * @author jumperchen
@@ -52,6 +52,7 @@ public class MVVMAnnotationCompletionProvider extends CompletionContributor {
 						CompletionResultSet completionResultSet = result.withPrefixMatcher(query);
 
 						// TODO: support idspace resolver.
+						// TODO: should ignore different namespace
 						// get annotation value
 						String annotVal = "";
 						int end = value.indexOf(CompletionUtilCore.DUMMY_IDENTIFIER);

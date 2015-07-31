@@ -26,6 +26,10 @@ public class ZKPathManager {
 	}
 
 	public static String getPluginResourcePath(String classPath) {
+		// fix for #5 windows issue
+		if ("\\".equals(File.separator)) {
+			classPath = classPath.replaceAll("/", "\\\\");
+		}
 		if (classPath.startsWith("/") || classPath.startsWith("\\"))
 			return getPluginTempPath() + File.separator + "classes" + classPath;
 		return  getPluginTempPath() + File.separator + "classes" + File.separator + classPath;

@@ -18,5 +18,8 @@
         <processorPath useClasspath="true" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="zkidea" target="1.6" />
+    </bytecodeTargetLevel>
   </component>
 </project>
