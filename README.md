@@ -8,7 +8,12 @@ This plugin can support on IntelliJ platform 141.1532 or greater
 ### Features
 
  * ZUL content assist
+ * ZK MVVM annotation content assist
  * ZUL syntax check
+ * ZK Maven archetypes for creating ZK project
+ 
+### Getting Started
+ * [User Guide] (http://books.zkoss.org/wiki/ZK_Installation_Guide/Quick_Start/Create_and_Run_Your_First_ZK_Application_with_IntelliJ_and_ZKIdea)
 
 ### License
 
