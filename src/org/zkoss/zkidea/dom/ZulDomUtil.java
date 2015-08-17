@@ -31,6 +31,10 @@ public class ZulDomUtil {
 			return name.endsWith(ZulFileType.EXTENSION);
 		}
 	}
+
+	public static boolean isZKFile(String ext) {
+		return ZulFileType.EXTENSION.equalsIgnoreCase(ext);
+	}
 	public static boolean hasViewModel(PsiElement element) {
 		do {
 			if (element instanceof XmlTag) {
