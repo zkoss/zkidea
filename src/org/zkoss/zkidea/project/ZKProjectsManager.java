@@ -80,8 +80,11 @@ public class ZKProjectsManager extends AbstractProjectComponent {
 		InputStream in = getClass().getClassLoader().getResourceAsStream(path);
 		FileOutputStream out = null;
 		try {
-			if (!toFile.exists())
+			if (!toFile.exists()) {
+				// Bug fixed #7
+				toFile.getParentFile().mkdirs();
 				toFile.createNewFile();
+			}
 
 			out = new FileOutputStream(toFile);
 			if (in != null) {

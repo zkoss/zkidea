@@ -1,7 +1,7 @@
 <idea-plugin version="2">
   <id>org.zkoss.zkidea</id>
   <name>ZK</name>
-  <version>0.1.5</version>
+  <version>0.1.6</version>
   <vendor email="info@zkoss.org" url="http://www.zkoss.org">ZK Framework</vendor>
   <depends>org.jetbrains.idea.maven</depends>
 
@@ -12,6 +12,11 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.1.6</p>
+      <ul>
+           <li> [bug] #7 - IOException on IDEA startup </li>
+      </ul>
+      <br>
       <p>0.1.5</p>
       <ul>
            <li> [enhancement] #6 - JDK 6 or 7 support </li>
@@ -69,7 +74,8 @@
     <completion.contributor language="XML"
                             implementationClass="org.zkoss.zkidea.completion.MVVMAnnotationCompletionProvider" order="first"/>
     <gotoDeclarationHandler implementation="org.zkoss.zkidea.actions.GotoJavaClassHandler" order="first"/>
-
+    <webBrowserUrlProvider implementation="org.zkoss.zkidea.editorActions.WebBrowserUrlProvider" order="first"/>
+    <!--<java.programPatcher implementation="org.zkoss.zkidea.editorActions.MavenRunnerPatcher"/>-->
     <!-- refer from Maven Plugin -->
     <fileTypeFactory implementation="org.zkoss.zkidea.lang.ZulFileTypeFactory"/>
     <fileIconProvider implementation="org.zkoss.zkidea.lang.ZulIconProvider"/>
