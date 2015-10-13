@@ -1,7 +1,7 @@
 <idea-plugin version="2">
   <id>org.zkoss.zkidea</id>
   <name>ZK</name>
-  <version>0.1.6</version>
+  <version>0.1.7</version>
   <vendor email="info@zkoss.org" url="http://www.zkoss.org">ZK Framework</vendor>
   <depends>org.jetbrains.idea.maven</depends>
 
@@ -12,6 +12,11 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.1.7</p>
+      <ul>
+           <li> [bug] #10 - Plugin crashes on latest Idea 14 with JDK 6 </li>
+      </ul>
+      <br>
       <p>0.1.6</p>
       <ul>
            <li> [enhancement] #8 - Support to open zul file in browser when run project with Jetty maven plugin </li>

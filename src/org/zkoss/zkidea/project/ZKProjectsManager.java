@@ -16,7 +16,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Date;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -108,13 +107,17 @@ public class ZKProjectsManager extends AbstractProjectComponent {
 		}
 	}
 
+	private static boolean equals(Object a, Object b) {
+		return (a == b) || (a != null && a.equals(b));
+	}
+
 	private void updateZulSchema() {
 		try {
 			final String pluginResourcePath = "file:" + ZKPathManager.getPluginResourcePath(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_PATH);
 			LOG.debug("PluginResourcePath: " + pluginResourcePath);
 
 			ExternalResourceManager instance = ExternalResourceManager.getInstance();
-			if (!Objects.equals(pluginResourcePath, instance.getResourceLocation(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_PATH, ""))) {
+			if (!equals(pluginResourcePath, instance.getResourceLocation(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_PATH, ""))) {
 				ApplicationManager.getApplication().runWriteAction(new Runnable() {
 					@Override
 					public void run() {
