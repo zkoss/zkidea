@@ -33,7 +33,7 @@ public class ZulDomUtil {
 	}
 
 	public static boolean isZKFile(String ext) {
-		return ZulFileType.EXTENSION.equalsIgnoreCase(ext);
+		return ZulFileType.EXTENSION.equalsIgnoreCase(ext) || "zhtml".equalsIgnoreCase(ext);
 	}
 	public static boolean hasViewModel(PsiElement element) {
 		do {

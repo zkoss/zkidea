@@ -14,7 +14,6 @@ package org.zkoss.zkidea.editorActions;
 import com.intellij.execution.ExecutionManager;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.ide.browsers.OpenInBrowserRequest;
-import com.intellij.ide.highlighter.XmlFileType;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -45,7 +44,7 @@ public class WebBrowserUrlProvider
 			String port = "8080";
 
 			FileType fileType = file.getFileType();
-			if (file.getFileType() instanceof XmlFileType && ZulDomUtil.isZKFile(file.getExtension())) {
+			if (ZulDomUtil.isZKFile(file.getExtension())) {
 				ProcessHandler[] runningProcesses = ExecutionManager
 						.getInstance(request.getProject())
 						.getRunningProcesses();
