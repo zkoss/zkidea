@@ -27,3 +27,7 @@ This plugin can support on IntelliJ platform 141.1532 or greater
 ### Demo
 
  * [Video](http://screencast.com/t/xjx0RyzX)
+ 
+### Troubleshooting
+
+ * For Mac user, if you run this plugin with IntelliJ 14 that crashes on startup, you may refer to [this solution] (https://github.com/jumperchen/zkidea/issues/10#issuecomment-148628901)
