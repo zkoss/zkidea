@@ -12,6 +12,8 @@ Copyright (C) 2015 Potix Corporation. All Rights Reserved.
 */
 package org.zkoss.zkidea.lang;
 
+import javax.swing.*;
+
 import com.intellij.ide.FileIconProvider;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
@@ -19,8 +21,6 @@ import com.intellij.openapi.util.Iconable;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import javax.swing.*;
 
 /**
  * @author by jumperchen
@@ -30,7 +30,7 @@ public class ZulIconProvider implements DumbAware, FileIconProvider {
 	@Override
 	public Icon getIcon(@NotNull VirtualFile file, @Iconable.IconFlags int flags, @Nullable Project project) {
 		if(project == null) return null;
-		if (file.getExtension().equalsIgnoreCase(ZulFileType.EXTENSION))
+		if (ZulFileType.EXTENSION.equalsIgnoreCase(file.getExtension()))
 			return ZulIcons.FILE;
 		return null;
 	}

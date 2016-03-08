@@ -15,6 +15,7 @@
       <p>0.1.7</p>
       <ul>
            <li> [bug] #10 - Plugin crashes on latest Idea 14 with JDK 6 </li>
+           <li> [bug] #13 - Worker exited due to exception </li>
       </ul>
       <br>
       <p>0.1.6</p>
