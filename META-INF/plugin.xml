@@ -1,7 +1,7 @@
 <idea-plugin version="2">
   <id>org.zkoss.zkidea</id>
   <name>ZK</name>
-  <version>0.1.7</version>
+  <version>0.1.8</version>
   <vendor email="info@zkoss.org" url="http://www.zkoss.org">ZK Framework</vendor>
   <depends>org.jetbrains.idea.maven</depends>
 
@@ -12,6 +12,11 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.1.8</p>
+      <ul>
+           <li> [bug] #14 - Worker exited due to exception </li>
+      </ul>
+      <br>
       <p>0.1.7</p>
       <ul>
            <li> [bug] #10 - Plugin crashes on latest Idea 14 with JDK 6 </li>

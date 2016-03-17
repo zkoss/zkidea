@@ -27,6 +27,9 @@ public class GotoJavaClassHandler implements GotoDeclarationHandler {
 	@Nullable
 	@Override
 	public PsiElement[] getGotoDeclarationTargets(PsiElement psiElement, int offset, Editor editor) {
+		if (psiElement == null || psiElement.getContainingFile() == null) {
+			return null;
+		}
 		JavaClassReference reference = JavaClassReferenceCompletionContributor.findJavaClassReference(psiElement.getContainingFile(), offset);
 		if (reference != null) {
 			Object[] variants = reference.getVariants();
