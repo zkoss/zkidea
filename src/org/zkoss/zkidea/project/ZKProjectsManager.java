@@ -11,10 +11,13 @@ Copyright (C) 2015 Potix Corporation. All Rights Reserved.
 */
 package org.zkoss.zkidea.project;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.xml.parsers.DocumentBuilder;
@@ -25,11 +28,9 @@ import com.intellij.javaee.ExternalResourceManager;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.AbstractProjectComponent;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.DumbAwareRunnable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.io.FileUtil;
-import com.intellij.util.io.HttpRequests;
 import org.jetbrains.idea.maven.utils.MavenUtil;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
@@ -138,7 +139,8 @@ public class ZKProjectsManager extends AbstractProjectComponent {
 			LOG.info("Downloading latest zul file: " + ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL);
 
 			File fileTmp = new File(fileSrc.getAbsolutePath() + ".tmp");
-			HttpRequests.request(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL).saveToFile(fileTmp, ProgressManager.getGlobalProgressIndicator());
+			FileUtil.writeToFile(fileTmp, download(new URL(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL)));
+//			HttpRequests.request(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL).saveToFile(fileTmp, ProgressManager.getGlobalProgressIndicator());
 			double origin = getSchemaVersion(fileSrc);
 			double newone = getSchemaVersion(fileTmp);
 			if (newone > origin) {
@@ -149,7 +151,29 @@ public class ZKProjectsManager extends AbstractProjectComponent {
 		} catch (IOException e) {
 		}
 	}
-
+	private byte[] download(URL url) throws IOException {
+		URLConnection uc = url.openConnection();
+		int len = uc.getContentLength();
+		InputStream is = new BufferedInputStream(uc.getInputStream());
+		try {
+			byte[] data = new byte[len];
+			int offset = 0;
+			while (offset < len) {
+				int read = is.read(data, offset, data.length - offset);
+				if (read < 0) {
+					break;
+				}
+				offset += read;
+			}
+			if (offset < len) {
+				throw new IOException(
+						String.format("Read %d bytes; expected %d", offset, len));
+			}
+			return data;
+		} finally {
+			is.close();
+		}
+	}
 	private void updateMavenArchetype() {
 		try {
 			File fileSrc = new File(ZKPathManager.getPluginResourcePath(ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_PATH));
@@ -164,7 +188,9 @@ public class ZKProjectsManager extends AbstractProjectComponent {
 			LOG.info("Downloading latest maven archetype file: " + ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_PATH);
 
 			File fileTmp = new File(fileSrc.getAbsolutePath() + ".tmp");
-			HttpRequests.request(ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_URL).saveToFile(fileTmp, ProgressManager.getGlobalProgressIndicator());
+
+			FileUtil.writeToFile(fileTmp, download(new URL(ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_URL)));
+//			HttpRequests.request(ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_URL).saveToFile(fileTmp, ProgressManager.getGlobalProgressIndicator());
 
 			if (fileTmp.length() > fileSrc.length()) {
 				FileUtil.copy(fileTmp, fileSrc);
