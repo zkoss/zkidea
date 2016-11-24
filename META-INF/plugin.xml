@@ -15,6 +15,7 @@
       <p>0.1.8</p>
       <ul>
            <li> [bug] #14 - Worker exited due to exception </li>
+           <li> [bug] #17 - Assertion on load of IDE/Project </li>
       </ul>
       <br>
       <p>0.1.7</p>
