@@ -1,7 +1,7 @@
 <idea-plugin version="2">
   <id>org.zkoss.zkidea</id>
   <name>ZK</name>
-  <version>0.1.8</version>
+  <version>0.1.9</version>
   <vendor email="info@zkoss.org" url="http://www.zkoss.org">ZK Framework</vendor>
   <depends>org.jetbrains.idea.maven</depends>
 
@@ -12,6 +12,11 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.1.9</p>
+      <ul>
+           <li> [bug] #19 - Exception on Intellij IU-163.12024.16 </li>
+      </ul>
+      <br>
       <p>0.1.8</p>
       <ul>
            <li> [bug] #14 - Worker exited due to exception </li>
