@@ -199,11 +199,11 @@ public class ZKProjectsManager extends AbstractProjectComponent {
 				return; // try next time.
 			FileUtil.writeToFile(fileTmp, download);
 //			HttpRequests.request(ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_URL).saveToFile(fileTmp, ProgressManager.getGlobalProgressIndicator());
-
-			if (fileTmp.length() > fileSrc.length()) {
+//			to compare with length is not correct
+//			if (fileTmp.length() > fileSrc.length()) {
 				FileUtil.copy(fileTmp, fileSrc);
 				fileTmp.deleteOnExit();
-			}
+//			}
 			fileSrc.setLastModified(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
 		} catch (IOException e) {
 		}
