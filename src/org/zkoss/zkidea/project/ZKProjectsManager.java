@@ -54,11 +54,15 @@ public class ZKProjectsManager extends AbstractProjectComponent {
 
 	public void initComponent() {
 		StartupManagerEx startupManager = StartupManagerEx.getInstanceEx(this.myProject);
-		startupManager.registerStartupActivity(new Runnable() {
-			public void run() {
-				ZKProjectsManager.this.doInit();
-			}
-		});
+
+		// fix for issue #20
+		if (!this.myProject.isDefault()) {
+			startupManager.registerStartupActivity(new Runnable() {
+				public void run() {
+					ZKProjectsManager.this.doInit();
+				}
+			});
+		}
 	}
 
 	private void doInit() {
