@@ -11,6 +11,11 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.1.11</p>
+      <ul>
+           <li> [bug] #25 - failed with RuntimeExceptionWithAttachments in IntellijJ 2020.1 </li>
+      </ul>
+      <br>
       <p>0.1.10</p>
       <ul>
            <li> [bug] #20 - Error when starting IntelliJ IDEA 2017.2 </li>
