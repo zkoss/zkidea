@@ -123,10 +123,15 @@ public class ZKProjectsManager extends AbstractProjectComponent {
 
 			ExternalResourceManager instance = ExternalResourceManager.getInstance();
 			if (!equals(pluginResourcePath, instance.getResourceLocation(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_PATH, ""))) {
-				ApplicationManager.getApplication().runWriteAction(new Runnable() {
+				ApplicationManager.getApplication().invokeLater(new Runnable() {
 					@Override
 					public void run() {
-						ExternalResourceManager.getInstance().addResource(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL, pluginResourcePath);
+						ApplicationManager.getApplication().runWriteAction(new Runnable() {
+							@Override
+							public void run() {
+								ExternalResourceManager.getInstance().addResource(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL, pluginResourcePath);
+							}
+						});
 					}
 				});
 			}
