@@ -1,8 +1,7 @@
-<idea-plugin version="2">
+<idea-plugin>
   <id>org.zkoss.zkidea</id>
   <name>ZK</name>
-  <version>0.1.10</version>
-  <vendor email="info@zkoss.org" url="http://www.zkoss.org">ZK Framework</vendor>
+  <vendor email="info@zkoss.org" url="https://www.zkoss.org">ZK Framework</vendor>
   <depends>org.jetbrains.idea.maven</depends>
 
   <description><![CDATA[
@@ -76,9 +75,6 @@
       </ul>
       <br>
   ]]></change-notes>
-
-  <!-- please see https://confluence.jetbrains.com/display/IDEADEV/Build+Number+Ranges for description -->
-  <idea-version since-build="131"/>
 
   <!-- please see https://confluence.jetbrains.com/display/IDEADEV/Plugin+Compatibility+with+IntelliJ+Platform+Products
        on how to target different products -->
