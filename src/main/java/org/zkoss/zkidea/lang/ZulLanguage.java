@@ -21,6 +21,6 @@ public class ZulLanguage extends XMLLanguage {
 	public static final ZulLanguage INSTANCE = new ZulLanguage();
 
 	private ZulLanguage() {
-		super(ZulLanguage.INSTANCE, "ZUL", new String[]{"text/html"});
+		super(ZulLanguage.INSTANCE, "ZUL", "text/html");
 	}
 }

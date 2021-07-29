@@ -33,7 +33,7 @@ public class ZKMavenArchetypesProvider implements MavenArchetypesProvider {
 
 
 	private static final Logger LOG = Logger.getInstance(ZKMavenArchetypesProvider.class);
-	public static final String MAVEN_ARCHETYPE_PATH = "/org/zkoss/zkidea/lang/resources/archetype-catalog.xml";
+	public static final String MAVEN_ARCHETYPE_PATH = "org/zkoss/zkidea/lang/resources/archetype-catalog.xml";
 	public static final String MAVEN_ARCHETYPE_URL = "http://mavensync.zkoss.org/maven2/archetype-catalog.xml";
 
 	@Override

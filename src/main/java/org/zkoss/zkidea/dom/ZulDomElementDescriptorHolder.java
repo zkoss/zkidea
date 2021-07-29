@@ -12,12 +12,7 @@ Copyright (C) 2015 Potix Corporation. All Rights Reserved.
 */
 package org.zkoss.zkidea.dom;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Map;
-
 import com.intellij.javaee.ExternalResourceManager;
-import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtil;
@@ -32,10 +27,14 @@ import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.xml.XmlElementDescriptor;
 import com.intellij.xml.impl.schema.XmlNSDescriptorImpl;
-import gnu.trove.THashMap;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.zkoss.zkidea.lang.ZulSchemaProvider;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author by jumperchen
@@ -43,14 +42,14 @@ import org.zkoss.zkidea.lang.ZulSchemaProvider;
 public class ZulDomElementDescriptorHolder {
 	private static final Logger LOG = Logger.getInstance(ZulDomElementDescriptorHolder.class);
 	private final Project myProject;
-	private final Map<ZulDomElementDescriptorHolder.FileKind, CachedValue<XmlNSDescriptorImpl>> myDescriptorsMap = new THashMap();
+	private final Map<ZulDomElementDescriptorHolder.FileKind, CachedValue<XmlNSDescriptorImpl>> myDescriptorsMap = new HashMap<>();
 
 	public ZulDomElementDescriptorHolder(Project project) {
 		this.myProject = project;
 	}
 
 	public static ZulDomElementDescriptorHolder getInstance(@NotNull Project project) {
-		return (ZulDomElementDescriptorHolder) ServiceManager.getService(project, ZulDomElementDescriptorHolder.class);
+		return project.getService(ZulDomElementDescriptorHolder.class);
 	}
 
 	@Nullable
@@ -75,17 +74,16 @@ public class ZulDomElementDescriptorHolder {
 
 	@Nullable
 	private XmlNSDescriptorImpl tryGetOrCreateDescriptor(final ZulDomElementDescriptorHolder.FileKind kind) {
-		CachedValue result = (CachedValue) this.myDescriptorsMap.get(kind);
+		CachedValue<XmlNSDescriptorImpl> result = this.myDescriptorsMap.get(kind);
 		if (result == null) {
-			result = CachedValuesManager.getManager(this.myProject).createCachedValue(new CachedValueProvider() {
-				public Result<XmlNSDescriptorImpl> compute() {
-					return Result.create(ZulDomElementDescriptorHolder.this.doCreateDescriptor(kind), new Object[]{PsiModificationTracker.OUT_OF_CODE_BLOCK_MODIFICATION_COUNT});
-				}
-			}, false);
+			result = CachedValuesManager.getManager(this.myProject)
+					.createCachedValue(() ->
+							CachedValueProvider.Result.create(ZulDomElementDescriptorHolder.this.doCreateDescriptor(kind),
+									PsiModificationTracker.MODIFICATION_COUNT), false);
 			this.myDescriptorsMap.put(kind, result);
 		}
 
-		return (XmlNSDescriptorImpl) result.getValue();
+		return result.getValue();
 	}
 
 	@Nullable
@@ -121,14 +119,14 @@ public class ZulDomElementDescriptorHolder {
 		return ZulDomUtil.isZKFile(file) ? FileKind.ZUL_FILE : null;
 	}
 
-	private static enum FileKind {
+	private enum FileKind {
 		ZUL_FILE {
 			public String getSchemaUrl() {
 				return ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL;
 			}
 		};
 
-		private FileKind() {
+		FileKind() {
 		}
 
 		public abstract String getSchemaUrl();

@@ -26,13 +26,13 @@ public class ZulFileType extends LanguageFileType {
 
 	public static final String EXTENSION = "zul";
 	private ZulFileType() {
-		super(ZulLanguage.INSTANCE);
+		super(ZulLanguage.INSTANCE, true);
 	}
 
 	@NotNull
 	@Override
 	public String getName() {
-		return "Zul file";
+		return "Zul";
 	}
 
 	@NotNull

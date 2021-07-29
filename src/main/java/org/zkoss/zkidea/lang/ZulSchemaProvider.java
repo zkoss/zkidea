@@ -27,7 +27,7 @@ public class ZulSchemaProvider implements StandardResourceProvider {
 	// zul schema
 	public static final String ZUL_SCHEMA_URL = "http://www.zkoss.org/2005/zul";
 	public static final String ZUL_PROJECT_SCHEMA_URL = "https://www.zkoss.org/2005/zul/zul.xsd";
-	public static final String ZUL_PROJECT_SCHEMA_PATH = "/org/zkoss/zkidea/lang/resources/zul.xsd";
+	public static final String ZUL_PROJECT_SCHEMA_PATH = "org/zkoss/zkidea/lang/resources/zul.xsd";
 
 	// zk schema
 	public static final String ZK_SCHEMA_URL = "http://www.zkoss.org/2005/zk";
@@ -55,10 +55,11 @@ public class ZulSchemaProvider implements StandardResourceProvider {
 
 	public void registerResources(ResourceRegistrar registrar) {
 
+		var path = "/" + ZUL_PROJECT_SCHEMA_PATH;
 		// zul
-		registrar.addStdResource("zul", ZUL_PROJECT_SCHEMA_PATH, getClass());
-		registrar.addStdResource(ZUL_SCHEMA_URL, ZUL_PROJECT_SCHEMA_PATH, getClass());
-		registrar.addStdResource(ZUL_PROJECT_SCHEMA_URL, ZUL_PROJECT_SCHEMA_PATH, getClass());
+		registrar.addStdResource("zul", path, getClass());
+		registrar.addStdResource(ZUL_SCHEMA_URL, path, getClass());
+		registrar.addStdResource(ZUL_PROJECT_SCHEMA_URL, path, getClass());
 
 //		registrar.addStdResource("xml", ExternalResourceManagerEx.STANDARD_SCHEMAS + "XMLSchema.xsd", ExternalResourceManagerEx.class);
 //		registrar.addStdResource(XML_SCHEMA_URL, ExternalResourceManagerEx.STANDARD_SCHEMAS + "XMLSchema.xsd", ExternalResourceManagerEx.class);

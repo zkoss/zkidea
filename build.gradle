@@ -1,27 +1,24 @@
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-}
-
 plugins {
-    id 'org.jetbrains.intellij' version '0.4.18'
+    id 'org.jetbrains.intellij' version '1.1.4'
+    id 'java'
 }
-
-apply plugin: 'java'
-apply plugin: 'org.jetbrains.intellij'
-
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
 
 group 'org.zkoss.zkidea'
-version '0.1.11'
+version '0.1.12'
 
-intellij {
-    version 'IC-141.1532.4'
-    plugins = ['maven']
+repositories {
+    mavenCentral()
+
+    maven {
+        url 'https://dl.bintray.com/jetbrains/intellij-plugin-service'
+    }
+
 }
 
+intellij {
+    version = '2021.2'
+    plugins = ['maven', 'com.intellij.java']
+}
 patchPluginXml {
-    untilBuild null
+    untilBuild = null
 }

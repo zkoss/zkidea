@@ -11,6 +11,11 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.1.12</p>
+      <ul>
+           <li> [bug] #28 - Plugin dont work in Intellij 2021.2 </li>
+      </ul>
+      <br>
       <p>0.1.11</p>
       <ul>
            <li> [bug] #25 - failed with RuntimeExceptionWithAttachments in IntellijJ 2020.1 </li>
@@ -101,7 +106,7 @@
     <webBrowserUrlProvider implementation="org.zkoss.zkidea.editorActions.WebBrowserUrlProvider" order="first"/>
     <java.programPatcher implementation="org.zkoss.zkidea.editorActions.MavenRunnerPatcher"/>
     <!-- refer from Maven Plugin -->
-    <fileTypeFactory implementation="org.zkoss.zkidea.lang.ZulFileTypeFactory"/>
+    <fileType name="XML" extensions="zul"/>
     <fileIconProvider implementation="org.zkoss.zkidea.lang.ZulIconProvider"/>
     <xml.elementDescriptorProvider implementation="org.zkoss.zkidea.dom.ZulDomElementDescriptorProvider"/>
     <projectService serviceImplementation="org.zkoss.zkidea.dom.ZulDomElementDescriptorHolder"/>
