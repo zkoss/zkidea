@@ -20,5 +20,5 @@ import javax.swing.*;
  * @author by jumperchen
  */
 public class ZulIcons {
-	public static final Icon FILE = IconLoader.getIcon("/org/zkoss/zkidea/lang/icons/zul.png");
+	public static final Icon FILE = IconLoader.getIcon("/org/zkoss/zkidea/lang/icons/zul.png", ZulIcons.class);
 }

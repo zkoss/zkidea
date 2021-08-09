@@ -112,16 +112,9 @@
     <projectService serviceImplementation="org.zkoss.zkidea.dom.ZulDomElementDescriptorHolder"/>
   </extensions>
 
-  <application-components>
-    <!-- Add your application components here -->
-  </application-components>
-
-  <project-components>
-    <component>
-      <implementation-class>org.zkoss.zkidea.project.ZKProjectsManager</implementation-class>
-      <loadForDefaultProject/>
-    </component>
-  </project-components>
+  <extensions defaultExtensionNs="com.intellij">
+    <postStartupActivity implementation="org.zkoss.zkidea.project.ZKProjectsManager"/>
+  </extensions>
 
   <actions>
     <!-- Add your actions here -->

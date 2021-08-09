@@ -30,7 +30,9 @@ import com.intellij.openapi.components.AbstractProjectComponent;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.DumbAwareRunnable;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.startup.StartupActivity;
 import com.intellij.openapi.util.io.FileUtil;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.idea.maven.utils.MavenUtil;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
@@ -42,34 +44,24 @@ import org.zkoss.zkidea.maven.ZKMavenArchetypesProvider;
 /**
  * @author by jumperchen
  */
-public class ZKProjectsManager extends AbstractProjectComponent {
+public class ZKProjectsManager implements StartupActivity.DumbAware {
 
 	private static final Logger LOG = Logger.getInstance(ZKProjectsManager.class);
 
 	private final AtomicBoolean isInitialized = new AtomicBoolean();
 
-	protected ZKProjectsManager(Project project) {
-		super(project);
-	}
-
-	public void initComponent() {
-		StartupManagerEx startupManager = StartupManagerEx.getInstanceEx(this.myProject);
-
+	public void runActivity(@NotNull Project project) {
 		// fix for issue #20
-		if (!this.myProject.isDefault()) {
-			startupManager.registerStartupActivity(new Runnable() {
-				public void run() {
-					ZKProjectsManager.this.doInit();
-				}
-			});
+		if (!project.isDefault()) {
+			ZKProjectsManager.this.doInit(project);
 		}
 	}
 
-	private void doInit() {
+	private void doInit(@NotNull Project project) {
 		synchronized (this.isInitialized) {
 			if (!this.isInitialized.getAndSet(true)) {
 				// fetch last zul.xsd file
-				MavenUtil.runWhenInitialized(this.myProject, new DumbAwareRunnable() {
+				MavenUtil.runWhenInitialized(project, new DumbAwareRunnable() {
 					public void run() {
 						// TODO: support with project's ZK version
 						updateZulSchema();
@@ -239,14 +231,5 @@ public class ZKProjectsManager extends AbstractProjectComponent {
 			LOG.error(pce);
 		}
 		return 0;
-	}
-
-	public void disposeComponent() {
-	}
-
-	public void projectOpened() {
-	}
-
-	public void projectClosed() {
 	}
 }
