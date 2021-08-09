@@ -1,55 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <archetype-catalog xsi:schemaLocation="http://maven.apache.org/plugins/maven-archetype-plugin/archetype-catalog/1.0.0 http://maven.apache.org/xsd/archetype-catalog-1.0.0.xsd"
-                   xmlns="http://maven.apache.org/plugins/maven-archetype-plugin/archetype-catalog/1.0.0"
-                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <archetypes>
-        <archetype>
-            <groupId>org.zkoss</groupId>
-            <artifactId>zk-archetype-component</artifactId>
-            <version>8.0.1.1</version>
-            <description>An archetype that generates a starter ZK component project</description>
-        </archetype>
-        <archetype>
-            <groupId>org.zkoss</groupId>
-            <artifactId>zk-archetype-extension</artifactId>
-            <version>8.0.1.1</version>
-            <description>An archetype that generates a starter ZK extension project</description>
-        </archetype>
-        <archetype>
-            <groupId>org.zkoss</groupId>
-            <artifactId>zk-archetype-webapp</artifactId>
-            <version>8.0.1.1</version>
-            <description>An archetype that generates a starter ZK CE webapp project</description>
-        </archetype>
-        <archetype>
-            <groupId>org.zkoss</groupId>
-            <artifactId>zk-ee-eval-archetype-webapp</artifactId>
-            <version>8.0.1.1</version>
-            <description>An archetype that generates a starter ZK EE-eval webapp project</description>
-        </archetype>
-        <archetype>
-            <groupId>org.zkoss</groupId>
-            <artifactId>zk-ee-eval-archetype-webapp-spring</artifactId>
-            <version>8.0.1.1</version>
-            <description>An archetype that generates a starter ZK EE-eval webapp project with Spring</description>
-        </archetype>
-        <archetype>
-            <groupId>org.zkoss</groupId>
-            <artifactId>zk-ee-eval-archetype-webapp-spring-jpa</artifactId>
-            <version>8.0.1.1</version>
-            <description>An archetype that generates a starter ZK EE-eval webapp project with Spring and JPA</description>
-        </archetype>
-        <archetype>
-            <groupId>org.zkoss</groupId>
-            <artifactId>zk-archetype-theme</artifactId>
-            <version>8.0.1.1</version>
-            <description>An archetype that generates a starter ZK theme project</description>
-        </archetype>
-        <archetype>
-            <groupId>org.zkoss</groupId>
-            <artifactId>zk-archetype-datahandler</artifactId>
-            <version>8.0.1.1</version>
-            <description>An archetype that generates a starter ZK datahandler project</description>
-        </archetype>
-    </archetypes>
+    xmlns="http://maven.apache.org/plugins/maven-archetype-plugin/archetype-catalog/1.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <archetypes>
+    <archetype>
+      <groupId>org.zkoss</groupId>
+      <artifactId>zk-archetype-component</artifactId>
+      <version>9.5.0.3</version>
+      <description>An archetype that generates a starter ZK component project</description>
+    </archetype>
+    <archetype>
+      <groupId>org.zkoss</groupId>
+      <artifactId>zk-archetype-extension</artifactId>
+      <version>9.5.0.3</version>
+      <description>An archetype that generates a starter ZK extension project</description>
+    </archetype>
+    <archetype>
+      <groupId>org.zkoss</groupId>
+      <artifactId>zk-archetype-webapp</artifactId>
+      <version>9.5.0.3</version>
+      <description>An archetype that generates a starter ZK CE webapp project</description>
+    </archetype>
+    <archetype>
+      <groupId>org.zkoss</groupId>
+      <artifactId>zk-ee-eval-archetype-webapp</artifactId>
+      <version>9.5.0.3</version>
+      <description>An archetype that generates a starter ZK EE-eval webapp project</description>
+    </archetype>
+    <archetype>
+      <groupId>org.zkoss</groupId>
+      <artifactId>zk-ee-eval-archetype-webapp-spring</artifactId>
+      <version>9.5.0.3</version>
+      <description>An archetype that generates a starter ZK EE-eval webapp project with Spring</description>
+    </archetype>
+    <archetype>
+      <groupId>org.zkoss</groupId>
+      <artifactId>zk-ee-eval-archetype-webapp-spring-jpa</artifactId>
+      <version>9.5.0.3</version>
+      <description>An archetype that generates a starter ZK EE-eval webapp project with Spring and JPA</description>
+    </archetype>
+    <archetype>
+      <groupId>org.zkoss</groupId>
+      <artifactId>zk-archetype-theme</artifactId>
+      <version>9.5.0.3</version>
+      <description>An archetype that generates a starter ZK theme project</description>
+    </archetype>
+    <archetype>
+      <groupId>org.zkoss</groupId>
+      <artifactId>zk-archetype-datahandler</artifactId>
+      <version>9.5.0.3</version>
+      <description>An archetype that generates a starter ZK datahandler project</description>
+    </archetype>
+  </archetypes>
 </archetype-catalog>
