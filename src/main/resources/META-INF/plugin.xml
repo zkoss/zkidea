@@ -11,6 +11,12 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.1.13</p>
+      <ul>
+           <li> fix deprecated API usage </li>
+           <li> add news notification </li>
+      </ul>
+      <br>
       <p>0.1.12</p>
       <ul>
            <li> [bug] #28 - Plugin dont work in Intellij 2021.2 </li>
@@ -114,6 +120,14 @@
 
   <extensions defaultExtensionNs="com.intellij">
     <postStartupActivity implementation="org.zkoss.zkidea.project.ZKProjectsManager"/>
+  </extensions>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <postStartupActivity implementation="org.zkoss.zkidea.newsNotification.ZKNews"/>
+  </extensions>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <notificationGroup id="news notification" displayType="BALLOON"/>
   </extensions>
 
   <actions>
