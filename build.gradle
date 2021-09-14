@@ -4,7 +4,7 @@ plugins {
 }
 
 group 'org.zkoss.zkidea'
-version '0.1.12'
+version '0.1.13'
 
 repositories {
     mavenCentral()
@@ -13,6 +13,10 @@ repositories {
         url 'https://dl.bintray.com/jetbrains/intellij-plugin-service'
     }
 
+}
+
+dependencies {
+    'org.jsoup:jsoup:1.13.1'
 }
 
 intellij {
