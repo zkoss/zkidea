@@ -26,7 +26,7 @@ import java.io.File;
 import java.io.IOException;
 
 public class ZKNews implements StartupActivity {
-	public static final String ZK_WEBSITE_URL = "http://www.zkoss.org";
+	public static final String ZK_WEBSITE_URL = "http://www.zkoss.org?ide=in";
 
 	@Override
 	public void runActivity(@NotNull Project project) {
@@ -43,12 +43,12 @@ public class ZKNews implements StartupActivity {
 		File zkNewsFile = new File(ZKPathManager.getPluginTempPath() + File.separator + "zkNews.txt");
 		if (!zkNewsFile.exists())
 			zkNewsFile.createNewFile();
-		String news = newsLoader(ZK_WEBSITE_URL);
+		String news = newsLoader(ZK_WEBSITE_URL + "&fetch=true");
 		String newsCache  = FileUtil.loadFile(zkNewsFile);
 		if(!news.equals(newsCache)) {
 			FileUtil.writeToFile(zkNewsFile, news);
 			NotificationGroupManager.getInstance().getNotificationGroup("news notification")
-					.createNotification(news + " Visit <a href=\"" + ZK_WEBSITE_URL + "\">zkoss.org</a> for detail.", NotificationType.INFORMATION)
+					.createNotification(news + " Visit <a href=\"" + ZK_WEBSITE_URL + "&read=more#news-sec\">zkoss.org</a> for detail.", NotificationType.INFORMATION)
 					.setListener(new NotificationListener.UrlOpeningListener(true))
 					.notify(project);
 		}
