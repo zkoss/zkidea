@@ -3,6 +3,7 @@
   <name>ZK</name>
   <vendor email="info@zkoss.org" url="https://www.zkoss.org">ZK Framework</vendor>
   <depends>org.jetbrains.idea.maven</depends>
+  <depends>com.intellij.modules.java</depends>
 
   <description><![CDATA[
        <p>A ZK framework plugin for IntelliJ that helps developer to work with ZK Java Web Framework.
