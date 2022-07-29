@@ -11,8 +11,12 @@ Copyright (C) 2021 Potix Corporation. All Rights Reserved.
 */
 package org.zkoss.zkidea.newsNotification;
 
+import java.io.File;
+import java.io.IOException;
+
+import com.intellij.ide.BrowserUtil;
+import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationGroupManager;
-import com.intellij.notification.NotificationListener;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.startup.StartupActivity;
@@ -21,9 +25,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+
 import org.zkoss.zkidea.project.ZKPathManager;
-import java.io.File;
-import java.io.IOException;
 
 public class ZKNews implements StartupActivity {
 	public static final String ZK_WEBSITE_URL = "http://www.zkoss.org?ide=in";
@@ -48,8 +51,9 @@ public class ZKNews implements StartupActivity {
 		if(!news.equals(newsCache)) {
 			FileUtil.writeToFile(zkNewsFile, news);
 			NotificationGroupManager.getInstance().getNotificationGroup("news notification")
-					.createNotification(news + " Visit <a href=\"" + ZK_WEBSITE_URL + "&read=more#news-sec\">zkoss.org</a> for detail.", NotificationType.INFORMATION)
-					.setListener(new NotificationListener.UrlOpeningListener(true))
+					.createNotification(news, NotificationType.INFORMATION)
+					.addAction(NotificationAction.createSimpleExpiring("Visit zkoss.org for detail.",
+							() -> BrowserUtil.browse(ZK_WEBSITE_URL + "&read=more#news-sec")))
 					.notify(project);
 		}
 	}
