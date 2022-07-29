@@ -12,6 +12,11 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.1.16</p>
+      <ul>
+           <li> [bug] #32 support latest intellij version 222.* </li>
+      </ul>
+      <br>
       <p>0.1.15</p>
       <ul>
            <li> [bug] #31 Plugin error for IC-221.5.080.210 with Version 0.1.14 </li>
