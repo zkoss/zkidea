@@ -12,6 +12,11 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.1.17</p>
+      <ul>
+           <li> [bug] #33 ZK Plugin not compatible with Intellij 2022.3 </li>
+      </ul>
+      <br>
       <p>0.1.16</p>
       <ul>
            <li> [bug] #32 support latest intellij version 222.* </li>
