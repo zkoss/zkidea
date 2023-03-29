@@ -12,6 +12,11 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.1.18</p>
+      <ul>
+           <li> [bug] #34 Add support for Intellij 2023.1 </li>
+      </ul>
+      <br>
       <p>0.1.17</p>
       <ul>
            <li> [bug] #33 ZK Plugin not compatible with Intellij 2022.3 </li>
