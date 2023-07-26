@@ -12,6 +12,11 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.1.19</p>
+      <ul>
+            <li> [bug] <a href="https://github.com/zkoss/zkidea/issues/36">#36</a> Add support for Intellij 2023.2 </li>
+      </ul>
+      <br>
       <p>0.1.18</p>
       <ul>
            <li> [bug] #34 Add support for Intellij 2023.1 </li>
