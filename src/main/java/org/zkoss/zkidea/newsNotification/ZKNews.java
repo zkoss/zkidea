@@ -29,7 +29,7 @@ import org.jsoup.nodes.Element;
 import org.zkoss.zkidea.project.ZKPathManager;
 
 public class ZKNews implements StartupActivity {
-	public static final String ZK_WEBSITE_URL = "http://www.zkoss.org?ide=in";
+	public static final String ZK_WEBSITE_URL = "https://www.zkoss.org?ide=in";
 
 	@Override
 	public void runActivity(@NotNull Project project) {
