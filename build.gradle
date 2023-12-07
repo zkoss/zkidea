@@ -1,10 +1,10 @@
 plugins {
-    id 'org.jetbrains.intellij' version '1.15.0'
+    id 'org.jetbrains.intellij' version '1.16.1'
     id 'java'
 }
 
 group 'org.zkoss.zkidea'
-version '0.1.20'
+version '0.1.21'
 
 repositories {
     mavenCentral()
@@ -18,7 +18,7 @@ dependencies {
 }
 
 intellij {
-    version = '2023.2'
+    version = '2023.3'
     plugins = ['maven', 'com.intellij.java']
 }
 patchPluginXml {
