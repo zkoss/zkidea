@@ -12,6 +12,11 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.1.22</p>
+      <ul>
+            <li> Upgrade for Intellij 2024.1 version</li>
+      </ul>
+      <br>
       <p>0.1.21</p>
       <ul>
             <li> [bug] <a href="https://github.com/zkoss/zkidea/issues/40">#40</a> Cannot run under IU-233.11799.241 </li>

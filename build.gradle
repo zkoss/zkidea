@@ -1,10 +1,10 @@
 plugins {
-    id 'org.jetbrains.intellij' version '1.16.1'
+    id 'org.jetbrains.intellij' version '1.17.2'
     id 'java'
 }
 
 group 'org.zkoss.zkidea'
-version '0.1.21'
+version '0.1.22'
 
 repositories {
     mavenCentral()
@@ -22,7 +22,8 @@ intellij {
     plugins = ['maven', 'com.intellij.java']
 }
 patchPluginXml {
-    untilBuild = null
+    sinceBuild = '233.2'
+    untilBuild = '251.*'
 }
 
 java.sourceCompatibility = JavaVersion.VERSION_17
