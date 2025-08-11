@@ -12,6 +12,10 @@
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.1.23</p>
+      <ul>
+        <li> [bug] <a href="https://github.com/zkoss/zkidea/issues/44">#44 ZK Plugin Causes IntelliJ Freeze When ZK News Service Is Unreachable</a> </li>
+      </ul>
       <p>0.1.22</p>
       <ul>
             <li> Upgrade for Intellij 2024.1 version</li>
