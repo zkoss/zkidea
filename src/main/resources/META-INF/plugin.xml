@@ -160,6 +160,7 @@
   <extensions defaultExtensionNs="com.intellij">
     <!-- Add your extensions here -->
     <standardResourceProvider implementation="org.zkoss.zkidea.lang.ZulSchemaProvider"/>
+    <standardResourceProvider implementation="org.zkoss.zkidea.lang.ZkConfigSchemaProvider"/>
     <typedHandler implementation="org.zkoss.zkidea.editorActions.ZulTypedHandler" id="zul"/>
     <completion.contributor language="XML"
                             implementationClass="org.zkoss.zkidea.completion.MVVMAnnotationCompletionProvider" order="first"/>
@@ -168,9 +169,10 @@
     <java.programPatcher implementation="org.zkoss.zkidea.editorActions.MavenRunnerPatcher"/>
     <!-- refer from Maven Plugin -->
     <fileType name="XML" extensions="zul"/>
+    <fileType name="XML" patterns="zk.xml"/>
     <fileIconProvider implementation="org.zkoss.zkidea.lang.ZulIconProvider"/>
-    <xml.elementDescriptorProvider implementation="org.zkoss.zkidea.dom.ZulDomElementDescriptorProvider"/>
-    <projectService serviceImplementation="org.zkoss.zkidea.dom.ZulDomElementDescriptorHolder"/>
+    <xml.elementDescriptorProvider implementation="org.zkoss.zkidea.dom.ZkDomElementDescriptorProvider"/>
+    <projectService serviceImplementation="org.zkoss.zkidea.dom.ZkDomElementDescriptorHolder"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">

@@ -28,7 +28,16 @@ public class ZulDomUtil {
 			return false;
 		} else {
 			String name = file.getName();
-			return name.endsWith(ZulFileType.EXTENSION);
+			return name.endsWith(ZulFileType.EXTENSION) || isZkConfigFile(file);
+		}
+	}
+
+	public static boolean isZkConfigFile(PsiFile file) {
+		if(!(file instanceof XmlFile)) {
+			return false;
+		} else {
+			String name = file.getName();
+			return "zk.xml".equals(name);
 		}
 	}
 
