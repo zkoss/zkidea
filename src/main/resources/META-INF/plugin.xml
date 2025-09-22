@@ -178,7 +178,7 @@
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
-    <notificationGroup id="news notification" displayType="BALLOON"/>
+    <notificationGroup id="news notification" displayType="STICKY_BALLOON"/>
   </extensions>
 
   <actions>

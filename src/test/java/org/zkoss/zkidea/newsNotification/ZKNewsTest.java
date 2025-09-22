@@ -117,42 +117,6 @@ public class ZKNewsTest {
     }
 
     @Test
-    public void testUpdateCacheCreatesBackup() throws Exception {
-        // Arrange
-        File cacheFile = new File(tempDir.toFile(), "zkNews.properties");
-        String originalContent = "Original news";
-        long originalTimestamp = System.currentTimeMillis() - 1000;
-
-        // Create initial cache file
-        Method updateCacheMethod = ZKNews.class.getDeclaredMethod("updateCache", File.class, String.class, long.class);
-        updateCacheMethod.setAccessible(true);
-        updateCacheMethod.invoke(zkNews, cacheFile, originalContent, originalTimestamp);
-
-        // Act - Update with new content
-        String newContent = "Updated news";
-        long newTimestamp = System.currentTimeMillis();
-        updateCacheMethod.invoke(zkNews, cacheFile, newContent, newTimestamp);
-
-        // Assert
-        File backupFile = new File(cacheFile.getAbsolutePath() + ".bak");
-        assertTrue(backupFile.exists());
-
-        // Verify backup contains original content
-        Properties backupProps = new Properties();
-        try (FileInputStream fis = new FileInputStream(backupFile)) {
-            backupProps.load(fis);
-        }
-        assertEquals(originalContent, backupProps.getProperty("content"));
-
-        // Verify main file has new content
-        Properties currentProps = new Properties();
-        try (FileInputStream fis = new FileInputStream(cacheFile)) {
-            currentProps.load(fis);
-        }
-        assertEquals(newContent, currentProps.getProperty("content"));
-    }
-
-    @Test
     public void testLoadCacheFromExistingFile() throws Exception {
         // Arrange
         File cacheFile = new File(tempDir.toFile(), "zkNews.properties");

@@ -106,7 +106,7 @@ public class ZKNews implements ProjectActivity {
 			updateCache(zkNewsFile, currentNews, currentTime);
 			NotificationGroupManager.getInstance().getNotificationGroup("news notification")
 					.createNotification(currentNews, NotificationType.INFORMATION)
-					.addAction(NotificationAction.createSimpleExpiring("Visit zkoss.org for detail.",
+					.addAction(NotificationAction.createSimple("Visit zkoss.org for detail.",
 							() -> BrowserUtil.browse(ZK_WEBSITE_URL + "&read=more#news-sec")))
 					.notify(project);
 		}
@@ -160,22 +160,12 @@ public class ZKNews implements ProjectActivity {
 
 	/**
 	 * Updates cache with new content and timestamp.
-	 * Creates backup of existing cache before updating.
 	 *
 	 * @param cacheFile the cache file to update
 	 * @param content the news content to cache
 	 * @param timestamp the timestamp when shown
 	 */
 	private void updateCache(File cacheFile, String content, long timestamp) {
-		if (cacheFile.exists()) {
-			try {
-				File backupFile = new File(cacheFile.getAbsolutePath() + ".bak");
-				Files.copy(cacheFile.toPath(), backupFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-			} catch (IOException e) {
-				logger.debug("Failed to create cache backup", e);
-			}
-		}
-
 		Properties cache = new Properties();
 		cache.setProperty("content", content);
 		cache.setProperty("lastShown", String.valueOf(timestamp));
