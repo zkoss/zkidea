@@ -35,6 +35,7 @@ import com.intellij.xml.XmlElementDescriptor;
  * <ul>
  *   <li>.zul files (ZK User Interface files)</li>
  *   <li>zk.xml files (ZK configuration files)</li>
+ *   <li>lang-addon.xml files (ZK language addon configuration files)</li>
  * </ul>
  *
  * @see XmlElementDescriptorProvider IntelliJ Platform interface for XML element descriptors

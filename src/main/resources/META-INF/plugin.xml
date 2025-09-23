@@ -161,6 +161,7 @@
     <!-- Add your extensions here -->
     <standardResourceProvider implementation="org.zkoss.zkidea.lang.ZulSchemaProvider"/>
     <standardResourceProvider implementation="org.zkoss.zkidea.lang.ZkConfigSchemaProvider"/>
+    <standardResourceProvider implementation="org.zkoss.zkidea.lang.LangAddonSchemaProvider"/>
     <typedHandler implementation="org.zkoss.zkidea.editorActions.ZulTypedHandler" id="zul"/>
     <completion.contributor language="XML"
                             implementationClass="org.zkoss.zkidea.completion.MVVMAnnotationCompletionProvider" order="first"/>
@@ -170,6 +171,7 @@
     <!-- refer from Maven Plugin -->
     <fileType name="XML" extensions="zul"/>
     <fileType name="XML" patterns="zk.xml"/>
+    <fileType name="XML" patterns="lang-addon.xml"/>
     <fileIconProvider implementation="org.zkoss.zkidea.lang.ZulIconProvider"/>
     <xml.elementDescriptorProvider implementation="org.zkoss.zkidea.dom.ZkDomElementDescriptorProvider"/>
     <projectService serviceImplementation="org.zkoss.zkidea.dom.ZkDomElementDescriptorHolder"/>

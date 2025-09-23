@@ -31,6 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.zkoss.zkidea.lang.*;
 import org.zkoss.zkidea.lang.ZkConfigSchemaProvider;
+import org.zkoss.zkidea.lang.LangAddonSchemaProvider;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -59,6 +60,7 @@ import java.util.Map;
  * <ul>
  *   <li><strong>ZUL_FILE:</strong> .zul files using zul.xsd schema with namespace "http://www.zkoss.org/2005/zul"</li>
  *   <li><strong>ZK_CONFIG_FILE:</strong> zk.xml files using zk.xsd schema with namespace "http://www.zkoss.org/2005/zk/config"</li>
+ *   <li><strong>LANG_ADDON_FILE:</strong> lang-addon.xml files using lang-addon.xsd schema with namespace "http://www.zkoss.org/2005/zk/lang-addon"</li>
  * </ul>
  *
  * <h3>How Default Namespace Works:</h3>
@@ -161,7 +163,9 @@ public class ZkDomElementDescriptorHolder {
 
 	@Nullable
 	private static ZkDomElementDescriptorHolder.FileKind getFileKind(PsiFile file) {
-		if (ZulDomUtil.isZkConfigFile(file)) {
+		if (ZulDomUtil.isLangAddonFile(file)) {
+			return FileKind.LANG_ADDON_FILE;
+		} else if (ZulDomUtil.isZkConfigFile(file)) {
 			return FileKind.ZK_CONFIG_FILE;
 		} else if (ZulDomUtil.isZKFile(file)) {
 			return FileKind.ZUL_FILE;
@@ -179,6 +183,11 @@ public class ZkDomElementDescriptorHolder {
 		ZK_CONFIG_FILE {
 			public String getSchemaUrl() {
 				return ZkConfigSchemaProvider.ZK_CONFIG_PROJECT_SCHEMA_URL;
+			}
+		},
+		LANG_ADDON_FILE {
+			public String getSchemaUrl() {
+				return LangAddonSchemaProvider.LANG_ADDON_PROJECT_SCHEMA_URL;
 			}
 		};
 

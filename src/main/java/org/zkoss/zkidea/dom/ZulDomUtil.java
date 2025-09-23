@@ -28,7 +28,7 @@ public class ZulDomUtil {
 			return false;
 		} else {
 			String name = file.getName();
-			return name.endsWith(ZulFileType.EXTENSION) || isZkConfigFile(file);
+			return name.endsWith(ZulFileType.EXTENSION) || isZkConfigFile(file) || isLangAddonFile(file);
 		}
 	}
 
@@ -38,6 +38,15 @@ public class ZulDomUtil {
 		} else {
 			String name = file.getName();
 			return "zk.xml".equals(name);
+		}
+	}
+
+	public static boolean isLangAddonFile(PsiFile file) {
+		if(!(file instanceof XmlFile)) {
+			return false;
+		} else {
+			String name = file.getName();
+			return "lang-addon.xml".equals(name);
 		}
 	}
 
