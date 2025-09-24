@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language-addon xmlns="http://www.zkoss.org/2005/zk/lang-addon">
+    <addon-name>Test Language Addon</addon-name>
+    <language-name>test</language-name>
+    <depends>zul</depends>
+    <message-loader-class>org.zkoss.test.MessageLoader</message-loader-class>
+    <version>
+        <version-class>org.zkoss.test.Version</version-class>
+        <version-uid>1.0.0</version-uid>
+    </version>
+</language-addon>

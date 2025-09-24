@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language-addon xmlns="http://www.zkoss.org/2005/zk/lang-addon">
+    <addon-name>TestAddon</addon-name>
+    <language-name>TestLanguage</language-name>
+
+    <!-- Test multiple library-property elements -->
+    <library-property>
+        <name>prop1</name>
+        <value>value1</value>
+    </library-property>
+    <library-property>
+        <name>prop2</name>
+        <value>value2</value>
+    </library-property>
+    <library-property>
+        <name>prop3</name>
+        <value>value3</value>
+    </library-property>
+
+    <!-- Test multiple components -->
+    <component>
+        <component-name>component1</component-name>
+        <component-class>com.example.Component1</component-class>
+    </component>
+
+    <component>
+        <component-name>component2</component-name>
+        <extends>div</extends>
+        <mold>
+            <mold-name>default</mold-name>
+            <mold-uri>~./mold/component2.zul</mold-uri>
+        </mold>
+        <mold>
+            <mold-name>compact</mold-name>
+            <mold-uri>~./mold/component2-compact.zul</mold-uri>
+        </mold>
+    </component>
+</language-addon>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language-addon xmlns="http://www.zkoss.org/2005/zk/lang-addon">
+    <!-- Required elements -->
+    <addon-name>TestAddon</addon-name>
+    <language-name>TestLanguage</language-name>
+
+    <!-- Single-occurrence optional elements -->
+    <depends>some.dependency</depends>
+    <version>
+        <version-class>com.example.Version</version-class>
+        <version-uid>1.0</version-uid>
+    </version>
+    <component-extends-language>xul/html</component-extends-language>
+    <message-loader-class>com.example.MessageLoader</message-loader-class>
+
+    <!-- Multiple-occurrence elements -->
+    <library-property>
+        <name>prop1</name>
+        <value>value1</value>
+    </library-property>
+    <library-property>
+        <name>prop2</name>
+        <value>value2</value>
+    </library-property>
+
+    <system-property>
+        <name>sys.prop</name>
+        <value>sys.value</value>
+    </system-property>
+
+    <javascript src="test.js"/>
+    <javascript package="com.example" merge="true"/>
+
+    <javascript-module name="testModule" version="1.0"/>
+
+    <stylesheet href="test.css"/>
+
+    <zscript language="java">
+        System.out.println("Test");
+    </zscript>
+
+    <component>
+        <component-name>testComponent</component-name>
+        <component-class>com.example.TestComponent</component-class>
+        <extends>div</extends>
+        <widget-class>com.example.TestWidget</widget-class>
+
+        <mold>
+            <mold-name>default</mold-name>
+            <mold-uri>~./mold/test.zul</mold-uri>
+        </mold>
+
+        <property>
+            <property-name>testProp</property-name>
+            <property-value>testValue</property-value>
+        </property>
+
+        <custom-attribute>
+            <attribute-name>customAttr</attribute-name>
+            <attribute-value>customValue</attribute-value>
+        </custom-attribute>
+
+        <annotation>
+            <annotation-name>TestAnnotation</annotation-name>
+            <attribute>
+                <attribute-name>attr1</attribute-name>
+                <attribute-value>val1</attribute-value>
+            </attribute>
+        </annotation>
+    </component>
+</language-addon>

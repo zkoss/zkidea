@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language-addon xmlns="http://www.zkoss.org/2005/zk/lang-addon">
+    <!-- Missing required language-name -->
+    <addon-name>TestAddon</addon-name>
+    <depends>some.dependency</depends>
+</language-addon>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language-addon xmlns="http://www.zkoss.org/2005/zk/lang-addon">
+    <component>
+        <component-name>testComponent</component-name>
+        <component-class>com.example.TestComponent</component-class>
+    </component>
+
+    <library-property>
+        <name>prop1</name>
+        <value>value1</value>
+    </library-property>
+
+    <version>
+        <version-class>org.zkoss.test.Version</version-class>
+        <version-uid>1.0.0</version-uid>
+    </version>
+
+    <language-name>test</language-name>
+    <addon-name>Test Language Addon</addon-name>
+
+    <depends>zul</depends>
+</language-addon>

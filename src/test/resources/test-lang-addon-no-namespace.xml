@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language-addon>
+    <!-- Test without namespace - should not validate against schema -->
+    <addon-name>TestAddon</addon-name>
+    <language-name>TestLanguage</language-name>
+</language-addon>
