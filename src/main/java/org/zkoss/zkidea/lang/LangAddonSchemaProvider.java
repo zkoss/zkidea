@@ -28,7 +28,7 @@ public class LangAddonSchemaProvider implements StandardResourceProvider {
 
 	// lang-addon schema
 	public static final String LANG_ADDON_SCHEMA_URL = "http://www.zkoss.org/2005/zk/lang-addon";
-	public static final String LANG_ADDON_PROJECT_SCHEMA_URL = "https://www.zkoss.org/2005/zk/lang-addon/lang-addon.xsd";
+	public static final String LANG_ADDON_PROJECT_SCHEMA_URL = "https://www.zkoss.org/2005/zk/lang-addon/lang-addon.xsd";//non-existed
 	public static final String LANG_ADDON_PROJECT_SCHEMA_PATH = "org/zkoss/zkidea/lang/resources/lang-addon.xsd";
 
 	public void registerResources(ResourceRegistrar registrar) {

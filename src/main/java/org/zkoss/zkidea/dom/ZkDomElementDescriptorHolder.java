@@ -187,7 +187,7 @@ public class ZkDomElementDescriptorHolder {
 		},
 		LANG_ADDON_FILE {
 			public String getSchemaUrl() {
-				return LangAddonSchemaProvider.LANG_ADDON_PROJECT_SCHEMA_URL;
+				return LangAddonSchemaProvider.LANG_ADDON_SCHEMA_URL;
 			}
 		};
 
