@@ -1,169 +1,232 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="http://www.zkoss.org/2005/zk/lang-addon"
            targetNamespace="http://www.zkoss.org/2005/zk/lang-addon"
-           xmlns:tns="http://www.zkoss.org/2005/zk/lang-addon"
-           elementFormDefault="qualified">
+           elementFormDefault="qualified" version="10.0.0">
 
     <!-- Root element for lang-addon.xml -->
     <xs:element name="language-addon">
         <xs:complexType>
             <xs:sequence>
-                <!-- Required addon identification -->
-                <xs:element name="addon-name" type="xs:string"/>
-                <xs:element name="language-name" type="xs:string"/>
+                <!-- Required elements (exactly once each) -->
+                <xs:element ref="addon-name"/>
+                <xs:element ref="language-name"/>
 
-                <!-- Optional dependency specification -->
-                <xs:element name="depends" type="xs:string" minOccurs="0"/>
+                <!-- Single-occurrence optional elements (at most once each) -->
+                <xs:element ref="depends" minOccurs="0"/>
+                <xs:element ref="version" minOccurs="0"/>
+                <xs:element ref="component-extends-language" minOccurs="0"/>
+                <xs:element ref="message-loader-class" minOccurs="0"/>
 
-                <!-- Optional version information -->
-                <xs:element name="version" minOccurs="0">
-                    <xs:complexType>
-                        <xs:sequence>
-                            <xs:element name="version-class" type="xs:string" minOccurs="0"/>
-                            <xs:element name="version-uid" type="xs:string" minOccurs="0"/>
-                        </xs:sequence>
-                    </xs:complexType>
-                </xs:element>
-
-                <!-- Library properties -->
-                <xs:element name="library-property" minOccurs="0" maxOccurs="unbounded">
-                    <xs:complexType>
-                        <xs:sequence>
-                            <xs:element name="name" type="xs:string"/>
-                            <xs:element name="value" type="xs:string"/>
-                        </xs:sequence>
-                    </xs:complexType>
-                </xs:element>
-
-                <!-- System properties -->
-                <xs:element name="system-property" minOccurs="0" maxOccurs="unbounded">
-                    <xs:complexType>
-                        <xs:sequence>
-                            <xs:element name="name" type="xs:string"/>
-                            <xs:element name="value" type="xs:string"/>
-                        </xs:sequence>
-                    </xs:complexType>
-                </xs:element>
-
-                <!-- Message loaders -->
-                <xs:element name="message-loader-class" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
-
-                <!-- JavaScript resources -->
-                <xs:element name="javascript" minOccurs="0" maxOccurs="unbounded">
-                    <xs:complexType mixed="true">
-                        <xs:attribute name="src" type="xs:string"/>
-                        <xs:attribute name="package" type="xs:string"/>
-                        <xs:attribute name="merge" type="xs:string"/>
-                        <xs:attribute name="ondemand" type="xs:boolean"/>
-                        <xs:attribute name="charset" type="xs:string"/>
-                    </xs:complexType>
-                </xs:element>
-
-                <!-- JavaScript modules -->
-                <xs:element name="javascript-module" minOccurs="0" maxOccurs="unbounded">
-                    <xs:complexType>
-                        <xs:attribute name="name" type="xs:string" use="required"/>
-                        <xs:attribute name="version" type="xs:string" use="required"/>
-                    </xs:complexType>
-                </xs:element>
-
-                <!-- CSS stylesheets -->
-                <xs:element name="stylesheet" minOccurs="0" maxOccurs="unbounded">
-                    <xs:complexType mixed="true">
-                        <xs:attribute name="href" type="xs:string"/>
-                        <xs:attribute name="type" type="xs:string"/>
-                        <xs:attribute name="media" type="xs:string"/>
-                    </xs:complexType>
-                </xs:element>
-
-                <!-- ZScript blocks -->
-                <xs:element name="zscript" minOccurs="0" maxOccurs="unbounded">
-                    <xs:complexType mixed="true">
-                        <xs:attribute name="language" type="xs:string"/>
-                        <xs:attribute name="each-time" type="xs:boolean"/>
-                    </xs:complexType>
-                </xs:element>
-
-                <!-- Component extensions from other languages -->
-                <xs:element name="component-extends-language" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
-
-                <!-- Component definitions -->
-                <xs:element name="component" minOccurs="0" maxOccurs="unbounded">
-                    <xs:complexType>
-                        <xs:sequence>
-                            <xs:element name="component-name" type="xs:string"/>
-                            <xs:element name="component-class" type="xs:string" minOccurs="0"/>
-                            <xs:element name="extends" type="xs:string" minOccurs="0"/>
-                            <xs:element name="macro-uri" type="xs:string" minOccurs="0"/>
-                            <xs:element name="template-uri" type="xs:string" minOccurs="0"/>
-                            <xs:element name="inline" type="xs:boolean" minOccurs="0"/>
-                            <xs:element name="shadow-element" type="xs:boolean" minOccurs="0"/>
-                            <xs:element name="widget-class" type="xs:string" minOccurs="0"/>
-                            <xs:element name="component-apply" type="xs:string" minOccurs="0"/>
-                            <xs:element name="apply" type="xs:string" minOccurs="0"/>
-                            <xs:element name="preserve-blank" type="xs:boolean" minOccurs="0"/>
-
-                            <!-- Text handling -->
-                            <xs:element name="text-as" minOccurs="0">
-                                <xs:complexType mixed="true">
-                                    <xs:attribute name="childable" type="xs:boolean"/>
-                                </xs:complexType>
-                            </xs:element>
-
-                            <!-- Molds -->
-                            <xs:element name="mold" minOccurs="0" maxOccurs="unbounded">
-                                <xs:complexType>
-                                    <xs:sequence>
-                                        <xs:element name="mold-name" type="xs:string"/>
-                                        <xs:element name="mold-uri" type="xs:string" minOccurs="0"/>
-                                        <xs:element name="css-uri" type="xs:string" minOccurs="0"/>
-                                        <xs:element name="widget-class" type="xs:string" minOccurs="0"/>
-                                    </xs:sequence>
-                                </xs:complexType>
-                            </xs:element>
-
-                            <!-- Custom attributes -->
-                            <xs:element name="custom-attribute" minOccurs="0" maxOccurs="unbounded">
-                                <xs:complexType>
-                                    <xs:sequence>
-                                        <xs:element name="attribute-name" type="xs:string"/>
-                                        <xs:element name="attribute-value" type="xs:string"/>
-                                    </xs:sequence>
-                                </xs:complexType>
-                            </xs:element>
-
-                            <!-- Properties -->
-                            <xs:element name="property" minOccurs="0" maxOccurs="unbounded">
-                                <xs:complexType>
-                                    <xs:sequence>
-                                        <xs:element name="property-name" type="xs:string"/>
-                                        <xs:element name="property-value" type="xs:string"/>
-                                    </xs:sequence>
-                                </xs:complexType>
-                            </xs:element>
-
-                            <!-- Annotations -->
-                            <xs:element name="annotation" minOccurs="0" maxOccurs="unbounded">
-                                <xs:complexType>
-                                    <xs:sequence>
-                                        <xs:element name="annotation-name" type="xs:string"/>
-                                        <xs:element name="property-name" type="xs:string" minOccurs="0"/>
-                                        <!-- Annotation attributes -->
-                                        <xs:element name="attribute" minOccurs="0" maxOccurs="unbounded">
-                                            <xs:complexType>
-                                                <xs:sequence>
-                                                    <xs:element name="attribute-name" type="xs:string"/>
-                                                    <xs:element name="attribute-value" type="xs:string"/>
-                                                </xs:sequence>
-                                            </xs:complexType>
-                                        </xs:element>
-                                    </xs:sequence>
-                                </xs:complexType>
-                            </xs:element>
-                        </xs:sequence>
-                    </xs:complexType>
-                </xs:element>
+                <!-- Multiple-occurrence elements (unlimited) -->
+                <xs:element ref="library-property" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element ref="system-property" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element ref="javascript" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element ref="javascript-module" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element ref="stylesheet" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element ref="zscript" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element ref="component" minOccurs="0" maxOccurs="unbounded"/>
             </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- Required addon identification elements -->
+    <xs:element name="addon-name" type="xs:string"/>
+    <xs:element name="language-name" type="xs:string"/>
+
+    <!-- Optional dependency specification -->
+    <xs:element name="depends" type="xs:string"/>
+
+    <!-- Optional version information -->
+    <xs:element name="version">
+        <xs:complexType>
+            <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element ref="version-class"/>
+                <xs:element ref="version-uid"/>
+            </xs:choice>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="version-class" type="xs:string"/>
+    <xs:element name="version-uid" type="xs:string"/>
+
+    <!-- Library properties -->
+    <xs:element name="library-property">
+        <xs:complexType>
+            <xs:all>
+                <xs:element ref="name"/>
+                <xs:element ref="value"/>
+            </xs:all>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- System properties -->
+    <xs:element name="system-property">
+        <xs:complexType>
+            <xs:all>
+                <xs:element ref="name"/>
+                <xs:element ref="value"/>
+            </xs:all>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="name" type="xs:string"/>
+    <xs:element name="value" type="xs:string"/>
+
+    <!-- Message loaders -->
+    <xs:element name="message-loader-class" type="xs:string"/>
+
+    <!-- JavaScript resources -->
+    <xs:element name="javascript">
+        <xs:complexType mixed="true">
+            <xs:attribute name="src" type="xs:string"/>
+            <xs:attribute name="package" type="xs:string"/>
+            <xs:attribute name="merge" type="xs:string"/>
+            <xs:attribute name="ondemand" type="xs:boolean"/>
+            <xs:attribute name="charset" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- JavaScript modules -->
+    <xs:element name="javascript-module">
+        <xs:complexType>
+            <xs:attribute name="name" type="xs:string" use="required"/>
+            <xs:attribute name="version" type="xs:string" use="required"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- CSS stylesheets -->
+    <xs:element name="stylesheet">
+        <xs:complexType mixed="true">
+            <xs:attribute name="href" type="xs:string"/>
+            <xs:attribute name="type" type="xs:string"/>
+            <xs:attribute name="media" type="xs:string"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- ZScript blocks -->
+    <xs:element name="zscript">
+        <xs:complexType mixed="true">
+            <xs:attribute name="language" type="xs:string"/>
+            <xs:attribute name="each-time" type="xs:boolean"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- Component extensions from other languages -->
+    <xs:element name="component-extends-language" type="xs:string"/>
+
+    <!-- Component definitions -->
+    <xs:element name="component">
+        <xs:complexType>
+            <xs:sequence>
+                <!-- Required component identification -->
+                <xs:element ref="component-name"/>
+
+                <!-- Optional elements in any order -->
+                <xs:choice minOccurs="0" maxOccurs="unbounded">
+                    <xs:element ref="component-class"/>
+                    <xs:element ref="extends"/>
+                    <xs:element ref="macro-uri"/>
+                    <xs:element ref="template-uri"/>
+                    <xs:element ref="inline"/>
+                    <xs:element ref="shadow-element"/>
+                    <xs:element ref="widget-class"/>
+                    <xs:element ref="component-apply"/>
+                    <xs:element ref="apply"/>
+                    <xs:element ref="preserve-blank"/>
+                    <xs:element ref="text-as"/>
+                    <xs:element ref="mold"/>
+                    <xs:element ref="custom-attribute"/>
+                    <xs:element ref="property"/>
+                    <xs:element ref="annotation"/>
+                </xs:choice>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- Component sub-elements -->
+    <xs:element name="component-name" type="xs:string"/>
+    <xs:element name="component-class" type="xs:string"/>
+    <xs:element name="extends" type="xs:string"/>
+    <xs:element name="macro-uri" type="xs:string"/>
+    <xs:element name="template-uri" type="xs:string"/>
+    <xs:element name="inline" type="xs:boolean"/>
+    <xs:element name="shadow-element" type="xs:boolean"/>
+    <xs:element name="widget-class" type="xs:string"/>
+    <xs:element name="component-apply" type="xs:string"/>
+    <xs:element name="apply" type="xs:string"/>
+    <xs:element name="preserve-blank" type="xs:boolean"/>
+
+    <!-- Text handling -->
+    <xs:element name="text-as">
+        <xs:complexType mixed="true">
+            <xs:attribute name="childable" type="xs:boolean"/>
+        </xs:complexType>
+    </xs:element>
+
+    <!-- Molds -->
+    <xs:element name="mold">
+        <xs:complexType>
+            <xs:choice minOccurs="1" maxOccurs="unbounded">
+                <xs:element ref="mold-name"/>
+                <xs:element ref="mold-uri"/>
+                <xs:element ref="css-uri"/>
+                <xs:element ref="mold-widget-class"/>
+            </xs:choice>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="mold-name" type="xs:string"/>
+    <xs:element name="mold-uri" type="xs:string"/>
+    <xs:element name="css-uri" type="xs:string"/>
+    <xs:element name="mold-widget-class" type="xs:string"/>
+
+    <!-- Custom attributes -->
+    <xs:element name="custom-attribute">
+        <xs:complexType>
+            <xs:all>
+                <xs:element ref="attribute-name"/>
+                <xs:element ref="attribute-value"/>
+            </xs:all>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="attribute-name" type="xs:string"/>
+    <xs:element name="attribute-value" type="xs:string"/>
+
+    <!-- Properties -->
+    <xs:element name="property">
+        <xs:complexType>
+            <xs:all>
+                <xs:element ref="property-name"/>
+                <xs:element ref="property-value"/>
+            </xs:all>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="property-name" type="xs:string"/>
+    <xs:element name="property-value" type="xs:string"/>
+
+    <!-- Annotations -->
+    <xs:element name="annotation">
+        <xs:complexType>
+            <xs:choice minOccurs="1" maxOccurs="unbounded">
+                <xs:element ref="annotation-name"/>
+                <xs:element ref="annotation-property-name"/>
+                <xs:element ref="attribute"/>
+            </xs:choice>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="annotation-name" type="xs:string"/>
+    <xs:element name="annotation-property-name" type="xs:string"/>
+
+    <!-- Annotation attributes -->
+    <xs:element name="attribute">
+        <xs:complexType>
+            <xs:all>
+                <xs:element ref="attribute-name"/>
+                <xs:element ref="attribute-value"/>
+            </xs:all>
         </xs:complexType>
     </xs:element>
 
