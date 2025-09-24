@@ -175,6 +175,7 @@
     <fileIconProvider implementation="org.zkoss.zkidea.lang.ZulIconProvider"/>
     <xml.elementDescriptorProvider implementation="org.zkoss.zkidea.dom.ZkDomElementDescriptorProvider"/>
     <projectService serviceImplementation="org.zkoss.zkidea.dom.ZkDomElementDescriptorHolder"/>
+    <annotator language="XML" implementationClass="org.zkoss.zkidea.lang.ZkXmlValidationAnnotator"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">

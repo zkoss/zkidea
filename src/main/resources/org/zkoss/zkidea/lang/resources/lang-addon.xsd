@@ -6,26 +6,26 @@
     <!-- Root element for lang-addon.xml -->
     <xs:element name="language-addon">
         <xs:complexType>
-            <xs:sequence>
-                <!-- Required elements (exactly once each) -->
-                <xs:element ref="addon-name"/>
-                <xs:element ref="language-name"/>
+            <xs:choice maxOccurs="unbounded">
+                <!-- Required elements (must appear exactly once) -->
+                <xs:element name="addon-name" type="xs:string" />
+                <xs:element name="language-name" type="xs:string"/>
 
-                <!-- Single-occurrence optional elements (at most once each) -->
-                <xs:element ref="depends" minOccurs="0"/>
-                <xs:element ref="version" minOccurs="0"/>
-                <xs:element ref="component-extends-language" minOccurs="0"/>
-                <xs:element ref="message-loader-class" minOccurs="0"/>
+                <!-- Single-occurrence optional elements -->
+                <xs:element ref="depends"/>
+                <xs:element ref="version"/>
+                <xs:element ref="component-extends-language"/>
+                <xs:element ref="message-loader-class"/>
 
-                <!-- Multiple-occurrence elements (unlimited) -->
-                <xs:element ref="library-property" minOccurs="0" maxOccurs="unbounded"/>
-                <xs:element ref="system-property" minOccurs="0" maxOccurs="unbounded"/>
-                <xs:element ref="javascript" minOccurs="0" maxOccurs="unbounded"/>
-                <xs:element ref="javascript-module" minOccurs="0" maxOccurs="unbounded"/>
-                <xs:element ref="stylesheet" minOccurs="0" maxOccurs="unbounded"/>
-                <xs:element ref="zscript" minOccurs="0" maxOccurs="unbounded"/>
-                <xs:element ref="component" minOccurs="0" maxOccurs="unbounded"/>
-            </xs:sequence>
+                <!-- Multiple-occurrence elements -->
+                <xs:element ref="library-property"/>
+                <xs:element ref="system-property"/>
+                <xs:element ref="javascript"/>
+                <xs:element ref="javascript-module"/>
+                <xs:element ref="stylesheet"/>
+                <xs:element ref="zscript"/>
+                <xs:element ref="component"/>
+            </xs:choice>
         </xs:complexType>
     </xs:element>
 
