@@ -189,9 +189,29 @@
   <extensions defaultExtensionNs="com.intellij">
     <notificationGroup id="news notification" displayType="STICKY_BALLOON"/>
   </extensions>
-
   <actions>
-    <!-- Add your actions here -->
+    <group id="ZK_Feedback_Group"
+           text="ZK Feedback"
+           description="Links for submitting feedback, reporting bugs, and accessing documentation."
+           popup="true">
+      <add-to-group group-id="HelpMenu" anchor="after" relative-to-action="HelpTopics"/>
+      <action id="ZK_Customer_Support"
+              class="org.zkoss.zkidea.feedback.CustomerSupportAction"
+              text="Customer Support"
+              description="Open ZK helpdesk site"/>
+      <action id="ZK_Documentation"
+              class="org.zkoss.zkidea.feedback.DocumentationAction"
+              text="ZK Documentation"
+              description="Open ZK documentation site"/>
+      <action id="ZK_Bug_Report"
+              class="org.zkoss.zkidea.feedback.ReportBugAction"
+              text="Report Bug"
+              description="Open the ZK bug reporting form."/>
+      <action id="ZK_NEWS"
+              class="org.zkoss.zkidea.feedback.NewsAction"
+              text="What's New"
+              description="Open the ZK News"/>
+    </group>
   </actions>
 
 </idea-plugin>
