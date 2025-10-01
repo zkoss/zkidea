@@ -6,12 +6,53 @@
   <depends>com.intellij.modules.java</depends>
 
   <description><![CDATA[
-       <p>A ZK framework plugin for IntelliJ that helps developer to work with ZK Java Web Framework.
-       The ZUL editor is exceptionally powerful providing content assistance for both the MVC and MVVM patterns.</p>
-       <p> This plugin can be installed on IntelliJ platform 141.1532 or greater. </p>
+      <p>A ZK framework plugin for IntelliJ that helps developers work with the ZK Java Web Framework. The plugin provides powerful, schema-aware code completion and validation to accelerate development.</p>
+      <br/>
+      <h3>Features:</h3>
+      <ul>
+          <li>
+              <b>ZUL File Support</b>
+              <ul>
+                  <li>Content assist with auto-completion</li>
+                  <li>Syntax check and validation</li>
+              </ul>
+          </li>
+          <li>
+              <b>ZK Configuration File Support</b>
+              <ul>
+                  <li>Content assist and validation for <code>zk.xml</code></li>
+                  <li>Content assist and validation for <code>lang-addon.xml</code></li>
+                  <li><i>Note: Code completion requires using default filenames or adding the correct XML namespace.</i></li>
+              </ul>
+          </li>
+          <li>
+              <b>MVVM Development Support</b>
+              <ul>
+                  <li>Content assist for ZK MVVM annotations (@init, @load, @bind, etc.)</li>
+              </ul>
+          </li>
+          <li>
+              <b>Project Creation</b>
+              <ul>
+                  <li>Create ZK projects using bundled ZK Maven archetypes</li>
+              </ul>
+          </li>
+          <li>
+              <b>Feedback Menu</b>
+              <ul>
+                  <li>Convenient links for feedback and documentation under the Help menu</li>
+              </ul>
+          </li>
+      </ul>
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.4.0</p>
+      <ul>
+          <li>[feature] Add a feedback menu to the Help menu.</li>
+          <li>[feature] code completion for lang-addon.xml</li>
+          <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/24">#24</a>Create XML Schema Definition for zk.xml - support code completion for zk.xml.</li>
+      </ul>
       <p>0.2.0</p>
       <ul>
           <li> Refined news notification to help users stay better informed by keeping important messages accessible until they are reviewed</li>

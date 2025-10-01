@@ -126,6 +126,29 @@ enum FileKind {
 5. Cached `XmlNSDescriptorImpl` provides schema-based completion with default namespace
 6. Elements complete as if explicit namespace were present
 
+## Activating Code Completion
+
+For the plugin to provide code completion and validation for `zk.xml` and `lang-addon.xml` files, one of the following two conditions must be met:
+
+1.  **Filename Convention**: The file must be named exactly `zk.xml` or `lang-addon.xml`. The plugin's **DOM Descriptor Layer** automatically detects these filenames and applies the correct schema, even if no XML namespace is declared.
+
+2.  **Explicit XML Namespace**: If you use a custom filename (e.g., `my-zk-config.xml`), you **must** declare the correct XML namespace in the root element. The plugin's **Schema Provider Layer** uses this namespace to associate the file with the proper XSD.
+
+    -   For **ZK configuration files**, the required namespace is:
+        ```xml
+        <zk xmlns="http://www.zkoss.org/2005/zk/config">
+            ...
+        </zk>
+        ```
+    -   For **language addon files**, the required namespace is:
+        ```xml
+        <language-addon xmlns="http://www.zkoss.org/2005/zk/lang-addon">
+            ...
+        </language-addon>
+        ```
+
+This dual-system ensures flexibility while providing a reliable mechanism for activating the plugin's features.
+
 ## Schema Architecture
 
 ### XSD Schema Structure

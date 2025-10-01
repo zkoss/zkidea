@@ -22,6 +22,7 @@ public class ZKPathManager {
 	public static String PLUGIN_NAME = "zkidea";
 
 	public static String getPluginTempPath() {
+		// could be ~/Library/Caches/JetBrains/IntelliJIdea2025.1/plugins/zkidea/
 		return PathManager.getPluginTempPath() + File.separator + PLUGIN_NAME;
 	}
 

@@ -8,10 +8,20 @@ This plugin can support on IntelliJ platform 141.1532 or greater
 
 ## Features
 
- * ZUL content assist
- * ZK MVVM annotation content assist
- * ZUL syntax check
- * ZK Maven archetypes for creating ZK project
+ * **ZUL File Support**
+   * ZUL content assist with auto-completion
+   * ZUL syntax check and validation
+ * **ZK Configuration File Support**
+   * ZK configuration file (`zk.xml`) content assist and validation
+   * Language addon configuration file (`lang-addon.xml`) content assist and validation
+   > **Note:** To enable code completion, either use the default filenames (`zk.xml`, `lang-addon.xml`) or add the correct namespace to your custom-named XML file.
+   > - For `zk.xml`: `xmlns="http://www.zkoss.org/2005/zk/config"`
+   > - For `lang-addon.xml`: `xmlns="http://www.zkoss.org/2005/zk/lang-addon"`
+ * **MVVM Development Support**
+   * ZK MVVM annotation content assist (@init, @load, @bind, @save, @command, etc.)
+ * **Project Creation**
+   * ZK Maven archetypes for creating ZK projects 
+ * a feedback menu under the Help menu
  
 ## Getting Started
  * [User Guide](http://books.zkoss.org/wiki/ZK_Installation_Guide/Quick_Start/Create_and_Run_Your_First_ZK_Application_with_IntelliJ_and_ZKIdea)
