@@ -6,7 +6,7 @@
   <depends>com.intellij.modules.java</depends>
 
   <description><![CDATA[
-      <p>A ZK framework plugin for IntelliJ that helps developers work with the ZK Java Web Framework. The plugin provides powerful, schema-aware code completion and validation to accelerate development.</p>
+      <p>A ZK framework plugin for IntelliJ IDEA that helps developers work with the ZK Java Web Framework. The plugin provides powerful, schema-aware code completion and validation to accelerate development. See <a href="https://docs.zkoss.org/zk_dev_ref/zkidea>ZK Developer's Reference / Intellij IDEA ZK Plugin</a> for details.</p>
       <br/>
       <h3>Features:</h3>
       <ul>
