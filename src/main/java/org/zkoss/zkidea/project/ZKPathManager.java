@@ -21,9 +21,11 @@ import com.intellij.openapi.application.PathManager;
 public class ZKPathManager {
 	public static String PLUGIN_NAME = "zkidea";
 
+	/**
+	 * e.g. Mac: ~/Library/Caches/JetBrains/IntelliJIdea2025.1/plugins/zkidea/
+	 */
 	public static String getPluginTempPath() {
-		// could be ~/Library/Caches/JetBrains/IntelliJIdea2025.1/plugins/zkidea/
-		return PathManager.getPluginTempPath() + File.separator + PLUGIN_NAME;
+		return PathManager.getPluginsPath() + File.separator + PLUGIN_NAME;
 	}
 
 	public static String getPluginResourcePath(String classPath) {
