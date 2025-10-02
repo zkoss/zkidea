@@ -1,0 +1,40 @@
+Getting Started: Your First 5 Minutes
+
+This guide will walk you through the key features to get you productive immediately.
+
+1. Create a New ZK Project in Seconds
+
+  The easiest way to start is with the built-in Maven archetypes.
+
+   * Go to File > New > Project....
+   * Choose a ZK Maven Archetype, click Next, and follow the wizard.
+   * The plugin will generate a complete, runnable ZK project structure for you.
+
+2. Experience Powerful ZUL Code Completion
+
+  This is the plugin's core feature. Open any .zul file from your projects to see it in action.
+
+   * Component Completion: Start typing <win and the editor will suggest the <window> component. Press Enter to complete it.
+   * Attribute Assist: Inside the <window> tag, press Ctrl+Space (or your IDE's shortcut for code completion) to see a list of all available attributes, like title, border, and viewModel.
+   * Syntax Validation: Try typing an invalid attribute. The plugin will immediately highlight it as an error, preventing mistakes before you even run the application.
+
+3. Accelerate MVVM Development
+
+  The plugin provides support for the MVVM pattern.
+
+   * In your ZUL file, type @init(' inside a component. The plugin will suggest available ViewModel classes from your project.
+   * Once your ViewModel is bound, type @load(vm. and you will get code completion for the properties and methods available on your ViewModel class.
+
+4. Edit Configuration Files with Confidence
+
+  Stop guessing at tag names in your configuration files.
+
+   * Open zk.xml or lang-addon.xml.
+   * You get the same powerful, schema-aware code completion and validation that you have in your ZUL files.
+      > Note: For code completion to work on custom-named XML files, you must add the correct namespace (e.g., xmlns="http://www.zkoss.org/2005/zk/config").
+
+5. ZK Help
+For quick access to bug reporting and documentation, find our new menu under Help > ZK Feedback.
+
+6. Explore More
+For a comprehensive walkthrough, please see https://docs.zkoss.org/zk_installation_guide/create_and_run_your_first_zk_application_with_intellij_and_zkidea

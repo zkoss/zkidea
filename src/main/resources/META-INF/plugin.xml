@@ -13,34 +13,35 @@
           <li>
               <b>ZUL File Support</b>
               <ul>
-                  <li>Content assist with auto-completion</li>
-                  <li>Syntax check and validation</li>
+                  <li>ZUL code completion for ZK components, attributes, and events</li>
+                  <li>ZUL to class declaration navigation</li>
+                  <li>ZUL syntax check and validation</li>
               </ul>
           </li>
           <li>
               <b>ZK Configuration File Support</b>
               <ul>
-                  <li>Content assist and validation for <code>zk.xml</code></li>
-                  <li>Content assist and validation for <code>lang-addon.xml</code></li>
-                  <li><i>Note: Code completion requires using default filenames or adding the correct XML namespace.</i></li>
+                  <li>ZK configuration file (<code>zk.xml</code>) code completion and validation</li>
+                  <li>Language addon configuration file (<code>lang-addon.xml</code>) code completion and validation</li>
+                  <li><i>Note: To enable code completion, either use the default filenames (<code>zk.xml</code>, <code>lang-addon.xml</code>) or add the correct namespace to your custom-named XML file.</i></li>
               </ul>
           </li>
           <li>
               <b>MVVM Development Support</b>
               <ul>
-                  <li>Content assist for ZK MVVM annotations (@init, @load, @bind, etc.)</li>
+                  <li>ZK MVVM annotation code completion (@init, @load, @bind, @save, @command, etc.)</li>
               </ul>
           </li>
           <li>
               <b>Project Creation</b>
               <ul>
-                  <li>Create ZK projects using bundled ZK Maven archetypes</li>
+                  <li>Provide ZK Maven archetypes for creating ZK projects</li>
               </ul>
           </li>
           <li>
               <b>Feedback Menu</b>
               <ul>
-                  <li>Convenient links for feedback and documentation under the Help menu</li>
+                  <li>a feedback menu under the Help menu for feedback and documentation</li>
               </ul>
           </li>
       </ul>

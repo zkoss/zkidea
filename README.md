@@ -2,29 +2,29 @@
 ZK IntelliJ IDEA Plugin
 [plugin page on Jetbrains marketplace](https://plugins.jetbrains.com/plugin/7855-zk)
 
-## IntelliJ Version
-
-This plugin can support on IntelliJ platform 141.1532 or greater
+## Supported IntelliJ Version
+See `patchPluginXml` in [build.gradle](build.gradle) for detail.
 
 ## Features
 
  * **ZUL File Support**
-   * ZUL content assist with auto-completion
+   * ZUL code completion for ZK components, attributes, and events
+   * ZUL to class declaration navigation
    * ZUL syntax check and validation
  * **ZK Configuration File Support**
-   * ZK configuration file (`zk.xml`) content assist and validation
-   * Language addon configuration file (`lang-addon.xml`) content assist and validation
+   * ZK configuration file (`zk.xml`) code completion and validation
+   * Language addon configuration file (`lang-addon.xml`) code completion and validation
    > **Note:** To enable code completion, either use the default filenames (`zk.xml`, `lang-addon.xml`) or add the correct namespace to your custom-named XML file.
    > - For `zk.xml`: `xmlns="http://www.zkoss.org/2005/zk/config"`
    > - For `lang-addon.xml`: `xmlns="http://www.zkoss.org/2005/zk/lang-addon"`
  * **MVVM Development Support**
-   * ZK MVVM annotation content assist (@init, @load, @bind, @save, @command, etc.)
+   * ZK MVVM annotation code completion (@init, @load, @bind, @save, @command, etc.)
  * **Project Creation**
    * ZK Maven archetypes for creating ZK projects 
  * a feedback menu under the Help menu
  
 ## Getting Started
- * [User Guide](http://books.zkoss.org/wiki/ZK_Installation_Guide/Quick_Start/Create_and_Run_Your_First_ZK_Application_with_IntelliJ_and_ZKIdea)
+ * [User Guide](https://docs.zkoss.org/zk_installation_guide/create_and_run_your_first_zk_application_with_intellij_and_zkidea)
 
 ## Development Setup
 
@@ -65,19 +65,17 @@ This will compile the plugin and launch a new IntelliJ IDEA instance with your p
 - **Live Testing**: Test plugin features immediately without building JARs
 - **Rapid Iteration**: Quick development cycle for faster development
 
-### License
+## License
 
  * [Apache License version 2](https://github.com/jumperchen/zkidea/blob/master/LICENSE)
 
-### Download
+## Download
 
  * You can install and update ZK IntelliJ Plugin at IntelliJ Setting > Plugins Marketplace.
  * [IntelliJ plugins home](https://plugins.jetbrains.com/plugin/7855)
 
-### Demo
-
- * [Video](http://screencast.com/t/xjx0RyzX)
- 
+## Demo
+TBD
 
 # Release Process
 
@@ -131,4 +129,4 @@ The current workaround is to manually add zul file type in IntelliJ IDEA setting
   3. Add `*.zul` to the list of `File name patterns`
 
 
-* For Mac user, if you run this plugin with IntelliJ 14 that crashes on startup, you may refer to [this solution](https://github.com/jumperchen/zkidea/issues/10#issuecomment-148628901)
+* For Mac user, if you run this plugin with IntelliJ 14 that crashes on startup, you may refer to [this solution](https://github.com/zkoss/zkidea/issues/10#issuecomment-148628901)

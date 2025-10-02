@@ -11,38 +11,40 @@ Copyright (C) 2015 Potix Corporation. All Rights Reserved.
 */
 package org.zkoss.zkidea.project;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.Date;
-import java.util.concurrent.atomic.AtomicBoolean;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
-import com.intellij.ide.startup.StartupManagerEx;
 import com.intellij.javaee.ExternalResourceManager;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.components.AbstractProjectComponent;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.project.DumbAwareRunnable;
-import com.intellij.openapi.project.Project;
+import com.intellij.openapi.project.*;
 import com.intellij.openapi.startup.StartupActivity;
 import com.intellij.openapi.util.io.FileUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.idea.maven.utils.MavenUtil;
-import org.w3c.dom.Document;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.w3c.dom.*;
 import org.zkoss.zkidea.lang.ZulSchemaProvider;
 import org.zkoss.zkidea.maven.ZKMavenArchetypesProvider;
 
+import javax.xml.parsers.*;
+import java.io.*;
+import java.net.*;
+import java.util.Date;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
- * @author by jumperchen
+ * This class implements StartupActivity.DumbAware to perform initialization tasks
+ * when a project is opened in the IDE.
+ *
+ * Key responsibilities:
+ * - Initializes ZK-related resources for new projects
+ * - Updates and manages ZUL schema files for XML validation
+ * - Updates ZK Maven archetypes with the latest one from the remote repository
+ * - Handles resource synchronization with remote ZK repositories
+ *
+ * The manager ensures that:
+ * 1. The latest ZUL schema (zul.xsd) is downloaded and maintained
+ * 2. Maven archetypes are kept up to date
+ * 3. Resources are properly registered with IntelliJ's ExternalResourceManager
+ *
+ * @author jumperchen
  */
 public class ZKProjectsManager implements StartupActivity.DumbAware {
 
@@ -60,7 +62,7 @@ public class ZKProjectsManager implements StartupActivity.DumbAware {
 	private void doInit(@NotNull Project project) {
 		synchronized (this.isInitialized) {
 			if (!this.isInitialized.getAndSet(true)) {
-				// fetch last zul.xsd file
+				// fetch the lastes zul.xsd file
 				MavenUtil.runWhenInitialized(project, new DumbAwareRunnable() {
 					public void run() {
 						// TODO: support with project's ZK version
@@ -207,6 +209,7 @@ public class ZKProjectsManager implements StartupActivity.DumbAware {
 //			}
 			fileSrc.setLastModified(new Date().getTime() + 7 * 24 * 60 * 60 * 1000);
 		} catch (IOException e) {
+			LOG.debug(e);
 		}
 	}
 

@@ -27,6 +27,11 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
+ * Provides ZK Maven archetype definitions for IntelliJ IDEA.
+ * <p>
+ * This class loads archetype information from a local XML resource file.
+ * If the archetype catalog file is not found, an empty list is returned.
+ * </p>
  * @author jumperchen
  */
 public class ZKMavenArchetypesProvider implements MavenArchetypesProvider {
