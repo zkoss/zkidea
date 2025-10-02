@@ -53,6 +53,7 @@
           <li>[feature] Add a feedback menu to the Help menu.</li>
           <li>[feature] code completion for lang-addon.xml</li>
           <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/24">#24 Create XML Schema Definition for zk.xml - support code completion for zk.xml</a></li>
+          <li>[feature] a workaround for <a href="https://youtrack.jetbrains.com/issue/IJPL-39443">IJPL-39443</a>: associate zul type  </li>
           <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/47">#47 PathManager.getPluginTempPath() is scheduled for removal in a future release</a></li>
       </ul>
       <p>0.2.0</p>
@@ -227,6 +228,7 @@
 
   <extensions defaultExtensionNs="com.intellij">
     <postStartupActivity implementation="org.zkoss.zkidea.newsNotification.ZKNews"/>
+    <postStartupActivity implementation="org.zkoss.zkidea.project.ZulFileTypeRegistrar"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
