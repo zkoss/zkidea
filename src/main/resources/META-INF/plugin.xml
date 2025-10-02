@@ -49,9 +49,10 @@
   <change-notes><![CDATA[
       <p>0.4.0</p>
       <ul>
+          <li>[feature] use new zul file icon and plugin icon</li>
           <li>[feature] Add a feedback menu to the Help menu.</li>
           <li>[feature] code completion for lang-addon.xml</li>
-          <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/24">#24</a>Create XML Schema Definition for zk.xml - support code completion for zk.xml.</li>
+          <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/24">#24 Create XML Schema Definition for zk.xml - support code completion for zk.xml</a></li>
       </ul>
       <p>0.2.0</p>
       <ul>
@@ -246,7 +247,7 @@
               description="Open ZK documentation site"/>
       <action id="ZK_Bug_Report"
               class="org.zkoss.zkidea.feedback.ReportBugAction"
-              text="Report Bug"
+              text="Report a Bug"
               description="Open the ZK bug reporting form."/>
       <action id="ZK_NEWS"
               class="org.zkoss.zkidea.feedback.NewsAction"
