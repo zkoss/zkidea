@@ -6,9 +6,8 @@
   <depends>com.intellij.modules.java</depends>
 
   <description><![CDATA[
-      <p>A ZK framework plugin for IntelliJ IDEA that helps developers work with the ZK Java Web Framework. The plugin provides powerful, schema-aware code completion and validation to accelerate development. See <a href="https://docs.zkoss.org/zk_dev_ref/zkidea>ZK Developer's Reference / Intellij IDEA ZK Plugin</a> for details.</p>
-      <br/>
-      <h3>Features:</h3>
+      <p>A ZK framework plugin for IntelliJ IDEA that helps developers work with the ZK Java Web Framework. The plugin provides powerful, schema-aware code completion and validation to accelerate development.</p>
+      Features:
       <ul>
           <li>
               <b>ZUL File Support</b>
@@ -45,9 +44,14 @@
               </ul>
           </li>
       </ul>
+      See <a href="https://docs.zkoss.org/zk_dev_ref/zkidea" target="_blank">ZK Developer's Reference / Intellij IDEA ZK Plugin</a> for details.
     ]]></description>
 
   <change-notes><![CDATA[
+      <p>0.4.1</p>
+      <ul>
+          <li>update plugin icon and description</li>
+      </ul>
       <p>0.4.0</p>
       <ul>
           <li>[feature] use new zul file icon and plugin icon</li>

@@ -28,6 +28,17 @@ import org.jetbrains.idea.maven.project.MavenProjectsManager;
 import org.zkoss.zkidea.dom.ZulDomUtil;
 
 /**
+ * Provides a URL for ZUL files for the "Open in Browser" feature.
+ * <p>
+ * This class is responsible for generating the correct URL when a user right-clicks on a ZUL file
+ * and selects "Open in Browser." It intelligently constructs the URL by analyzing the Maven `pom.xml`
+ * to determine the web application's context path and server port.
+ * <p>
+ * Specifically, it parses the configuration of various Jetty Maven plugins to find the correct port and context path.
+ * It also works in conjunction with {@link MavenRunnerPatcher} to get the port from a running Jetty instance,
+ * ensuring that even dynamically assigned ports are handled correctly. This provides a seamless development
+ * experience for ZK developers using Maven.
+ *
  * @author jumperchen
  */
 public class WebBrowserUrlProvider

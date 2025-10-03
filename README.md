@@ -7,21 +7,29 @@ See `patchPluginXml` in [build.gradle](build.gradle) for detail.
 
 ## Features
 
- * **ZUL File Support**
-   * ZUL code completion for ZK components, attributes, and events
-   * ZUL to class declaration navigation
-   * ZUL syntax check and validation
- * **ZK Configuration File Support**
-   * ZK configuration file (`zk.xml`) code completion and validation
-   * Language addon configuration file (`lang-addon.xml`) code completion and validation
-   > **Note:** To enable code completion, either use the default filenames (`zk.xml`, `lang-addon.xml`) or add the correct namespace to your custom-named XML file.
-   > - For `zk.xml`: `xmlns="http://www.zkoss.org/2005/zk/config"`
-   > - For `lang-addon.xml`: `xmlns="http://www.zkoss.org/2005/zk/lang-addon"`
- * **MVVM Development Support**
-   * ZK MVVM annotation code completion (@init, @load, @bind, @save, @command, etc.)
- * **Project Creation**
-   * ZK Maven archetypes for creating ZK projects 
- * a feedback menu under the Help menu
+### ZUL File Support
+*   **Code Completion**: Provides context-aware suggestions for ZK components, attributes, and events as you type in ZUL files, speeding up development.
+*   **Go to Declaration**: Quickly navigate from a component tag in a ZUL file to its corresponding Java class (e.g., Composer or ViewModel).
+*   **Open in Browser**: For Maven projects, this feature intelligently constructs the correct URL to view your ZUL file in a browser, automatically detecting the server port and context path from your `pom.xml`.
+
+### ZK Configuration File Support
+*   **`zk.xml` Code Completion**: Offers code completion for elements and attributes in `zk.xml`, helping you configure your ZK application correctly.
+*   **`lang-addon.xml` Completion and Validation**: Provides code completion and validates the file to ensure all required elements are present, preventing common configuration errors.
+> **Note:** To enable code completion, either use the default filenames (`zk.xml`, `lang-addon.xml`) or add the correct namespace to your custom-named XML file.
+> - For `zk.xml`: `xmlns="http://www.zkoss.org/2005/zk/config"`
+> - For `lang-addon.xml`: `xmlns="http://www.zkoss.org/2005/zk/lang-addon"`
+
+### MVVM Development Support
+*   **Annotation Completion**: Triggers an auto-popup with a list of ZK MVVM annotations (e.g., `@init`, `@load`, `@bind`) whenever you type the `@` symbol, making it easier to write databinding expressions.
+
+### Project Creation
+*   **Maven Archetypes**: Integrates with IntelliJ's project wizard to let you create new ZK projects from official Maven archetypes, providing a standardized project structure.
+
+### ZK News Notification
+*   **Startup Notification**: Displays a popup with the latest news from the official ZK framework website when you start IntelliJ IDEA, keeping you informed of updates and announcements.
+
+### Feedback Menu
+*   **Easy Access to Support**: Adds a "ZK Feedback" menu under the "Help" menu with quick links to report bugs, request features, or get help from the community.
  
 ## Getting Started
  * [User Guide](https://docs.zkoss.org/zk_installation_guide/create_and_run_your_first_zk_application_with_intellij_and_zkidea)

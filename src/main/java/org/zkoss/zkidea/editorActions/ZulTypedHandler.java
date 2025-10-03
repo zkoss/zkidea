@@ -18,6 +18,10 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 
 /**
+ * A typed handler for ZUL files that triggers the code completion popup automatically
+ * when a user types the '@' character. This is designed to assist with ZK's MVVM
+ * data binding annotations, which all start with the '@' symbol.
+ *
  * @author jumperchen
  */
 public class ZulTypedHandler extends CompletionAutoPopupHandler {

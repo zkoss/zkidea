@@ -27,6 +27,10 @@ import com.intellij.psi.xml.XmlFile;
 import org.zkoss.zkidea.dom.ZulDomUtil;
 
 /**
+ * Provides code completion suggestions for MVVM annotations in ZK XML files.
+ * This class detects the context of ZK MVVM attributes and offers relevant annotation completions
+ * (such as @id, @init, @command, etc.)
+ *
  * @author jumperchen
  */
 public class MVVMAnnotationCompletionProvider extends CompletionContributor {

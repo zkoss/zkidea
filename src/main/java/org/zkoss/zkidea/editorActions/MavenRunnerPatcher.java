@@ -27,6 +27,9 @@ import org.jetbrains.idea.maven.project.MavenProject;
 import org.jetbrains.idea.maven.project.MavenProjectsManager;
 
 /**
+ * This class patches java parameters for maven run configuration to get jetty port
+ * and set it to system property for {@link WebBrowserUrlProvider}
+ *
  * @author jumperchen
  */
 public class MavenRunnerPatcher extends JavaProgramPatcher {
