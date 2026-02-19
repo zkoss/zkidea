@@ -93,6 +93,11 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
             String innerContent = annotMatcher.group(2);
             int innerOffset = annotMatcher.start(2);
 
+            // Skip quoted-string arguments (file paths) — handled by ZkTemplateUriReferenceProvider.
+            // Avoids extracting identifier tokens from inside path strings like '/mentor/crew/foo.zul'.
+            String trimmedInner = innerContent.trim();
+            if (trimmedInner.startsWith("'") || trimmedInner.startsWith("\"")) continue;
+
             Matcher chainMatcher = IDENTIFIER_CHAIN_PATTERN.matcher(innerContent);
             while (chainMatcher.find()) {
                 String chain = chainMatcher.group();

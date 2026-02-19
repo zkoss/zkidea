@@ -214,6 +214,8 @@
     <typedHandler implementation="org.zkoss.zkidea.editorActions.ZulTypedHandler" id="zul"/>
     <completion.contributor language="XML"
                             implementationClass="org.zkoss.zkidea.completion.MVVMAnnotationCompletionProvider" order="first"/>
+    <completion.contributor language="XML"
+                            implementationClass="org.zkoss.zkidea.completion.ZulScopeVarCompletionContributor"/>
     <gotoDeclarationHandler implementation="org.zkoss.zkidea.actions.GotoJavaClassHandler" order="first"/>
     <psi.referenceContributor language="XML"
                               implementation="org.zkoss.zkidea.reference.ZkBindingReferenceContributor"/>
