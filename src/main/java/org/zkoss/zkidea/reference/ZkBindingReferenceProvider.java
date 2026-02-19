@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
@@ -14,6 +15,7 @@ import com.intellij.psi.PsiReference;
 import com.intellij.psi.PsiReferenceProvider;
 import com.intellij.psi.PsiType;
 import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.ProcessingContext;
@@ -22,18 +24,43 @@ import org.zkoss.zkidea.dom.ZulDomUtil;
 
 /**
  * Provides PsiReferences for ViewModel binding expressions in ZUL files.
- * Parses expressions like vm.crew.name inside @load(), @bind(), @save(), etc.
- * and creates references for the identifier and each property segment.
+ * <p>
+ * Handles:
+ * <ul>
+ *   <li>VM property chains: {@code vm.crew.name} inside any recognized annotation</li>
+ *   <li>Scope variable chains: {@code wrapper.dto}, {@code item.name} (template, apply, forEachVar)</li>
+ *   <li>Command string literals: {@code 'saveItem'} in {@code @command('saveItem')}</li>
+ *   <li>Before/after command params: {@code before='validate'} in {@code @save(...)}</li>
+ * </ul>
  */
 public class ZkBindingReferenceProvider extends PsiReferenceProvider {
+    private static final Logger LOG = Logger.getInstance(ZkBindingReferenceProvider.class);
+
+    /**
+     * Matches recognized ZK binding annotations and captures (1) the annotation name
+     * and (2) the annotation body content.
+     * Built from {@link ZulDomUtil#BINDING_ANNOTATIONS} so the list stays in sync.
+     */
     private static final Pattern BINDING_ANNOTATION_PATTERN =
-            Pattern.compile("@(?:load|bind|save|init|command|global-command)\\s*\\(([^)]*)\\)");
+            Pattern.compile("@(" + ZulDomUtil.BINDING_ANNOTATIONS + ")\\s*\\(([^)]*)\\)");
+
+    /** Matches the string literal command name inside {@code @command('...')} etc. */
+    private static final Pattern COMMAND_STRING_PATTERN =
+            Pattern.compile("@(?:command|global-command)\\s*\\(\\s*['\"]([^'\"]+)['\"]");
+
+    /**
+     * Matches {@code before='commandName'} or {@code after='commandName'} named
+     * parameters that appear inside any binding annotation body.
+     */
+    private static final Pattern BEFORE_AFTER_PATTERN =
+            Pattern.compile("\\b(?:before|after)\\s*=\\s*['\"]([^'\"]+)['\"]");
+
     private static final Pattern IDENTIFIER_CHAIN_PATTERN =
             Pattern.compile("[a-zA-Z_]\\w*(?:\\.[a-zA-Z_]\\w*)*");
 
     @Override
     public PsiReference @NotNull [] getReferencesByElement(@NotNull PsiElement element,
-                                                            @NotNull ProcessingContext context) {
+                                                           @NotNull ProcessingContext context) {
         if (!(element instanceof XmlAttributeValue)) return PsiReference.EMPTY_ARRAY;
 
         XmlAttributeValue attrValue = (XmlAttributeValue) element;
@@ -53,22 +80,51 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
         String text = attrValue.getValue();
         if (text == null || text.isEmpty()) return PsiReference.EMPTY_ARRAY;
 
-        // offset from element start to the value content (skip opening quote)
-        int valueOffset = attrValue.getValueTextRange().getStartOffset() - attrValue.getTextRange().getStartOffset();
+        // Offset from element start to the value content (skip opening quote)
+        int valueOffset = attrValue.getValueTextRange().getStartOffset()
+                - attrValue.getTextRange().getStartOffset();
 
         List<PsiReference> references = new ArrayList<>();
 
+        // --- Pass 1: identifier-chain references (VM properties + scope variables) ---
         Matcher annotMatcher = BINDING_ANNOTATION_PATTERN.matcher(text);
         while (annotMatcher.find()) {
-            String innerContent = annotMatcher.group(1);
-            int innerOffset = annotMatcher.start(1);
+            String annotationName = annotMatcher.group(1);
+            String innerContent = annotMatcher.group(2);
+            int innerOffset = annotMatcher.start(2);
 
             Matcher chainMatcher = IDENTIFIER_CHAIN_PATTERN.matcher(innerContent);
             while (chainMatcher.find()) {
                 String chain = chainMatcher.group();
                 int chainStart = innerOffset + chainMatcher.start();
+                processChain(attrValue, chain, valueOffset + chainStart,
+                        vmId, vmClass, references, annotationName);
+            }
 
-                processChain(attrValue, chain, valueOffset + chainStart, vmId, vmClass, references);
+            // before/after command name references within this annotation body
+            Matcher beforeAfterMatcher = BEFORE_AFTER_PATTERN.matcher(innerContent);
+            while (beforeAfterMatcher.find()) {
+                String cmdName = beforeAfterMatcher.group(1);
+                int cmdStart = valueOffset + innerOffset + beforeAfterMatcher.start(1);
+                int cmdEnd = valueOffset + innerOffset + beforeAfterMatcher.end(1);
+                LOG.debug("ZkBindingReferenceProvider: before/after command '" + cmdName + "'");
+                if (vmClass != null) {
+                    references.add(new ZkCommandReference(
+                            attrValue, new TextRange(cmdStart, cmdEnd), vmClass, cmdName));
+                }
+            }
+        }
+
+        // --- Pass 2: @command('literal') string references ---
+        Matcher cmdMatcher = COMMAND_STRING_PATTERN.matcher(text);
+        while (cmdMatcher.find()) {
+            String commandName = cmdMatcher.group(1);
+            int cmdStart = valueOffset + cmdMatcher.start(1);
+            int cmdEnd = valueOffset + cmdMatcher.end(1);
+            LOG.debug("ZkBindingReferenceProvider: command string '" + commandName + "'");
+            if (vmClass != null) {
+                references.add(new ZkCommandReference(
+                        attrValue, new TextRange(cmdStart, cmdEnd), vmClass, commandName));
             }
         }
 
@@ -76,31 +132,46 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
     }
 
     private void processChain(XmlAttributeValue element, String chain, int offsetInElement,
-                              String vmId, PsiClass vmClass, List<PsiReference> references) {
+                              String vmId, PsiClass vmClass, List<PsiReference> references,
+                              String annotationName) {
         String[] segments = chain.split("\\.");
         if (segments.length == 0) return;
 
-        // First segment must match the @id value
-        if (!segments[0].equals(vmId)) return;
-
-        // Reference for the vm identifier
         TextRange idRange = new TextRange(offsetInElement, offsetInElement + segments[0].length());
-        if (vmClass != null) {
-            references.add(new ViewModelIdReference(element, idRange, vmClass));
+
+        // Determine start class (VM or scope variable)
+        PsiClass startClass;
+        if (segments[0].equals(vmId)) {
+            if (vmClass != null) {
+                references.add(new ViewModelIdReference(element, idRange, vmClass));
+            }
+            startClass = vmClass;
+        } else {
+            XmlAttribute scopeDecl = ZulDomUtil.findScopeVariableDeclaration(element, segments[0]);
+            if (scopeDecl == null) {
+                LOG.debug("processChain: '" + segments[0] + "' is not vmId and no scope declaration found");
+                return;
+            }
+            references.add(new ZulScopeVariableReference(element, idRange, scopeDecl));
+            startClass = ZulDomUtil.resolveScopeVariableType(scopeDecl, vmId, vmClass, element);
         }
 
-        // Process property segments
-        PsiClass currentClass = vmClass;
-        int currentOffset = offsetInElement + segments[0].length() + 1; // +1 for the dot
+        // isCommandContext: inside @command or @global-command, completion offers @Command names
+        boolean isCommandContext = "command".equals(annotationName)
+                || "global-command".equals(annotationName);
+
+        // Walk property segments
+        PsiClass currentClass = startClass;
+        int currentOffset = offsetInElement + segments[0].length() + 1; // +1 for dot
         for (int i = 1; i < segments.length; i++) {
             String segment = segments[i];
             TextRange propRange = new TextRange(currentOffset, currentOffset + segment.length());
+            references.add(new ViewModelPropertyReference(
+                    element, propRange, currentClass, segment, isCommandContext));
 
-            references.add(new ViewModelPropertyReference(element, propRange, currentClass, segment));
-
-            // Resolve type for next segment
+            // Resolve type for the next segment
             currentClass = resolvePropertyType(currentClass, segment, element);
-            currentOffset += segment.length() + 1; // +1 for the dot
+            currentOffset += segment.length() + 1; // +1 for dot
         }
     }
 
