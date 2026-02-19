@@ -80,6 +80,10 @@ Tests use JUnit 5 with Mockito for mocking. The test structure mirrors the main 
 - `src/main/resources/org/zkoss/zkidea/lang/resources/archetype-catalog.xml` - Maven archetypes catalog
 - `src/main/resources/META-INF/plugin.xml` - Plugin configuration
 
+## Required Reading
+
+Before working on any feature, bug fix, or investigation, **always read `doc/feature_overview.md` first**. It maps every feature to its implementation classes and explains how each subsystem works. This is essential context for understanding the codebase.
+
 ## Development Notes
 
 - ZUL files are treated as XML with custom extensions

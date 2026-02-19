@@ -21,7 +21,7 @@ e.g. in mac, the file is at /Users/username/Documents/workspace/PLUGIN/zkidea/bu
 ### Logic Flow
 1. **Cache Check**: Load `zkNews.properties` using `Properties.load()`
 2. **Migration**: ignore old format new cache file.
-3**Time Check**: Compare `lastShown` timestamp with current time
+3. **Time Check**: Compare `lastShown` timestamp with current time
 5. **Display Logic**: Show popup if:
     - No cache exists (first run), OR
     - More than configured days since `lastShown`, OR
@@ -61,14 +61,7 @@ Current popup screenshot at ![newsPopup-0.1.23.png](newsPopup-0.1.23.png). It's 
 from com.intellij.openapi.startup.ProjectActivity javadoc
 > Runs an activity after project open. execute gets called inside a coroutine scope spanning from project opening to project closing (or plugin unloading). Flow and any other long-running activities are allowed and natural.
 
-So a long operation inside doesn't affect intellij. 
-
-## Implementation Priority (Revised)
-1. **Phase 1**: Core Properties format and enhanced error handling
-2. **Phase 2**: Thread-safe cache service with configuration
-3. **Phase 3**: Sticky popup UI and link functionality
-4. **Phase 4**: Performance optimizations and comprehensive testing
-5. **Phase 5**: Migration support and backward compatibility
+So a long operation inside doesn't affect intellij.
 
 ## Files to Modify
 ### Core Implementation
