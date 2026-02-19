@@ -17,5 +17,8 @@ public class ZkBindingReferenceContributor extends PsiReferenceContributor {
         registrar.registerReferenceProvider(
                 PlatformPatterns.psiElement(XmlAttributeValue.class),
                 new ZkBindingReferenceProvider());
+        registrar.registerReferenceProvider(
+                PlatformPatterns.psiElement(XmlAttributeValue.class),
+                new ZkTemplateUriReferenceProvider());
     }
 }
