@@ -16,6 +16,7 @@ import com.intellij.codeInsight.editorActions.CompletionAutoPopupHandler;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
+import org.zkoss.zkidea.dom.ZulDomUtil;
 
 /**
  * A typed handler for ZUL files that triggers the code completion popup automatically
@@ -27,7 +28,10 @@ import com.intellij.psi.PsiFile;
 public class ZulTypedHandler extends CompletionAutoPopupHandler {
 	@Override
 	public Result checkAutoPopup(char charTyped, Project project, Editor editor, PsiFile file) {
-		if ("@".equals(String.valueOf(charTyped))) {
+		if (charTyped == '@') {
+			AutoPopupController.getInstance(project).scheduleAutoPopup(editor);
+			return Result.STOP;
+		} else if (charTyped == '.' && ZulDomUtil.isZKFile(file)) {
 			AutoPopupController.getInstance(project).scheduleAutoPopup(editor);
 			return Result.STOP;
 		} else {

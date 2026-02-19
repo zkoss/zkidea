@@ -215,6 +215,8 @@
     <completion.contributor language="XML"
                             implementationClass="org.zkoss.zkidea.completion.MVVMAnnotationCompletionProvider" order="first"/>
     <gotoDeclarationHandler implementation="org.zkoss.zkidea.actions.GotoJavaClassHandler" order="first"/>
+    <psi.referenceContributor language="XML"
+                              implementation="org.zkoss.zkidea.reference.ZkBindingReferenceContributor"/>
     <webBrowserUrlProvider implementation="org.zkoss.zkidea.editorActions.WebBrowserUrlProvider" order="first"/>
     <java.programPatcher implementation="org.zkoss.zkidea.editorActions.MavenRunnerPatcher"/>
     <!-- refer from Maven Plugin -->
