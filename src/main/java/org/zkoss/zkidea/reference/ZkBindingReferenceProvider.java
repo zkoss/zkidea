@@ -158,7 +158,7 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
                 return;
             }
             references.add(new ZulScopeVariableReference(element, idRange, scopeDecl));
-            startClass = ZulDomUtil.resolveScopeVariableType(scopeDecl, vmId, vmClass, element);
+            return; // scope variables: navigate root only, skip property-segment loop
         }
 
         // isCommandContext: inside @command or @global-command, completion offers @Command names
