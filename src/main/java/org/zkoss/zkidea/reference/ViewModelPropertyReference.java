@@ -19,6 +19,7 @@ import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.util.IncorrectOperationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.zkoss.zkidea.dom.ZulDomUtil;
 
 /**
  * Reference for a property segment in a ViewModel binding expression
@@ -54,7 +55,7 @@ public class ViewModelPropertyReference extends PsiReferenceBase<XmlAttributeVal
     @Override
     public PsiElement resolve() {
         if (ownerClass == null) return null;
-        PsiMethod method = findGetter(ownerClass, propertyName);
+        PsiMethod method = ZulDomUtil.findGetter(ownerClass, propertyName);
         LOG.debug("ViewModelPropertyReference.resolve: property='" + propertyName
                 + "' → " + (method != null ? method.getName() : "null"));
         return method;
@@ -93,18 +94,7 @@ public class ViewModelPropertyReference extends PsiReferenceBase<XmlAttributeVal
     }
 
     private Object[] getCommandVariants() {
-        List<LookupElement> variants = new ArrayList<>();
-        for (PsiMethod method : ownerClass.getAllMethods()) {
-            String cmdName = ZkCommandReference.getCommandName(method);
-            if (cmdName != null) {
-                String containingClassName = method.getContainingClass() != null
-                        ? method.getContainingClass().getName() : "";
-                variants.add(LookupElementBuilder.create(cmdName)
-                        .withIcon(AllIcons.Nodes.Method)
-                        .withTypeText("@Command")
-                        .withTailText("  (" + containingClassName + ")", true));
-            }
-        }
+        List<LookupElement> variants = ZkCommandReference.buildCommandLookupElements(ownerClass);
         LOG.debug("ViewModelPropertyReference.getCommandVariants: " + variants.size()
                 + " command variants for " + ownerClass.getName());
         return variants.toArray();
@@ -133,27 +123,6 @@ public class ViewModelPropertyReference extends PsiReferenceBase<XmlAttributeVal
         LOG.debug("ViewModelPropertyReference.handleElementRename: '"
                 + newElementName + "' → property='" + newPropName + "'");
         return ElementManipulators.handleContentChange(getElement(), getRangeInElement(), newPropName);
-    }
-
-    /**
-     * Finds the getter method for a property name on the given class.
-     * Looks for getXxx() first, then isXxx().
-     */
-    @Nullable
-    public static PsiMethod findGetter(PsiClass psiClass, String property) {
-        if (psiClass == null || property == null || property.isEmpty()) return null;
-        String capitalized = Character.toUpperCase(property.charAt(0)) + property.substring(1);
-        String getterName = "get" + capitalized;
-        String boolGetterName = "is" + capitalized;
-        for (PsiMethod method : psiClass.getAllMethods()) {
-            if (!method.hasModifierProperty(PsiModifier.PUBLIC)) continue;
-            if (method.getParameterList().getParametersCount() != 0) continue;
-            String name = method.getName();
-            if (name.equals(getterName) || name.equals(boolGetterName)) {
-                return method;
-            }
-        }
-        return null;
     }
 
     /**

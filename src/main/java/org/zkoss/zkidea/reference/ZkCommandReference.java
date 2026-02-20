@@ -60,8 +60,20 @@ public class ZkCommandReference extends PsiReferenceBase<XmlAttributeValue> {
     @Override
     public Object @NotNull [] getVariants() {
         if (vmClass == null) return EMPTY_ARRAY;
+        List<LookupElement> variants = buildCommandLookupElements(vmClass);
+        LOG.debug("ZkCommandReference.getVariants: " + variants.size()
+                + " command variants for " + vmClass.getName());
+        return variants.toArray();
+    }
+
+    /**
+     * Builds lookup elements for all {@code @Command}/{@code @GlobalCommand}-annotated
+     * methods on the given class. Shared by {@link ZkCommandReference#getVariants()} and
+     * {@link ViewModelPropertyReference#getCommandVariants()}.
+     */
+    public static List<LookupElement> buildCommandLookupElements(PsiClass psiClass) {
         List<LookupElement> variants = new ArrayList<>();
-        for (PsiMethod method : vmClass.getAllMethods()) {
+        for (PsiMethod method : psiClass.getAllMethods()) {
             String cmdName = getCommandName(method);
             if (cmdName != null) {
                 String containingClassName = method.getContainingClass() != null
@@ -72,9 +84,7 @@ public class ZkCommandReference extends PsiReferenceBase<XmlAttributeValue> {
                         .withTailText("  (" + containingClassName + ")", true));
             }
         }
-        LOG.debug("ZkCommandReference.getVariants: " + variants.size()
-                + " command variants for " + vmClass.getName());
-        return variants.toArray();
+        return variants;
     }
 
     /**

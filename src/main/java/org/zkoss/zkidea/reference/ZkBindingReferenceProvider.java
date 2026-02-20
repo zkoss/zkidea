@@ -7,14 +7,12 @@ import java.util.regex.Pattern;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.TextRange;
-import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.PsiReferenceProvider;
 import com.intellij.psi.PsiType;
-import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlTag;
@@ -54,9 +52,6 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
      */
     private static final Pattern BEFORE_AFTER_PATTERN =
             Pattern.compile("\\b(?:before|after)\\s*=\\s*['\"]([^'\"]+)['\"]");
-
-    private static final Pattern IDENTIFIER_CHAIN_PATTERN =
-            Pattern.compile("[a-zA-Z_]\\w*(?:\\.[a-zA-Z_]\\w*)*");
 
     @Override
     public PsiReference @NotNull [] getReferencesByElement(@NotNull PsiElement element,
@@ -98,7 +93,7 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
             String trimmedInner = innerContent.trim();
             if (trimmedInner.startsWith("'") || trimmedInner.startsWith("\"")) continue;
 
-            Matcher chainMatcher = IDENTIFIER_CHAIN_PATTERN.matcher(innerContent);
+            Matcher chainMatcher = ZulDomUtil.IDENTIFIER_CHAIN_PATTERN.matcher(innerContent);
             while (chainMatcher.find()) {
                 String chain = chainMatcher.group();
                 int chainStart = innerOffset + chainMatcher.start();
@@ -182,19 +177,9 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
 
     private PsiClass resolvePropertyType(PsiClass ownerClass, String property, PsiElement context) {
         if (ownerClass == null) return null;
-        PsiMethod getter = ViewModelPropertyReference.findGetter(ownerClass, property);
+        PsiMethod getter = ZulDomUtil.findGetter(ownerClass, property);
         if (getter == null) return null;
         PsiType returnType = getter.getReturnType();
-        if (returnType == null) return null;
-        // Resolve the deep component type (unwrap generics, arrays)
-        PsiType deepType = returnType.getDeepComponentType();
-        String canonicalText = deepType.getCanonicalText();
-        // Strip generic parameters if present
-        int genericIndex = canonicalText.indexOf('<');
-        if (genericIndex > 0) {
-            canonicalText = canonicalText.substring(0, genericIndex);
-        }
-        return JavaPsiFacade.getInstance(context.getProject())
-                .findClass(canonicalText, GlobalSearchScope.allScope(context.getProject()));
+        return ZulDomUtil.resolveTypeToClass(returnType, context);
     }
 }

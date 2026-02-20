@@ -37,11 +37,20 @@ public class ZulScopeVarCompletionContributor extends CompletionContributor {
     private static final Logger LOG = Logger.getInstance(ZulScopeVarCompletionContributor.class);
 
     /**
+     * Annotations whose arguments accept scope-variable binding expressions.
+     * This is a subset of {@link ZulDomUtil#BINDING_ANNOTATIONS} — {@code converter}
+     * and {@code validator} are excluded because their arguments are class references,
+     * not binding expressions that can start with a scope variable.
+     */
+    private static final String SCOPE_VAR_ANNOTATIONS =
+            "load|bind|save|init|command|global-command";
+
+    /**
      * Matches the text before the cursor when the cursor is at root position inside a binding
      * annotation (no dot before cursor, annotation is open).
      */
     private static final Pattern BINDING_ROOT_PATTERN = Pattern.compile(
-            "@(?:load|bind|save|init|command|global-command)\\s*\\(\\s*[^.)]*$");
+            "@(?:" + SCOPE_VAR_ANNOTATIONS + ")\\s*\\(\\s*[^.)]*$");
 
     /**
      * System attributes on {@code <apply>} that are not scope variables.

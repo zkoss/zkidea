@@ -57,7 +57,7 @@ public class ZulDomUtil {
 	public static final Pattern BINDING_CHAIN_EXTRACT_PATTERN =
 			Pattern.compile("@(?:" + BINDING_ANNOTATIONS + ")\\s*\\(([^)]*)\\)");
 
-	private static final Pattern IDENTIFIER_CHAIN_PATTERN =
+	public static final Pattern IDENTIFIER_CHAIN_PATTERN =
 			Pattern.compile("[a-zA-Z_]\\w*(?:\\.[a-zA-Z_]\\w*)*");
 
 	private static final Pattern ID_PATTERN =
@@ -334,19 +334,8 @@ public class ZulDomUtil {
 		String attrValue = applyAttr.getValue();
 		if (attrValue == null) return null;
 
-		Matcher m = BINDING_CHAIN_EXTRACT_PATTERN.matcher(attrValue);
-		String chain;
-		if (m.find()) {
-			String innerContent = m.group(1).trim();
-			Matcher chainMatcher = IDENTIFIER_CHAIN_PATTERN.matcher(innerContent);
-			if (!chainMatcher.find()) return null;
-			chain = chainMatcher.group();
-		} else {
-			// May be a plain chain without an annotation wrapper
-			Matcher chainMatcher = IDENTIFIER_CHAIN_PATTERN.matcher(attrValue.trim());
-			if (!chainMatcher.find()) return null;
-			chain = chainMatcher.group();
-		}
+		String chain = extractChainFromBinding(attrValue);
+		if (chain == null) return null;
 		LOG.debug("resolveApplyPassdownType: resolving chain=" + chain);
 		return resolveChainFinalType(chain, vmId, vmClass, context);
 	}
@@ -371,24 +360,35 @@ public class ZulDomUtil {
 	// -------------------------------------------------------------------------
 
 	/**
+	 * Extracts the first identifier chain from a binding expression.
+	 * Tries to unwrap an annotation wrapper first (e.g., {@code @load(vm.items)} → {@code vm.items}),
+	 * falling back to a plain identifier chain match.
+	 *
+	 * @return the extracted chain string, or {@code null} if no chain found
+	 */
+	@Nullable
+	private static String extractChainFromBinding(String bindingExpr) {
+		Matcher m = BINDING_CHAIN_EXTRACT_PATTERN.matcher(bindingExpr);
+		if (m.find()) {
+			String inner = m.group(1).trim();
+			Matcher cm = IDENTIFIER_CHAIN_PATTERN.matcher(inner);
+			if (!cm.find()) return null;
+			return cm.group();
+		}
+		Matcher cm = IDENTIFIER_CHAIN_PATTERN.matcher(bindingExpr.trim());
+		if (!cm.find()) return null;
+		return cm.group();
+	}
+
+	/**
 	 * Resolves the collection element type from a binding expression that contains
 	 * a collection-typed chain (e.g., {@code @load(vm.items)} → element type of items).
 	 */
 	@Nullable
 	private static PsiClass resolveCollectionElementType(String bindingExpr, String vmId,
 	                                                     PsiClass vmClass, PsiElement context) {
-		Matcher m = BINDING_CHAIN_EXTRACT_PATTERN.matcher(bindingExpr);
-		String chain;
-		if (m.find()) {
-			String inner = m.group(1).trim();
-			Matcher cm = IDENTIFIER_CHAIN_PATTERN.matcher(inner);
-			if (!cm.find()) return null;
-			chain = cm.group();
-		} else {
-			Matcher cm = IDENTIFIER_CHAIN_PATTERN.matcher(bindingExpr.trim());
-			if (!cm.find()) return null;
-			chain = cm.group();
-		}
+		String chain = extractChainFromBinding(bindingExpr);
+		if (chain == null) return null;
 		return resolveChainElementType(chain, vmId, vmClass, context);
 	}
 
@@ -457,19 +457,17 @@ public class ZulDomUtil {
 	}
 
 	/**
-	 * Resolves a {@link PsiType} to its raw {@link PsiClass}, stripping generic parameters.
+	 * Resolves a {@link PsiType} to its raw {@link PsiClass}, unwrapping arrays
+	 * via {@code getDeepComponentType()} and stripping generic parameters.
 	 */
 	@Nullable
-	private static PsiClass resolveTypeToClass(PsiType type, PsiElement context) {
+	public static PsiClass resolveTypeToClass(PsiType type, PsiElement context) {
 		if (type == null) return null;
-		String canonicalText = type.getCanonicalText();
+		PsiType deepType = type.getDeepComponentType();
+		String canonicalText = deepType.getCanonicalText();
 		int genericIndex = canonicalText.indexOf('<');
 		if (genericIndex > 0) {
 			canonicalText = canonicalText.substring(0, genericIndex);
-		}
-		// Strip array suffix
-		if (canonicalText.endsWith("[]")) {
-			canonicalText = canonicalText.substring(0, canonicalText.length() - 2);
 		}
 		return JavaPsiFacade.getInstance(context.getProject())
 				.findClass(canonicalText, GlobalSearchScope.allScope(context.getProject()));
@@ -480,7 +478,7 @@ public class ZulDomUtil {
 	 * Looks for {@code getXxx()} first, then {@code isXxx()}.
 	 */
 	@Nullable
-	static PsiMethod findGetter(PsiClass psiClass, String property) {
+	public static PsiMethod findGetter(PsiClass psiClass, String property) {
 		if (psiClass == null || property == null || property.isEmpty()) return null;
 		String capitalized = Character.toUpperCase(property.charAt(0)) + property.substring(1);
 		String getterName = "get" + capitalized;
