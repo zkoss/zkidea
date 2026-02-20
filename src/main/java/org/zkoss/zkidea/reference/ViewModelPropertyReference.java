@@ -1,7 +1,9 @@
 package org.zkoss.zkidea.reference;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
@@ -55,7 +57,7 @@ public class ViewModelPropertyReference extends PsiReferenceBase<XmlAttributeVal
     @Override
     public PsiElement resolve() {
         if (ownerClass == null) return null;
-        PsiMethod method = ZulDomUtil.findGetter(ownerClass, propertyName);
+        PsiMethod method = ZulDomUtil.findGetterOrMethod(ownerClass, propertyName);
         LOG.debug("ViewModelPropertyReference.resolve: property='" + propertyName
                 + "' → " + (method != null ? method.getName() : "null"));
         return method;
@@ -73,12 +75,16 @@ public class ViewModelPropertyReference extends PsiReferenceBase<XmlAttributeVal
 
     private Object[] getPropertyVariants() {
         List<LookupElement> variants = new ArrayList<>();
+        Set<String> addedNames = new HashSet<>();
+
+        // Pass 1: getter-backed properties (e.g., getName → "name")
         for (PsiMethod method : ownerClass.getAllMethods()) {
             if (!method.hasModifierProperty(PsiModifier.PUBLIC)) continue;
             if (method.getParameterList().getParametersCount() != 0) continue;
             String methodName = method.getName();
             String prop = getPropertyName(methodName);
             if (prop == null) continue;
+            if (!addedNames.add(prop)) continue;
             PsiType returnType = method.getReturnType();
             String typeText = returnType != null ? returnType.getPresentableText() : "";
             String containingClassName = method.getContainingClass() != null
@@ -88,9 +94,60 @@ public class ViewModelPropertyReference extends PsiReferenceBase<XmlAttributeVal
                     .withTypeText(typeText)
                     .withTailText("  (" + containingClassName + ")", true));
         }
+
+        // Pass 2: callable methods that are not getters (e.g., hasPermission, isEmpty)
+        for (PsiMethod method : ownerClass.getAllMethods()) {
+            if (!method.hasModifierProperty(PsiModifier.PUBLIC)) continue;
+            if (method.isConstructor()) continue;
+            String methodName = method.getName();
+            // Skip methods already represented as properties
+            if (getPropertyName(methodName) != null) continue;
+            // Skip common Object methods to reduce noise
+            if (isObjectMethod(methodName)) continue;
+            if (!addedNames.add(methodName)) continue;
+
+            PsiType returnType = method.getReturnType();
+            String typeText = returnType != null ? returnType.getPresentableText() : "";
+            String containingClassName = method.getContainingClass() != null
+                    ? method.getContainingClass().getName() : "";
+            int paramCount = method.getParameterList().getParametersCount();
+            String paramHint = paramCount == 0 ? "()" : "(" + paramCount + " params)";
+
+            LookupElementBuilder builder = LookupElementBuilder.create(methodName)
+                    .withIcon(AllIcons.Nodes.Method)
+                    .withTypeText(typeText)
+                    .withTailText(paramHint + "  (" + containingClassName + ")", true)
+                    .withInsertHandler((ctx, item) -> {
+                        ctx.getDocument().insertString(ctx.getTailOffset(), "()");
+                        if (paramCount > 0) {
+                            ctx.getEditor().getCaretModel().moveToOffset(ctx.getTailOffset() - 1);
+                        } else {
+                            ctx.getEditor().getCaretModel().moveToOffset(ctx.getTailOffset());
+                        }
+                    });
+            variants.add(builder);
+        }
+
         LOG.debug("ViewModelPropertyReference.getPropertyVariants: " + variants.size()
                 + " variants for " + ownerClass.getName());
         return variants.toArray();
+    }
+
+    private static boolean isObjectMethod(String name) {
+        switch (name) {
+            case "toString":
+            case "hashCode":
+            case "equals":
+            case "getClass":
+            case "notify":
+            case "notifyAll":
+            case "wait":
+            case "clone":
+            case "finalize":
+                return true;
+            default:
+                return false;
+        }
     }
 
     private Object[] getCommandVariants() {

@@ -217,6 +217,7 @@
     <completion.contributor language="XML"
                             implementationClass="org.zkoss.zkidea.completion.ZulScopeVarCompletionContributor"/>
     <gotoDeclarationHandler implementation="org.zkoss.zkidea.actions.GotoJavaClassHandler" order="first"/>
+    <gotoDeclarationHandler implementation="org.zkoss.zkidea.actions.ZulTagGotoHandler" order="first"/>
     <psi.referenceContributor language="XML"
                               implementation="org.zkoss.zkidea.reference.ZkBindingReferenceContributor"/>
     <webBrowserUrlProvider implementation="org.zkoss.zkidea.editorActions.WebBrowserUrlProvider" order="first"/>

@@ -12,8 +12,6 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.PsiReferenceProvider;
-import com.intellij.psi.PsiType;
-import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.ProcessingContext;
@@ -26,7 +24,7 @@ import org.zkoss.zkidea.dom.ZulDomUtil;
  * Handles:
  * <ul>
  *   <li>VM property chains: {@code vm.crew.name} inside any recognized annotation</li>
- *   <li>Scope variable chains: {@code wrapper.dto}, {@code item.name} (template, apply, forEachVar)</li>
+ *   <li>Method call chains: {@code vm.getItems().isEmpty()} with balanced parentheses</li>
  *   <li>Command string literals: {@code 'saveItem'} in {@code @command('saveItem')}</li>
  *   <li>Before/after command params: {@code before='validate'} in {@code @save(...)}</li>
  * </ul>
@@ -35,12 +33,13 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
     private static final Logger LOG = Logger.getInstance(ZkBindingReferenceProvider.class);
 
     /**
-     * Matches recognized ZK binding annotations and captures (1) the annotation name
-     * and (2) the annotation body content.
-     * Built from {@link ZulDomUtil#BINDING_ANNOTATIONS} so the list stays in sync.
+     * Matches the start of a recognized ZK binding annotation up to and including the
+     * opening parenthesis. Captures (1) the annotation name.
+     * The body is then extracted using balanced-parenthesis scanning so that method
+     * calls like {@code vm.hasPermission('X')} inside the annotation don't truncate it.
      */
-    private static final Pattern BINDING_ANNOTATION_PATTERN =
-            Pattern.compile("@(" + ZulDomUtil.BINDING_ANNOTATIONS + ")\\s*\\(([^)]*)\\)");
+    private static final Pattern ANNOTATION_START_PATTERN =
+            Pattern.compile("@(" + ZulDomUtil.BINDING_ANNOTATIONS + ")\\s*\\(");
 
     /** Matches the string literal command name inside {@code @command('...')} etc. */
     private static final Pattern COMMAND_STRING_PATTERN =
@@ -52,6 +51,155 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
      */
     private static final Pattern BEFORE_AFTER_PATTERN =
             Pattern.compile("\\b(?:before|after)\\s*=\\s*['\"]([^'\"]+)['\"]");
+
+    // -------------------------------------------------------------------------
+    // Annotation body and chain extraction (balanced-paren aware)
+    // -------------------------------------------------------------------------
+
+    /** A parsed annotation occurrence within the attribute value text. */
+    static class AnnotationMatch {
+        final String name;
+        final String body;
+        final int bodyStartOffset; // offset of body start within source text
+
+        AnnotationMatch(String name, String body, int bodyStartOffset) {
+            this.name = name;
+            this.body = body;
+            this.bodyStartOffset = bodyStartOffset;
+        }
+    }
+
+    /** A single segment within a dotted chain (property or method call). */
+    static class ChainSegment {
+        final String name;
+        final boolean isMethodCall;
+        final int nameStartInBody; // offset of the identifier start relative to the body
+        final int nameLength;
+
+        ChainSegment(String name, boolean isMethodCall, int nameStartInBody, int nameLength) {
+            this.name = name;
+            this.isMethodCall = isMethodCall;
+            this.nameStartInBody = nameStartInBody;
+            this.nameLength = nameLength;
+        }
+    }
+
+    /**
+     * Extracts annotation occurrences from the attribute value text, using balanced-
+     * parenthesis scanning so that nested {@code ()} inside the body don't truncate it.
+     */
+    static List<AnnotationMatch> extractAnnotations(String text) {
+        List<AnnotationMatch> results = new ArrayList<>();
+        Matcher m = ANNOTATION_START_PATTERN.matcher(text);
+        while (m.find()) {
+            String name = m.group(1);
+            int openParen = m.end() - 1; // position of '('
+            int bodyStart = m.end();      // position right after '('
+            int closeParen = findMatchingParen(text, openParen);
+            if (closeParen < 0) continue;
+            String body = text.substring(bodyStart, closeParen);
+            results.add(new AnnotationMatch(name, body, bodyStart));
+        }
+        return results;
+    }
+
+    /**
+     * Finds the closing parenthesis that matches the opening one at {@code openPos},
+     * skipping over string literals (single- and double-quoted).
+     *
+     * @return index of the matching {@code )}, or {@code -1} if not found
+     */
+    static int findMatchingParen(String text, int openPos) {
+        int depth = 1;
+        for (int i = openPos + 1; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '\'' || c == '"') {
+                int end = text.indexOf(c, i + 1);
+                if (end < 0) return -1;
+                i = end;
+            } else if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                depth--;
+                if (depth == 0) return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Extracts all dotted identifier chains from an annotation body, including
+     * chains that contain method-call segments with parenthesized arguments.
+     * <p>
+     * For example, from {@code "vm.getItems().isEmpty()"} this produces a single
+     * chain: {@code [vm, getItems(), isEmpty()]}.  String literals inside the body
+     * are skipped so that path arguments are not mistakenly extracted.
+     */
+    static List<List<ChainSegment>> extractChains(String body) {
+        List<List<ChainSegment>> chains = new ArrayList<>();
+        int i = 0;
+        int len = body.length();
+
+        while (i < len) {
+            char c = body.charAt(i);
+            // Skip string literals
+            if (c == '\'' || c == '"') {
+                int end = body.indexOf(c, i + 1);
+                i = (end < 0) ? len : end + 1;
+                continue;
+            }
+            // Start of an identifier chain?
+            if (isIdentStart(c)) {
+                List<ChainSegment> chain = new ArrayList<>();
+                while (i < len) {
+                    // Read identifier name
+                    int nameStart = i;
+                    while (i < len && isIdentPart(body.charAt(i))) i++;
+                    String name = body.substring(nameStart, i);
+
+                    // Check for parenthesized arguments → method call
+                    boolean isMethodCall = false;
+                    if (i < len && body.charAt(i) == '(') {
+                        int close = findMatchingParen(body, i);
+                        if (close >= 0) {
+                            isMethodCall = true;
+                            i = close + 1;
+                        }
+                    }
+
+                    chain.add(new ChainSegment(name, isMethodCall, nameStart, name.length()));
+
+                    // Dot continuation?
+                    if (i < len && body.charAt(i) == '.') {
+                        i++; // skip dot
+                        if (i < len && isIdentStart(body.charAt(i))) {
+                            continue; // next segment
+                        }
+                        break; // trailing dot, end chain
+                    }
+                    break; // no dot, end chain
+                }
+                if (!chain.isEmpty()) {
+                    chains.add(chain);
+                }
+            } else {
+                i++;
+            }
+        }
+        return chains;
+    }
+
+    private static boolean isIdentStart(char c) {
+        return Character.isLetter(c) || c == '_';
+    }
+
+    private static boolean isIdentPart(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
+    }
+
+    // -------------------------------------------------------------------------
+    // Reference provider entry point
+    // -------------------------------------------------------------------------
 
     @Override
     public PsiReference @NotNull [] getReferencesByElement(@NotNull PsiElement element,
@@ -71,6 +219,7 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
         if (vmId == null) return PsiReference.EMPTY_ARRAY;
 
         PsiClass vmClass = ZulDomUtil.resolveViewModelClass(element.getProject(), vmAttrValue);
+        if (vmClass == null) return PsiReference.EMPTY_ARRAY;
 
         String text = attrValue.getValue();
         if (text == null || text.isEmpty()) return PsiReference.EMPTY_ARRAY;
@@ -82,36 +231,27 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
         List<PsiReference> references = new ArrayList<>();
 
         // --- Pass 1: identifier-chain references (VM properties + scope variables) ---
-        Matcher annotMatcher = BINDING_ANNOTATION_PATTERN.matcher(text);
-        while (annotMatcher.find()) {
-            String annotationName = annotMatcher.group(1);
-            String innerContent = annotMatcher.group(2);
-            int innerOffset = annotMatcher.start(2);
-
+        for (AnnotationMatch annot : extractAnnotations(text)) {
             // Skip quoted-string arguments (file paths) — handled by ZkTemplateUriReferenceProvider.
-            // Avoids extracting identifier tokens from inside path strings like '/mentor/crew/foo.zul'.
-            String trimmedInner = innerContent.trim();
-            if (trimmedInner.startsWith("'") || trimmedInner.startsWith("\"")) continue;
+            String trimmedBody = annot.body.trim();
+            if (trimmedBody.startsWith("'") || trimmedBody.startsWith("\"")) continue;
 
-            Matcher chainMatcher = ZulDomUtil.IDENTIFIER_CHAIN_PATTERN.matcher(innerContent);
-            while (chainMatcher.find()) {
-                String chain = chainMatcher.group();
-                int chainStart = innerOffset + chainMatcher.start();
-                processChain(attrValue, chain, valueOffset + chainStart,
-                        vmId, vmClass, references, annotationName);
+            int bodyOffsetInElement = valueOffset + annot.bodyStartOffset;
+
+            for (List<ChainSegment> chain : extractChains(annot.body)) {
+                processChain(attrValue, chain, bodyOffsetInElement,
+                        vmId, vmClass, references, annot.name);
             }
 
             // before/after command name references within this annotation body
-            Matcher beforeAfterMatcher = BEFORE_AFTER_PATTERN.matcher(innerContent);
+            Matcher beforeAfterMatcher = BEFORE_AFTER_PATTERN.matcher(annot.body);
             while (beforeAfterMatcher.find()) {
                 String cmdName = beforeAfterMatcher.group(1);
-                int cmdStart = valueOffset + innerOffset + beforeAfterMatcher.start(1);
-                int cmdEnd = valueOffset + innerOffset + beforeAfterMatcher.end(1);
+                int cmdStart = bodyOffsetInElement + beforeAfterMatcher.start(1);
+                int cmdEnd = bodyOffsetInElement + beforeAfterMatcher.end(1);
                 LOG.debug("ZkBindingReferenceProvider: before/after command '" + cmdName + "'");
-                if (vmClass != null) {
-                    references.add(new ZkCommandReference(
-                            attrValue, new TextRange(cmdStart, cmdEnd), vmClass, cmdName));
-                }
+                references.add(new ZkCommandReference(
+                        attrValue, new TextRange(cmdStart, cmdEnd), vmClass, cmdName));
             }
         }
 
@@ -122,64 +262,59 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
             int cmdStart = valueOffset + cmdMatcher.start(1);
             int cmdEnd = valueOffset + cmdMatcher.end(1);
             LOG.debug("ZkBindingReferenceProvider: command string '" + commandName + "'");
-            if (vmClass != null) {
-                references.add(new ZkCommandReference(
-                        attrValue, new TextRange(cmdStart, cmdEnd), vmClass, commandName));
-            }
+            references.add(new ZkCommandReference(
+                    attrValue, new TextRange(cmdStart, cmdEnd), vmClass, commandName));
         }
 
         return references.toArray(PsiReference.EMPTY_ARRAY);
     }
 
-    private void processChain(XmlAttributeValue element, String chain, int offsetInElement,
-                              String vmId, PsiClass vmClass, List<PsiReference> references,
-                              String annotationName) {
-        String[] segments = chain.split("\\.");
-        if (segments.length == 0) return;
+    // -------------------------------------------------------------------------
+    // Chain processing and type resolution
+    // -------------------------------------------------------------------------
 
-        TextRange idRange = new TextRange(offsetInElement, offsetInElement + segments[0].length());
+    private void processChain(XmlAttributeValue element, List<ChainSegment> segments,
+                              int bodyOffsetInElement, String vmId, PsiClass vmClass,
+                              List<PsiReference> references, String annotationName) {
+        if (segments.isEmpty()) return;
 
-        // Determine start class (VM or scope variable)
-        PsiClass startClass;
-        if (segments[0].equals(vmId)) {
-            if (vmClass != null) {
-                references.add(new ViewModelIdReference(element, idRange, vmClass));
-            }
-            startClass = vmClass;
-        } else {
-            XmlAttribute scopeDecl = ZulDomUtil.findScopeVariableDeclaration(element, segments[0]);
-            if (scopeDecl == null) {
-                LOG.debug("processChain: '" + segments[0] + "' is not vmId and no scope declaration found");
-                return;
-            }
-            references.add(new ZulScopeVariableReference(element, idRange, scopeDecl));
-            return; // scope variables: navigate root only, skip property-segment loop
+        ChainSegment first = segments.get(0);
+        int firstStart = bodyOffsetInElement + first.nameStartInBody;
+        TextRange idRange = new TextRange(firstStart, firstStart + first.nameLength);
+
+        // Only process chains that start with the ViewModel ID
+        if (!first.name.equals(vmId)) {
+            LOG.debug("processChain: '" + first.name + "' is not vmId, skipping");
+            return;
         }
+        references.add(new ViewModelIdReference(element, idRange, vmClass));
 
         // isCommandContext: inside @command or @global-command, completion offers @Command names
         boolean isCommandContext = "command".equals(annotationName)
                 || "global-command".equals(annotationName);
 
-        // Walk property segments
-        PsiClass currentClass = startClass;
-        int currentOffset = offsetInElement + segments[0].length() + 1; // +1 for dot
-        for (int i = 1; i < segments.length; i++) {
-            String segment = segments[i];
-            TextRange propRange = new TextRange(currentOffset, currentOffset + segment.length());
+        // Walk property/method segments — text ranges cover only the identifier name,
+        // excluding any parenthesized arguments so only the method name is clickable.
+        PsiClass currentClass = vmClass;
+        for (int i = 1; i < segments.size(); i++) {
+            ChainSegment seg = segments.get(i);
+            int segStart = bodyOffsetInElement + seg.nameStartInBody;
+            TextRange propRange = new TextRange(segStart, segStart + seg.nameLength);
             references.add(new ViewModelPropertyReference(
-                    element, propRange, currentClass, segment, isCommandContext));
+                    element, propRange, currentClass, seg.name, isCommandContext));
 
             // Resolve type for the next segment
-            currentClass = resolvePropertyType(currentClass, segment, element);
-            currentOffset += segment.length() + 1; // +1 for dot
+            currentClass = resolvePropertyType(currentClass, seg.name, element);
         }
     }
 
     private PsiClass resolvePropertyType(PsiClass ownerClass, String property, PsiElement context) {
         if (ownerClass == null) return null;
-        PsiMethod getter = ZulDomUtil.findGetter(ownerClass, property);
-        if (getter == null) return null;
-        PsiType returnType = getter.getReturnType();
-        return ZulDomUtil.resolveTypeToClass(returnType, context);
+        PsiMethod method = ZulDomUtil.findGetterOrMethod(ownerClass, property);
+        if (method == null) {
+            LOG.debug("resolvePropertyType: no getter or method for '" + property + "'");
+            return null;
+        }
+        return ZulDomUtil.resolveTypeToClass(method.getReturnType(), context);
     }
 }

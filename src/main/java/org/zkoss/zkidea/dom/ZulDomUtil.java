@@ -173,16 +173,11 @@ public class ZulDomUtil {
 	}
 
 	// -------------------------------------------------------------------------
-	// Scope variable declaration lookup
+	// Scope variable declaration lookup (internal — used by type resolution)
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Walks up PSI ancestors to find a {@code <template var="varName">} attribute.
-	 *
-	 * @return the {@code var} XmlAttribute, or null if not found
-	 */
 	@Nullable
-	public static XmlAttribute findTemplateVarDeclaration(PsiElement context, String varName) {
+	private static XmlAttribute findTemplateVarDeclaration(PsiElement context, String varName) {
 		PsiElement el = context;
 		while (el != null) {
 			if (el instanceof XmlTag) {
@@ -207,7 +202,7 @@ public class ZulDomUtil {
 	 * @return the matching XmlAttribute, or null if not found
 	 */
 	@Nullable
-	public static XmlAttribute findApplyAttributeDeclaration(PsiElement context, String varName) {
+	private static XmlAttribute findApplyAttributeDeclaration(PsiElement context, String varName) {
 		PsiElement el = context;
 		while (el != null) {
 			if (el instanceof XmlTag) {
@@ -231,7 +226,7 @@ public class ZulDomUtil {
 	 * @return the {@code forEachVar} XmlAttribute, or null if not found
 	 */
 	@Nullable
-	public static XmlAttribute findForEachVarDeclaration(PsiElement context, String varName) {
+	private static XmlAttribute findForEachVarDeclaration(PsiElement context, String varName) {
 		PsiElement el = context;
 		while (el != null) {
 			if (el instanceof XmlTag) {
@@ -254,7 +249,7 @@ public class ZulDomUtil {
 	 * @return the declaring XmlAttribute, or null if not found
 	 */
 	@Nullable
-	public static XmlAttribute findScopeVariableDeclaration(PsiElement context, String varName) {
+	private static XmlAttribute findScopeVariableDeclaration(PsiElement context, String varName) {
 		XmlAttribute result = findTemplateVarDeclaration(context, varName);
 		if (result != null) return result;
 		result = findApplyAttributeDeclaration(context, varName);
@@ -263,15 +258,11 @@ public class ZulDomUtil {
 	}
 
 	// -------------------------------------------------------------------------
-	// Scope variable type resolution
+	// Scope variable type resolution (internal — used by chain resolvers)
 	// -------------------------------------------------------------------------
 
-	/**
-	 * Resolves the Java type of a scope variable given its declaring attribute.
-	 * Dispatches to the appropriate resolver based on the attribute kind.
-	 */
 	@Nullable
-	public static PsiClass resolveScopeVariableType(XmlAttribute declAttr, String vmId,
+	private static PsiClass resolveScopeVariableType(XmlAttribute declAttr, String vmId,
 	                                                PsiClass vmClass, PsiElement context) {
 		if (declAttr == null) return null;
 		XmlTag ownerTag = declAttr.getParent();
@@ -294,7 +285,7 @@ public class ZulDomUtil {
 	 * from a {@code model} attribute on an ancestor tag.
 	 */
 	@Nullable
-	public static PsiClass resolveTemplateVarType(XmlAttribute varAttr, String vmId,
+	private static PsiClass resolveTemplateVarType(XmlAttribute varAttr, String vmId,
 	                                              PsiClass vmClass, PsiElement context) {
 		XmlTag templateTag = varAttr.getParent();
 		if (templateTag == null) return null;
@@ -328,7 +319,7 @@ public class ZulDomUtil {
 	 * the binding chain from the attribute value.
 	 */
 	@Nullable
-	public static PsiClass resolveApplyPassdownType(XmlAttribute applyAttr, String vmId,
+	private static PsiClass resolveApplyPassdownType(XmlAttribute applyAttr, String vmId,
 	                                                PsiClass vmClass, PsiElement context) {
 		if (applyAttr == null) return null;
 		String attrValue = applyAttr.getValue();
@@ -345,7 +336,7 @@ public class ZulDomUtil {
 	 * {@code forEach} attribute from the owning tag and unwrapping its collection type.
 	 */
 	@Nullable
-	public static PsiClass resolveForEachVarType(XmlAttribute forEachVarAttr, String vmId,
+	private static PsiClass resolveForEachVarType(XmlAttribute forEachVarAttr, String vmId,
 	                                             PsiClass vmClass, PsiElement context) {
 		XmlTag ownerTag = forEachVarAttr.getParent();
 		if (ownerTag == null) return null;
@@ -471,6 +462,42 @@ public class ZulDomUtil {
 		}
 		return JavaPsiFacade.getInstance(context.getProject())
 				.findClass(canonicalText, GlobalSearchScope.allScope(context.getProject()));
+	}
+
+	/**
+	 * Finds a getter for the property first ({@code getXxx}/{@code isXxx}), and
+	 * if none exists falls back to a direct public method match by name.
+	 * This is the canonical "resolve a binding segment to a method" entry point.
+	 *
+	 * @return the resolved method, or {@code null} if nothing matches
+	 */
+	@Nullable
+	public static PsiMethod findGetterOrMethod(PsiClass psiClass, String name) {
+		PsiMethod getter = findGetter(psiClass, name);
+		if (getter != null) return getter;
+		return findMethod(psiClass, name);
+	}
+
+	/**
+	 * Finds the first public method with the given name on the class, regardless
+	 * of parameter count. Used as a fallback when no getter is found, so that
+	 * direct method calls like {@code vm.hasPermission('X')} can resolve.
+	 *
+	 * @return the first matching public method, or {@code null} if none found
+	 */
+	@Nullable
+	public static PsiMethod findMethod(PsiClass psiClass, String methodName) {
+		if (psiClass == null || methodName == null || methodName.isEmpty()) return null;
+		for (PsiMethod method : psiClass.getAllMethods()) {
+			if (!method.hasModifierProperty(PsiModifier.PUBLIC)) continue;
+			if (method.getName().equals(methodName)) {
+				LOG.debug("findMethod: found '" + methodName + "' on " + psiClass.getName());
+				return method;
+			}
+		}
+		LOG.debug("findMethod: no method '" + methodName + "' on "
+				+ (psiClass.getName() != null ? psiClass.getName() : "unknown"));
+		return null;
 	}
 
 	/**
