@@ -138,3 +138,6 @@ The current workaround is to manually add zul file type in IntelliJ IDEA setting
 
 
 * For Mac user, if you run this plugin with IntelliJ 14 that crashes on startup, you may refer to [this solution](https://github.com/zkoss/zkidea/issues/10#issuecomment-148628901)
+
+# IntelliJ IDEA major change
+Starting with the 2025.3 release, JetBrains has moved to a single, unified distribution, effectively retiring the separate "Community Edition" installer. There is now only one IntelliJ IDEA installer for everyone. f you do not have an Ultimate subscription, the IDE acts as the free version.
