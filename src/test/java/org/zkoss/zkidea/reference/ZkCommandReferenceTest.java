@@ -57,9 +57,9 @@ class ZkCommandReferenceTest {
         if (annotationText != null) {
             PsiAnnotationMemberValue val = mock(PsiAnnotationMemberValue.class);
             when(val.getText()).thenReturn(annotationText);
-            when(ann.findAttributeValue("value")).thenReturn(val);
+            when(ann.findDeclaredAttributeValue("value")).thenReturn(val);
         } else {
-            when(ann.findAttributeValue("value")).thenReturn(null);
+            when(ann.findDeclaredAttributeValue("value")).thenReturn(null);
         }
         return method;
     }
@@ -72,7 +72,7 @@ class ZkCommandReferenceTest {
         PsiAnnotation ann = mock(PsiAnnotation.class);
         when(ann.getQualifiedName()).thenReturn(GCMD_ANN);
         when(method.getAnnotations()).thenReturn(new PsiAnnotation[]{ann});
-        when(ann.findAttributeValue("value")).thenReturn(null);
+        when(ann.findDeclaredAttributeValue("value")).thenReturn(null);
         return method;
     }
 

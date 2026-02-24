@@ -100,7 +100,7 @@ public class ZkCommandReference extends PsiReferenceBase<XmlAttributeValue> {
             String qualifiedName = annotation.getQualifiedName();
             if (COMMAND_ANNOTATION.equals(qualifiedName)
                     || GLOBAL_COMMAND_ANNOTATION.equals(qualifiedName)) {
-                PsiAnnotationMemberValue valueAttr = annotation.findAttributeValue("value");
+                PsiAnnotationMemberValue valueAttr = annotation.findDeclaredAttributeValue("value");
                 if (valueAttr != null) {
                     String rawValue = valueAttr.getText();
                     // Strip surrounding quotes from string literal
