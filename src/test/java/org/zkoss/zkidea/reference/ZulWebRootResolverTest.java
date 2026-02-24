@@ -75,6 +75,54 @@ public class ZulWebRootResolverTest {
     }
 
     /**
+     * ISA Scenario 1: ZUL file whose immediate parent contains WEB-INF/web.xml.
+     * No walking required — parent IS the web root.
+     */
+    @Test
+    void findWebRoot_returnsImmediateParent_whenItContainsWebInfWebXml() {
+        VirtualFile webRoot = mock(VirtualFile.class);
+        VirtualFile webInf  = mock(VirtualFile.class);
+        VirtualFile webXml  = mock(VirtualFile.class);
+        VirtualFile zulFile = mock(VirtualFile.class);
+
+        when(zulFile.getParent()).thenReturn(webRoot);
+        when(webRoot.findChild("WEB-INF")).thenReturn(webInf);
+        when(webInf.isDirectory()).thenReturn(true);
+        when(webInf.findChild("web.xml")).thenReturn(webXml);
+        when(webXml.isDirectory()).thenReturn(false);
+        when(webRoot.getPath()).thenReturn("/webRoot");
+
+        assertSame(webRoot, ZulWebRootResolver.findWebRoot(zulFile));
+    }
+
+    /**
+     * ISA Scenario 5: WEB-INF directory exists but contains no web.xml child.
+     * findChild("web.xml") returns null → check fails; loop continues.
+     */
+    @Test
+    void findWebRoot_skipsAncestor_whenWebInfHasNoWebXml() {
+        VirtualFile goodDir    = mock(VirtualFile.class);
+        VirtualFile goodWebInf = mock(VirtualFile.class);
+        VirtualFile goodWebXml = mock(VirtualFile.class);
+        VirtualFile badDir     = mock(VirtualFile.class);
+        VirtualFile badWebInf  = mock(VirtualFile.class);
+        VirtualFile zulFile    = mock(VirtualFile.class);
+
+        when(zulFile.getParent()).thenReturn(badDir);
+        when(badDir.findChild("WEB-INF")).thenReturn(badWebInf);
+        when(badWebInf.isDirectory()).thenReturn(true);
+        when(badWebInf.findChild("web.xml")).thenReturn(null);   // no web.xml — skip
+        when(badDir.getParent()).thenReturn(goodDir);
+        when(goodDir.findChild("WEB-INF")).thenReturn(goodWebInf);
+        when(goodWebInf.isDirectory()).thenReturn(true);
+        when(goodWebInf.findChild("web.xml")).thenReturn(goodWebXml);
+        when(goodWebXml.isDirectory()).thenReturn(false);
+        when(goodDir.getPath()).thenReturn("/goodDir");
+
+        assertSame(goodDir, ZulWebRootResolver.findWebRoot(zulFile));
+    }
+
+    /**
      * Test: ZUL file with no WEB-INF/web.xml anywhere above it — must return null.
      */
     @Test

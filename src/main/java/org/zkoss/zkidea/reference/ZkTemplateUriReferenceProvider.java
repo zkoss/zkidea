@@ -38,7 +38,7 @@ public class ZkTemplateUriReferenceProvider extends PsiReferenceProvider {
      * the user is still typing (i.e. before the annotation is fully closed).
      * Capture group 1: the path string (starting with /).
      */
-    private static final Pattern TEMPLATE_URI_PATTERN =
+    static final Pattern TEMPLATE_URI_PATTERN =
             Pattern.compile("@(?:load|init)\\s*\\(\\s*['\"](/[^'\"()]*)");
 
     @Override
