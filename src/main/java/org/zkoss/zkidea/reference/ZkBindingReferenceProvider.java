@@ -42,14 +42,14 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
             Pattern.compile("@(" + ZulDomUtil.BINDING_ANNOTATIONS + ")\\s*\\(");
 
     /** Matches the string literal command name inside {@code @command('...')} etc. */
-    private static final Pattern COMMAND_STRING_PATTERN =
+    static final Pattern COMMAND_STRING_PATTERN =
             Pattern.compile("@(?:command|global-command)\\s*\\(\\s*['\"]([^'\"]+)['\"]");
 
     /**
      * Matches {@code before='commandName'} or {@code after='commandName'} named
      * parameters that appear inside any binding annotation body.
      */
-    private static final Pattern BEFORE_AFTER_PATTERN =
+    static final Pattern BEFORE_AFTER_PATTERN =
             Pattern.compile("\\b(?:before|after)\\s*=\\s*['\"]([^'\"]+)['\"]");
 
     // -------------------------------------------------------------------------
