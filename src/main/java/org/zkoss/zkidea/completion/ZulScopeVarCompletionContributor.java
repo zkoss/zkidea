@@ -121,13 +121,13 @@ public class ZulScopeVarCompletionContributor extends CompletionContributor {
 
                 if ("template".equals(tagName)) {
                     XmlAttribute varAttr = tag.getAttribute("var");
-                    if (varAttr != null && varAttr.getValue() != null) {
-                        String varName = varAttr.getValue();
-                        prefixResult.addElement(LookupElementBuilder.create(varName)
-                                .withIcon(AllIcons.Nodes.Variable)
-                                .withTypeText("template var"));
-                        LOG.debug("ZulScopeVarCompletionContributor: added template var '" + varName + "'");
-                    }
+                    String varName = (varAttr != null && varAttr.getValue() != null)
+                            ? varAttr.getValue()
+                            : "each"; // ZK default implicit loop variable
+                    prefixResult.addElement(LookupElementBuilder.create(varName)
+                            .withIcon(AllIcons.Nodes.Variable)
+                            .withTypeText("template var"));
+                    LOG.debug("ZulScopeVarCompletionContributor: added template var '" + varName + "'");
                 } else if ("apply".equals(tagName)) {
                     for (XmlAttribute attr : tag.getAttributes()) {
                         String attrName = attr.getName();

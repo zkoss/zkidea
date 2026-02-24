@@ -42,11 +42,12 @@ Feature: Scope variable completion in ZUL files
     Then the completion list contains "row"
     And the completion list contains "item"
 
-  Scenario: No template variable suggestion when the <template> tag has no var attribute
+  Scenario: Completion suggests the default variable "each" when the <template> tag has no var attribute
+    # In ZK Framework, a <template> without a var attribute uses "each" as the implicit loop variable.
     Given the ZUL structure has an ancestor <template> with no var attribute
     And the binding expression "@load("
     When the user invokes code completion
-    Then no scope variable suggestions appear from template ancestors
+    Then the completion list contains "each"
 
   # ── Apply passdown variable completion ───────────────────────────────────────
   # An <apply> tag passes named attributes down into the included template.

@@ -272,10 +272,14 @@ class ZulScopeVarCompletionContentTest {
     }
 
     /**
-     * Feature Scenario: "No template variable suggestion when the <template> tag has no var attribute".
+     * Feature Scenario: "Completion suggests the default variable 'each' when the
+     * {@code <template>} tag has no var attribute".
+     * <p>
+     * In ZK Framework, a {@code <template>} without a {@code var} attribute exposes the
+     * implicit loop variable {@code each}. The contributor must offer "each" in this case.
      */
     @Test
-    void templateVar_notAdded_whenTemplateAncestorHasNoVarAttribute() {
+    void templateVar_defaultEach_suggestedWhenTemplateAncestorHasNoVarAttribute() {
         TagChain             chain      = buildTagChain();
         CompletionParameters parameters = buildParams(chain);
         CompletionResultSet  result     = mock(CompletionResultSet.class);
@@ -285,7 +289,7 @@ class ZulScopeVarCompletionContentTest {
         when(chain.containingTag().getParent()).thenReturn(templateAncestor);
         when(templateAncestor.getParent()).thenReturn(null);
         when(templateAncestor.getLocalName()).thenReturn("template");
-        when(templateAncestor.getAttribute("var")).thenReturn(null); // no var attribute
+        when(templateAncestor.getAttribute("var")).thenReturn(null); // no var attribute → use "each"
         when(result.withPrefixMatcher("")).thenReturn(prefixResult);
 
         try (MockedStatic<ZulDomUtil> util = mockStatic(ZulDomUtil.class)) {
@@ -294,7 +298,9 @@ class ZulScopeVarCompletionContentTest {
             contributor.fillCompletionVariants(parameters, result);
         }
 
-        verify(prefixResult, never()).addElement(any());
+        ArgumentCaptor<LookupElement> captor = ArgumentCaptor.forClass(LookupElement.class);
+        verify(prefixResult, times(1)).addElement(captor.capture());
+        assertEquals("each", captor.getValue().getLookupString());
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
