@@ -49,13 +49,13 @@ public class ZulScopeVarCompletionContributor extends CompletionContributor {
      * Matches the text before the cursor when the cursor is at root position inside a binding
      * annotation (no dot before cursor, annotation is open).
      */
-    private static final Pattern BINDING_ROOT_PATTERN = Pattern.compile(
+    static final Pattern BINDING_ROOT_PATTERN = Pattern.compile(
             "@(?:" + SCOPE_VAR_ANNOTATIONS + ")\\s*\\(\\s*[^.)]*$");
 
     /**
      * System attributes on {@code <apply>} that are not scope variables.
      */
-    private static final Set<String> SYSTEM_ATTRS = new HashSet<>(Arrays.asList(
+    static final Set<String> SYSTEM_ATTRS = new HashSet<>(Arrays.asList(
             "templateURI", "template", "if", "unless", "forEach", "forEachBegin", "forEachEnd",
             "forEachStep", "forEachStatus", "forEachIndex"
     ));
