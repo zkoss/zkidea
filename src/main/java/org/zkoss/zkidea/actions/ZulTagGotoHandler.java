@@ -16,8 +16,9 @@ import org.zkoss.zkidea.dom.ZulDomUtil;
  * navigation to XSD schema definitions.
  *
  * <p>For element tags: navigates between matching start and end tag names
- * (like Eclipse's XML editor behavior). For self-closing tags and attributes:
- * returns an empty array to suppress XSD navigation entirely.</p>
+ * (like Eclipse's XML editor behavior). For self-closing tags and attribute names:
+ * returns {@link PsiElement#EMPTY_ARRAY} to stop the handler chain and prevent
+ * IntelliJ's default XML handler from opening the XSD schema.</p>
  */
 public class ZulTagGotoHandler implements GotoDeclarationHandler {
     private static final Logger LOG = Logger.getInstance(ZulTagGotoHandler.class);
@@ -40,13 +41,13 @@ public class ZulTagGotoHandler implements GotoDeclarationHandler {
                         + " to matching tag token");
                 return new PsiElement[]{matchingToken};
             }
-            // Self-closing tag — navigate to self (effectively no-op)
-            return new PsiElement[]{token};
+            // Self-closing tag — no navigation target, suppress XSD fallthrough
+            return PsiElement.EMPTY_ARRAY;
         }
 
-        // Handle attribute names: navigate to self (suppress XSD navigation)
+        // Handle attribute names: suppress XSD schema navigation
         if (token.getTokenType() == XmlTokenType.XML_NAME && token.getParent() instanceof XmlAttribute) {
-            return new PsiElement[]{token};
+            return PsiElement.EMPTY_ARRAY;
         }
 
         return null;
