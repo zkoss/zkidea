@@ -13,7 +13,6 @@ package org.zkoss.zkidea.editorActions;
 
 import java.io.File;
 import java.net.MalformedURLException;
-import java.net.URL;
 
 import com.intellij.execution.Executor;
 import com.intellij.execution.configurations.JavaParameters;
@@ -61,7 +60,7 @@ public class MavenRunnerPatcher extends JavaProgramPatcher {
 			VirtualFile file = null;
 			try {
 				file = VfsUtil.findFileByURL(
-						new URL("file:" + javaParameters.getWorkingDirectory() + File.separator + "pom.xml"));
+						new File(javaParameters.getWorkingDirectory() + File.separator + "pom.xml").toURI().toURL());
 				MavenProject project1 = MavenProjectsManager
 						.getInstance(project).findProject(file);
 				if (project1 != null)

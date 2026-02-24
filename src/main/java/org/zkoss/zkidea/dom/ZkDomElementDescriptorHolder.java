@@ -34,6 +34,7 @@ import org.zkoss.zkidea.lang.ZkConfigSchemaProvider;
 import org.zkoss.zkidea.lang.LangAddonSchemaProvider;
 
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -142,8 +143,8 @@ public class ZkDomElementDescriptorHolder {
 		} else {
 			VirtualFile schema;
 			try {
-				schema = VfsUtil.findFileByURL(new URL(location));
-			} catch (MalformedURLException var7) {
+				schema = VfsUtil.findFileByURL(URI.create(location).toURL());
+			} catch (MalformedURLException | IllegalArgumentException var7) {
 				return null;
 			}
 			if (schema == null) {

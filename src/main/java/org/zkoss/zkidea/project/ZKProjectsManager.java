@@ -143,7 +143,7 @@ public class ZKProjectsManager implements StartupActivity.DumbAware {
 
 			File fileTmp = new File(fileSrc.getAbsolutePath() + ".tmp");
 			byte[] download = download(
-					new URL(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL));
+					URI.create(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL).toURL());
 			if (download != null && download.length == 0)
 				return; // try next time.
 			FileUtil.writeToFile(fileTmp, download);
@@ -197,7 +197,7 @@ public class ZKProjectsManager implements StartupActivity.DumbAware {
 
 			File fileTmp = new File(fileSrc.getAbsolutePath() + ".tmp");
 
-			byte[] download = download(new URL(ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_URL));
+			byte[] download = download(URI.create(ZKMavenArchetypesProvider.MAVEN_ARCHETYPE_URL).toURL());
 			if (download != null && download.length == 0)
 				return; // try next time.
 			FileUtil.writeToFile(fileTmp, download);
