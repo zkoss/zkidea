@@ -81,7 +81,11 @@ public class ZkCommandReference extends PsiReferenceBase<XmlAttributeValue> {
                 variants.add(LookupElementBuilder.create(cmdName)
                         .withIcon(AllIcons.Nodes.Method)
                         .withTypeText("@Command")
-                        .withTailText("  (" + containingClassName + ")", true));
+                        .withTailText("  (" + containingClassName + ")", true)
+                        .withInsertHandler((ctx, item) ->
+                                ctx.getDocument().replaceString(
+                                        ctx.getStartOffset(), ctx.getTailOffset(),
+                                        "'" + item.getLookupString() + "'")));
             }
         }
         return variants;

@@ -280,9 +280,23 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
                               List<PsiReference> references, String annotationName) {
         if (segments.isEmpty()) return;
 
+        // isCommandContext: inside @command or @global-command, completion offers @Command names
+        boolean isCommandContext = "command".equals(annotationName)
+                || "global-command".equals(annotationName);
+
         ChainSegment first = segments.get(0);
         int firstStart = bodyOffsetInElement + first.nameStartInBody;
         TextRange idRange = new TextRange(firstStart, firstStart + first.nameLength);
+
+        // @command/@global-command bodies are bare command names, never prefixed with vmId.
+        // When IntelliJ injects a dummy identifier for completion, the chain is a single
+        // segment that doesn't match vmId — create a command-context reference directly so
+        // that getVariants() can return @Command method names.
+        if (isCommandContext && !first.name.equals(vmId)) {
+            references.add(new ViewModelPropertyReference(
+                    element, idRange, vmClass, first.name, true));
+            return;
+        }
 
         // Only process chains that start with the ViewModel ID
         if (!first.name.equals(vmId)) {
@@ -290,10 +304,6 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
             return;
         }
         references.add(new ViewModelIdReference(element, idRange, vmClass));
-
-        // isCommandContext: inside @command or @global-command, completion offers @Command names
-        boolean isCommandContext = "command".equals(annotationName)
-                || "global-command".equals(annotationName);
 
         // Walk property/method segments — text ranges cover only the identifier name,
         // excluding any parenthesized arguments so only the method name is clickable.

@@ -1,6 +1,10 @@
 package org.zkoss.zkidea.reference;
 
+import com.intellij.codeInsight.completion.InsertionContext;
 import com.intellij.codeInsight.lookup.LookupElement;
+import com.intellij.openapi.editor.CaretModel;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiMethod;
@@ -285,5 +289,76 @@ class ViewModelPropertyReferenceGetVariantsTest {
         assertTrue(keys.contains("saveItem"));
         assertTrue(keys.contains("validate"));
         assertTrue(keys.contains("broadcast"));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Command insert handler — Option A: selection wraps name in single quotes
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Finds the lookup element with the given lookup string, or fails the test.
+     */
+    private LookupElement findVariant(Object[] variants, String name) {
+        return Arrays.stream(variants)
+                .map(v -> (LookupElement) v)
+                .filter(v -> name.equals(v.getLookupString()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("'" + name + "' not found in variants"));
+    }
+
+    /**
+     * Builds a mock {@link InsertionContext} wired to the given document, editor,
+     * start offset, and tail offset.
+     */
+    private InsertionContext mockInsertionContext(Document doc, int startOffset, int tailOffset) {
+        InsertionContext ctx = mock(InsertionContext.class);
+        Editor editor = mock(Editor.class);
+        CaretModel caretModel = mock(CaretModel.class);
+        lenient().when(ctx.getDocument()).thenReturn(doc);
+        lenient().when(ctx.getEditor()).thenReturn(editor);
+        lenient().when(editor.getCaretModel()).thenReturn(caretModel);
+        lenient().when(ctx.getStartOffset()).thenReturn(startOffset);
+        lenient().when(ctx.getTailOffset()).thenReturn(tailOffset);
+        return ctx;
+    }
+
+    // Feature: selecting a command inserts it wrapped in single quotes
+    @Test
+    void getVariants_commandContext_insertHandler_wrapsSaveItemInSingleQuotes() {
+        LookupElement elem = findVariant(cmdRef().getVariants(), "saveItem");
+
+        Document doc = mock(Document.class);
+        InsertionContext ctx = mockInsertionContext(doc, 5, 13); // dummy range
+
+        elem.handleInsert(ctx);
+
+        verify(doc).replaceString(5, 13, "'saveItem'");
+    }
+
+    // Feature: insert handler works for any command name (annotation-value "save")
+    @Test
+    void getVariants_commandContext_insertHandler_wrapsSaveAnnotationValueInSingleQuotes() {
+        // persistItem has @Command("save") — lookup string is "save"
+        LookupElement elem = findVariant(cmdRef().getVariants(), "save");
+
+        Document doc = mock(Document.class);
+        InsertionContext ctx = mockInsertionContext(doc, 0, 4);
+
+        elem.handleInsert(ctx);
+
+        verify(doc).replaceString(0, 4, "'save'");
+    }
+
+    // Feature: insert handler works for @GlobalCommand method
+    @Test
+    void getVariants_commandContext_insertHandler_wrapsBroadcastInSingleQuotes() {
+        LookupElement elem = findVariant(cmdRef().getVariants(), "broadcast");
+
+        Document doc = mock(Document.class);
+        InsertionContext ctx = mockInsertionContext(doc, 2, 11);
+
+        elem.handleInsert(ctx);
+
+        verify(doc).replaceString(2, 11, "'broadcast'");
     }
 }

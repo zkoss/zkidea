@@ -326,4 +326,68 @@ class ZkBindingReferenceProviderCommandTest {
         PsiReference[] refs = provider.getReferencesByElement(attr, new ProcessingContext());
         assertSame(PsiReference.EMPTY_ARRAY, refs);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // GROUP 10  Completion references — bare @command(dummy) / @global-command(dummy)
+    //
+    // Regression: when IntelliJ triggers completion inside @command( it injects a
+    // dummy identifier as the first token (no "vm." prefix).  Previously processChain
+    // bailed out because the dummy ≠ vmId, leaving no reference and no variants.
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    @Test
+    void group10_commandBareIdentifierWithClosingParen_emitsCommandContextPropertyReference() {
+        // "@command(saveItem)" — bare identifier, not a quoted string
+        // Pass 1: body="saveItem", isCommandContext=true, "saveItem"≠vmId → ViewModelPropertyReference(isCommandContext=true)
+        // Pass 2: COMMAND_STRING_PATTERN does not match (no quotes) → no ZkCommandReference
+        XmlAttributeValue attr = zulAttr("@command(saveItem)");
+        PsiClass mockVm = mock(PsiClass.class);
+
+        try (MockedStatic<ZulDomUtil> util = mockStatic(ZulDomUtil.class)) {
+            setupVmMocks(util, "vm", mockVm);
+
+            PsiReference[] refs = provider.getReferencesByElement(attr, new ProcessingContext());
+
+            assertEquals(1, refs.length, "Expected exactly one reference");
+            assertInstanceOf(ViewModelPropertyReference.class, refs[0]);
+            assertTrue((Boolean) privateField(refs[0], "isCommandContext"),
+                    "Reference must have isCommandContext=true");
+        }
+    }
+
+    @Test
+    void group10_commandBareIdentifierNoClosingParen_emitsCommandContextPropertyReference() {
+        // "@command(IntellijIdeaRulezzz" — simulates IntelliJ dummy identifier, no closing paren
+        XmlAttributeValue attr = zulAttr("@command(IntellijIdeaRulezzz");
+        PsiClass mockVm = mock(PsiClass.class);
+
+        try (MockedStatic<ZulDomUtil> util = mockStatic(ZulDomUtil.class)) {
+            setupVmMocks(util, "vm", mockVm);
+
+            PsiReference[] refs = provider.getReferencesByElement(attr, new ProcessingContext());
+
+            assertEquals(1, refs.length, "Expected exactly one reference");
+            assertInstanceOf(ViewModelPropertyReference.class, refs[0]);
+            assertTrue((Boolean) privateField(refs[0], "isCommandContext"),
+                    "Reference must have isCommandContext=true");
+        }
+    }
+
+    @Test
+    void group10_globalCommandBareIdentifierNoClosingParen_emitsCommandContextPropertyReference() {
+        // "@global-command(IntellijIdeaRulezzz" — same regression, @global-command variant
+        XmlAttributeValue attr = zulAttr("@global-command(IntellijIdeaRulezzz");
+        PsiClass mockVm = mock(PsiClass.class);
+
+        try (MockedStatic<ZulDomUtil> util = mockStatic(ZulDomUtil.class)) {
+            setupVmMocks(util, "vm", mockVm);
+
+            PsiReference[] refs = provider.getReferencesByElement(attr, new ProcessingContext());
+
+            assertEquals(1, refs.length, "Expected exactly one reference");
+            assertInstanceOf(ViewModelPropertyReference.class, refs[0]);
+            assertTrue((Boolean) privateField(refs[0], "isCommandContext"),
+                    "Reference must have isCommandContext=true");
+        }
+    }
 }
