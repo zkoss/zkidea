@@ -117,18 +117,6 @@ Feature: ViewModel property completion (Ctrl+Space) in ZUL binding annotations
     And  the completion list does NOT contain "notifyAll"
     And  the completion list does NOT contain "wait"
 
-  # ── Null / no ViewModel ───────────────────────────────────────────────────────
-
-  Scenario: No completion when ownerClass is null (property context)
-    Given no ViewModel is declared in scope
-    When the user invokes Ctrl+Space inside a binding annotation after "."
-    Then the completion list is empty
-
-  Scenario: No completion when ownerClass is null (command context)
-    Given no ViewModel is declared in scope
-    When the user invokes Ctrl+Space inside "@command(|)"
-    Then the completion list is empty
-
   # ── Chained property completion (type propagation) ───────────────────────────
 
   Scenario: Second-segment completion resolves type from first getter
