@@ -16,6 +16,7 @@ import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.ProcessingContext;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.zkoss.zkidea.dom.ZulDomUtil;
 
 /**
@@ -200,49 +201,76 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
     }
 
     // -------------------------------------------------------------------------
+    // Binding context
+    // -------------------------------------------------------------------------
+
+    private static final class RequiredViewModelContext {
+        final XmlAttributeValue attrValue;
+        final String vmId;
+        final PsiClass vmClass;
+        final String text;
+        final int valueOffset;
+
+        RequiredViewModelContext(XmlAttributeValue attrValue, String vmId,
+                                 PsiClass vmClass, String text, int valueOffset) {
+            this.attrValue = attrValue;
+            this.vmId = vmId;
+            this.vmClass = vmClass;
+            this.text = text;
+            this.valueOffset = valueOffset;
+        }
+    }
+
+    /**
+     * Checks that {@code element} is an {@link XmlAttributeValue} inside a ZK file that
+     * has a resolvable ViewModel with a non-empty binding expression.
+     *
+     * @return a fully-populated {@link RequiredViewModelContext}, or {@code null} if any
+     *         precondition is not met and reference resolution should be skipped
+     */
+    @Nullable
+    private static RequiredViewModelContext validate(PsiElement element) {
+        if (!(element instanceof XmlAttributeValue)) return null;
+        XmlAttributeValue attrValue = (XmlAttributeValue) element;
+        if (!ZulDomUtil.isZKFile(element.getContainingFile())) return null;
+        XmlTag viewModelTag = ZulDomUtil.findViewModelTag(element);
+        if (viewModelTag == null) return null;
+        String vmAttrValue = viewModelTag.getAttributeValue(ZulDomUtil.VIEW_MODEL);
+        if (vmAttrValue == null) return null;
+        String vmId = ZulDomUtil.extractViewModelId(vmAttrValue);
+        if (vmId == null) return null;
+        PsiClass vmClass = ZulDomUtil.resolveViewModelClass(element.getProject(), vmAttrValue);
+        if (vmClass == null) return null;
+        String text = attrValue.getValue();
+        if (text == null || text.isEmpty()) return null;
+        int valueOffset = attrValue.getValueTextRange().getStartOffset()
+                - attrValue.getTextRange().getStartOffset();
+        return new RequiredViewModelContext(attrValue, vmId, vmClass, text, valueOffset);
+    }
+
+    // -------------------------------------------------------------------------
     // Reference provider entry point
     // -------------------------------------------------------------------------
 
     @Override
     public PsiReference @NotNull [] getReferencesByElement(@NotNull PsiElement element,
                                                            @NotNull ProcessingContext context) {
-        if (!(element instanceof XmlAttributeValue)) return PsiReference.EMPTY_ARRAY;
-
-        XmlAttributeValue attrValue = (XmlAttributeValue) element;
-        if (!ZulDomUtil.isZKFile(element.getContainingFile())) return PsiReference.EMPTY_ARRAY;
-
-        XmlTag viewModelTag = ZulDomUtil.findViewModelTag(element);
-        if (viewModelTag == null) return PsiReference.EMPTY_ARRAY;
-
-        String vmAttrValue = viewModelTag.getAttributeValue(ZulDomUtil.VIEW_MODEL);
-        if (vmAttrValue == null) return PsiReference.EMPTY_ARRAY;
-
-        String vmId = ZulDomUtil.extractViewModelId(vmAttrValue);
-        if (vmId == null) return PsiReference.EMPTY_ARRAY;
-
-        PsiClass vmClass = ZulDomUtil.resolveViewModelClass(element.getProject(), vmAttrValue);
-        if (vmClass == null) return PsiReference.EMPTY_ARRAY;
-
-        String text = attrValue.getValue();
-        if (text == null || text.isEmpty()) return PsiReference.EMPTY_ARRAY;
-
-        // Offset from element start to the value content (skip opening quote)
-        int valueOffset = attrValue.getValueTextRange().getStartOffset()
-                - attrValue.getTextRange().getStartOffset();
+        RequiredViewModelContext ctx = validate(element);
+        if (ctx == null) return PsiReference.EMPTY_ARRAY;
 
         List<PsiReference> references = new ArrayList<>();
 
         // --- Pass 1: identifier-chain references (VM properties + scope variables) ---
-        for (AnnotationMatch annot : extractAnnotations(text)) {
+        for (AnnotationMatch annot : extractAnnotations(ctx.text)) {
             // Skip quoted-string arguments (file paths) — handled by ZkTemplateUriReferenceProvider.
             String trimmedBody = annot.body.trim();
             if (trimmedBody.startsWith("'") || trimmedBody.startsWith("\"")) continue;
 
-            int bodyOffsetInElement = valueOffset + annot.bodyStartOffset;
+            int bodyOffsetInElement = ctx.valueOffset + annot.bodyStartOffset;
 
             for (List<ChainSegment> chain : extractChains(annot.body)) {
-                processChain(attrValue, chain, bodyOffsetInElement,
-                        vmId, vmClass, references, annot.name);
+                processChain(ctx.attrValue, chain, bodyOffsetInElement,
+                        ctx.vmId, ctx.vmClass, references, annot.name);
             }
 
             // before/after command name references within this annotation body
@@ -253,19 +281,19 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
                 int cmdEnd = bodyOffsetInElement + beforeAfterMatcher.end(1);
                 LOG.debug("ZkBindingReferenceProvider: before/after command '" + cmdName + "'");
                 references.add(new ZkCommandReference(
-                        attrValue, new TextRange(cmdStart, cmdEnd), vmClass, cmdName));
+                        ctx.attrValue, new TextRange(cmdStart, cmdEnd), ctx.vmClass, cmdName));
             }
         }
 
         // --- Pass 2: @command('literal') string references ---
-        Matcher cmdMatcher = COMMAND_STRING_PATTERN.matcher(text);
+        Matcher cmdMatcher = COMMAND_STRING_PATTERN.matcher(ctx.text);
         while (cmdMatcher.find()) {
             String commandName = cmdMatcher.group(1);
-            int cmdStart = valueOffset + cmdMatcher.start(1);
-            int cmdEnd = valueOffset + cmdMatcher.end(1);
+            int cmdStart = ctx.valueOffset + cmdMatcher.start(1);
+            int cmdEnd = ctx.valueOffset + cmdMatcher.end(1);
             LOG.debug("ZkBindingReferenceProvider: command string '" + commandName + "'");
             references.add(new ZkCommandReference(
-                    attrValue, new TextRange(cmdStart, cmdEnd), vmClass, commandName));
+                    ctx.attrValue, new TextRange(cmdStart, cmdEnd), ctx.vmClass, commandName));
         }
 
         return references.toArray(PsiReference.EMPTY_ARRAY);
