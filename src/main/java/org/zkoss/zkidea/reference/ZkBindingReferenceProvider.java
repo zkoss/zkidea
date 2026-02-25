@@ -259,49 +259,66 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
         if (ctx == null) return PsiReference.EMPTY_ARRAY;
 
         List<PsiReference> references = new ArrayList<>();
-
-        // --- Pass 1: identifier-chain references (VM properties + scope variables) ---
-        for (AnnotationMatch annot : extractAnnotations(ctx.text)) {
-            // Skip quoted-string arguments (file paths) — handled by ZkTemplateUriReferenceProvider.
-            String trimmedBody = annot.body.trim();
-            if (trimmedBody.startsWith("'") || trimmedBody.startsWith("\"")) continue;
-
-            int bodyOffsetInElement = ctx.valueOffset + annot.bodyStartOffset;
-
-            for (List<ChainSegment> chain : extractChains(annot.body)) {
-                processChain(ctx.attrValue, chain, bodyOffsetInElement,
-                        ctx.vmId, ctx.vmClass, references, annot.name);
-            }
-
-            // before/after command name references within this annotation body
-            Matcher beforeAfterMatcher = BEFORE_AFTER_PATTERN.matcher(annot.body);
-            while (beforeAfterMatcher.find()) {
-                String cmdName = beforeAfterMatcher.group(1);
-                int cmdStart = bodyOffsetInElement + beforeAfterMatcher.start(1);
-                int cmdEnd = bodyOffsetInElement + beforeAfterMatcher.end(1);
-                LOG.debug("ZkBindingReferenceProvider: before/after command '" + cmdName + "'");
-                references.add(new ZkCommandReference(
-                        ctx.attrValue, new TextRange(cmdStart, cmdEnd), ctx.vmClass, cmdName));
-            }
-        }
-
-        // --- Pass 2: @command('literal') string references ---
-        Matcher cmdMatcher = COMMAND_STRING_PATTERN.matcher(ctx.text);
-        while (cmdMatcher.find()) {
-            String commandName = cmdMatcher.group(1);
-            int cmdStart = ctx.valueOffset + cmdMatcher.start(1);
-            int cmdEnd = ctx.valueOffset + cmdMatcher.end(1);
-            LOG.debug("ZkBindingReferenceProvider: command string '" + commandName + "'");
-            references.add(new ZkCommandReference(
-                    ctx.attrValue, new TextRange(cmdStart, cmdEnd), ctx.vmClass, commandName));
-        }
-
+        collectViewModelPropertyReferences(ctx, references);
+        collectBeforeAfterReferences(ctx, references);
+        collectCommandLiteralReferences(ctx, references);
         return references.toArray(PsiReference.EMPTY_ARRAY);
     }
 
     // -------------------------------------------------------------------------
     // Chain processing and type resolution
     // -------------------------------------------------------------------------
+
+    /** Collects VM property and scope-variable chain references from all annotation bodies
+     *  (e.g. {@code vm.order.item} inside {@code @load}, {@code @bind}, {@code @save}, etc.). */
+    private void collectViewModelPropertyReferences(RequiredViewModelContext ctx,
+                                                    List<PsiReference> references) {
+        for (AnnotationMatch annot : extractAnnotations(ctx.text)) {
+            // Skip quoted-string arguments (file paths) — handled by ZkTemplateUriReferenceProvider.
+            String trimmedBody = annot.body.trim();
+            if (trimmedBody.startsWith("'") || trimmedBody.startsWith("\"")) continue;
+
+            int bodyOffsetInElement = ctx.valueOffset + annot.bodyStartOffset;
+            for (List<ChainSegment> chain : extractChains(annot.body)) {
+                processChain(ctx.attrValue, chain, bodyOffsetInElement,
+                        ctx.vmId, ctx.vmClass, references, annot.name);
+            }
+        }
+    }
+
+    /** Collects references for {@code before='cmd'} / {@code after='cmd'} parameters,
+     *  which only appear inside command bindings such as {@code @save(..., before='validate')}. */
+    private void collectBeforeAfterReferences(RequiredViewModelContext ctx,
+                                              List<PsiReference> references) {
+        for (AnnotationMatch annot : extractAnnotations(ctx.text)) {
+            int bodyOffsetInElement = ctx.valueOffset + annot.bodyStartOffset;
+            Matcher m = BEFORE_AFTER_PATTERN.matcher(annot.body);
+            while (m.find()) {
+                String cmdName = m.group(1);
+                int cmdStart = bodyOffsetInElement + m.start(1);
+                int cmdEnd = bodyOffsetInElement + m.end(1);
+                LOG.debug("ZkBindingReferenceProvider: before/after command '" + cmdName + "'");
+                references.add(new ZkCommandReference(
+                        ctx.attrValue, new TextRange(cmdStart, cmdEnd), ctx.vmClass, cmdName));
+            }
+        }
+    }
+
+
+    /** Collects references for the command name literal inside {@code @command('name')}
+     *  and {@code @global-command('name')}. */
+    private void collectCommandLiteralReferences(RequiredViewModelContext ctx,
+                                                 List<PsiReference> references) {
+        Matcher m = COMMAND_STRING_PATTERN.matcher(ctx.text);
+        while (m.find()) {
+            String commandName = m.group(1);
+            int cmdStart = ctx.valueOffset + m.start(1);
+            int cmdEnd = ctx.valueOffset + m.end(1);
+            LOG.debug("ZkBindingReferenceProvider: command string '" + commandName + "'");
+            references.add(new ZkCommandReference(
+                    ctx.attrValue, new TextRange(cmdStart, cmdEnd), ctx.vmClass, commandName));
+        }
+    }
 
     private void processChain(XmlAttributeValue element, List<ChainSegment> segments,
                               int bodyOffsetInElement, String vmId, PsiClass vmClass,
