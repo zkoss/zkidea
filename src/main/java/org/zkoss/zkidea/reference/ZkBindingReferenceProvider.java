@@ -96,8 +96,10 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
             int openParen = m.end() - 1; // position of '('
             int bodyStart = m.end();      // position right after '('
             int closeParen = findMatchingParen(text, openParen);
-            if (closeParen < 0) continue;
-            String body = text.substring(bodyStart, closeParen);
+            // When no matching ')' exists (e.g. user is still typing), use the rest of
+            // the text as the body so that completion still works on incomplete expressions.
+            int bodyEnd = (closeParen < 0) ? text.length() : closeParen;
+            String body = text.substring(bodyStart, bodyEnd);
             results.add(new AnnotationMatch(name, body, bodyStart));
         }
         return results;

@@ -168,6 +168,28 @@ class ZkBindingReferenceProviderParserTest {
         assertTrue(ZkBindingReferenceProvider.extractAnnotations("@unknown(vm.list)").isEmpty());
     }
 
+    // Incomplete annotations (no closing ')') — occurs while the user is typing.
+    // IntelliJ inserts a dummy identifier at the cursor, e.g. "@load(vm.IntellijIdeaRulezzz",
+    // so completion must still produce a reference even without a closing parenthesis.
+
+    @Test
+    void extractAnnotations_incompleteAnnotation_trailingDotOnly_returnsBodyUpToEnd() {
+        // "@load(vm." — user just typed the dot; body = "vm."
+        assertSingleAnnotation("@load(vm.", "load", "vm.", 6);
+    }
+
+    @Test
+    void extractAnnotations_incompleteAnnotation_withDummyIdentifier_returnsBody() {
+        // "@load(vm.IntellijIdeaRulezzz" — dummy identifier inserted by IntelliJ completion
+        assertSingleAnnotation("@load(vm.IntellijIdeaRulezzz", "load", "vm.IntellijIdeaRulezzz", 6);
+    }
+
+    @Test
+    void extractAnnotations_incompleteAnnotation_noBody_returnsEmptyBody() {
+        // "@load(" — nothing typed yet; body = ""
+        assertSingleAnnotation("@load(", "load", "", 6);
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // GROUP 6  ZkBindingReferenceProvider.extractChains(String)
     // ═══════════════════════════════════════════════════════════════════════════
