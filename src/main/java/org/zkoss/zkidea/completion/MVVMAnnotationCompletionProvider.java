@@ -66,6 +66,12 @@ public class MVVMAnnotationCompletionProvider extends CompletionContributor {
 						String[] split = annotVal.split(" ");
 						annotVal = split[split.length - 1];
 
+						// Don't suggest annotation names when the cursor is already inside
+						// an annotation's parentheses (e.g. inside @command(...)).
+						if (isInsideAnnotationBody(annotVal)) {
+							return;
+						}
+
 						if (ZulDomUtil.VIEW_MODEL.equals(name)) {
 							for (String annot : new String[] {"@id", "@init"}) {
 								addElement(completionResultSet, queryList, annot);
@@ -92,6 +98,22 @@ public class MVVMAnnotationCompletionProvider extends CompletionContributor {
 			}
 		}
 	}
+	/**
+	 * Returns {@code true} when {@code annotVal} (the attribute-value text before the
+	 * cursor) has more open parentheses than close parentheses, i.e. the cursor is
+	 * currently inside an annotation's argument list such as {@code @command(} or
+	 * {@code @load(vm.}.  In that position annotation names are not valid completions.
+	 */
+	public static boolean isInsideAnnotationBody(String annotVal) {
+		int depth = 0;
+		for (int i = 0; i < annotVal.length(); i++) {
+			char c = annotVal.charAt(i);
+			if (c == '(') depth++;
+			else if (c == ')') depth--;
+		}
+		return depth > 0;
+	}
+
 	private boolean addElement(CompletionResultSet resultSet, List<String> queryList, String annotation) {
 		for (String query : queryList)
 			if (query.startsWith(annotation))

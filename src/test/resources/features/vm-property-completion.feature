@@ -132,57 +132,6 @@ Feature: ViewModel property completion (Ctrl+Space) in ZUL binding annotations
     When the user invokes Ctrl+Space
     Then the completion list is empty
 
-  # ── Command context ───────────────────────────────────────────────────────────
-
-  Scenario: Inside @command — @Command method names are suggested
-    Given the binding expression "@command(|)"
-    When the user invokes Ctrl+Space
-    Then the completion list contains "saveItem"
-    And  the completion list contains "validate"
-    And  the completion list contains "commit"
-    And  the completion list contains "hello"
-
-  Scenario: Inside @command — @Command with explicit value shows annotation value
-    # persistItem has @Command(value="save") → completion shows "save", not "persistItem"
-    Given MyViewModel has "persistItem" annotated @Command(value="save")
-    When the user invokes Ctrl+Space inside "@command(|)"
-    Then the completion list contains "save"
-    And  the completion list does NOT contain "persistItem"
-
-  Scenario: Inside @command — @GlobalCommand method appears in completion
-    Given MyViewModel has "broadcast" annotated @GlobalCommand
-    When the user invokes Ctrl+Space inside "@command(|)"
-    Then the completion list contains "broadcast"
-
-  Scenario: Inside @command — property names are NOT suggested
-    When the user invokes Ctrl+Space inside "@command(|)"
-    Then the completion list does NOT contain "list"
-    And  the completion list does NOT contain "name"
-    And  the completion list does NOT contain "active"
-
-  Scenario: Inside @global-command — @GlobalCommand method names are suggested
-    Given the binding expression "@global-command(|)"
-    When the user invokes Ctrl+Space
-    Then the completion list contains "broadcast"
-
-  Scenario: Inside @command — plain (non-annotated) methods are not suggested
-    # Only @Command / @GlobalCommand annotated methods appear in command context
-    Given MyViewModel has a public method "helperMethod()" with no @Command annotation
-    When the user invokes Ctrl+Space inside "@command(|)"
-    Then "helperMethod" does NOT appear in the completion list
-
-  Scenario: Selecting a command from @command completion inserts it wrapped in single quotes
-    # ZK command syntax requires a string literal: @command('saveItem')
-    # The insert handler wraps the selected name so the result is always syntactically correct.
-    Given the binding expression "@command(|)"
-    When the user selects "saveItem" from the completion list
-    Then the editor contains "@command('saveItem')"
-
-  Scenario: Selecting a command from @global-command completion inserts it wrapped in single quotes
-    Given the binding expression "@global-command(|)"
-    When the user selects "broadcast" from the completion list
-    Then the editor contains "@global-command('broadcast')"
-
   # ── Annotation scope ──────────────────────────────────────────────────────────
 
   Scenario: Property completion works inside @bind
@@ -226,15 +175,5 @@ Feature: ViewModel property completion (Ctrl+Space) in ZUL binding annotations
     Then the completion list contains "name"
     And  the completion list does NOT contain "list"
 
-  Scenario: Command completion works when closing parenthesis is absent
-    # Regression: @command( (no closing ')') previously showed no suggestions.
-    # IntelliJ injects a dummy identifier at the cursor; completion must still fire.
-    Given the binding expression "@command(|" with no closing parenthesis
-    When the user invokes Ctrl+Space
-    Then the completion list contains "saveItem"
-    And  the completion list contains "validate"
-
-  Scenario: Selecting a command from @command( (no closing paren) inserts with single quotes
-    Given the binding expression "@command(|" with no closing parenthesis
-    When the user selects "saveItem" from the completion list
-    Then the editor contains "@command('saveItem')"
+  # Command completion scenarios (no closing parenthesis) have been moved to
+  # command-name-completion.feature.
