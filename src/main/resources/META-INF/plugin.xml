@@ -61,6 +61,9 @@
           <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/56">#56 ViewModel property completion (chained type propagation)</a></li>
       </ul>
       <p><b>Thanks to Uipko Stikker for the contribution of the above features.</b></p>
+          <ul>
+               <li>Add ZK Feedback menu under Help with icon</a></li>
+          </ul>
       <p>0.4.1</p>
       <ul>
           <li>update plugin icon and description</li>
@@ -266,6 +269,7 @@
      </extensions>
      <actions>
           <group id="ZK_Feedback_Group"
+               icon="/icons/feedback-menu.svg"
                text="ZK Feedback"
                description="Links for submitting feedback, reporting bugs, and accessing documentation."
                popup="true">

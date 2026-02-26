@@ -73,3 +73,50 @@ The correct and recommended pattern is to create a separate, simple class for ea
 -   **Reliable:** This approach is guaranteed to work correctly with the platform's lifecycle and instantiation logic.
 
 While it involves a small amount of code repetition, this pattern ensures stability, safety, and compliance with the fundamental design principles of the IntelliJ Platform.
+
+# Known Limitation: ZK Feedback Icon Not Visible in New UI
+
+## Status
+
+The ZK Feedback action group icon (`/icons/feedback-menu.svg`) renders correctly in IntelliJ's **classic UI** but does **not** render in the **New UI** (default since IntelliJ 2023.1+).
+
+## What Was Attempted
+
+The IntelliJ Platform provides an `iconMapper` extension point (`com.intellij.iconMapper`) that allows plugins to register New UI icon variants via a JSON mapping file. The following was implemented:
+
+1. Registered `<iconMapper mappingFile="ZKIconMappings.json"/>` in `plugin.xml`
+2. Created `src/main/resources/ZKIconMappings.json` mapping the old icon path to a New UI variant:
+   ```json
+   {
+     "icons": {
+       "newui": {
+         "feedback-menu.svg": "icons/feedback-menu.svg"
+       }
+     }
+   }
+   ```
+3. Created `src/main/resources/icons/newui/feedback-menu.svg` — the New UI icon variant
+
+Despite these changes being structurally consistent with how IntelliJ's own bundled plugins (e.g., `SpellcheckerIconMappings.json`) use this mechanism, the icon still does not appear in the Help menu under the New UI.
+
+## Root Cause (Suspected)
+
+The `iconMapper` mechanism works by installing an `IconPathPatcher` (via `ExperimentalUIImpl.installIconPatcher()`) that intercepts icon loads and redirects old classpath paths to their New UI equivalents. The mapping is keyed on the **old icon path** as used at load time.
+
+The issue likely stems from how the IntelliJ platform resolves the icon path for action groups registered in `plugin.xml`. The `icon` attribute value `"/icons/feedback-menu.svg"` (with leading slash) may be resolved differently from the classpath key `"icons/feedback-menu.svg"` (without leading slash) that `IconMapLoader` builds from the JSON. The `IconPathPatcher` may therefore never match the icon lookup for this action group.
+
+Additionally, the `iconMapper` mechanism appears to be primarily designed for icons loaded programmatically via `IconLoader` calls in code, not for icons declared statically in `plugin.xml` `<group icon="...">` attributes. The icon resolution path for action group icons registered in `plugin.xml` may bypass the patcher entirely.
+
+## Potential Future Fixes
+
+1. **Programmatic icon registration**: Instead of declaring `icon="..."` on the `<group>` element in `plugin.xml`, create a custom `AnAction` subclass for the group and override `getTemplatePresentation().setIcon(...)` at runtime, using `IconLoader.getIcon()` directly — this would go through the `IconPathPatcher` and could be intercepted by the mapper.
+
+2. **Explicit New UI icon loading**: Use `com.intellij.ui.ExperimentalUI.isNewUI()` at runtime to conditionally load either the classic or New UI icon variant, bypassing the mapping mechanism entirely:
+   ```java
+   Icon icon = ExperimentalUI.isNewUI()
+       ? IconLoader.getIcon("/icons/newui/feedback-menu.svg", getClass())
+       : IconLoader.getIcon("/icons/feedback-menu.svg", getClass());
+   presentation.setIcon(icon);
+   ```
+
+3. **JetBrains issue tracker**: File a bug or consult JetBrains support to confirm whether `iconMapper` is expected to work for action group icons declared in `plugin.xml`, and whether there is a supported workaround.
