@@ -4,7 +4,7 @@ plugins {
 }
 
 group 'org.zkoss.zkidea'
-version '0.6.0'
+version '0.7.0'
 
 repositories {
     mavenCentral()
@@ -43,4 +43,9 @@ test {
 
 publishPlugin {
     token = project.findProperty("intellijPublishToken") ?: ""
+}
+
+intellij {
+    // Moves the sandbox to a hidden folder to avoid being cleaned
+    sandboxDir = "${project.projectDir}/.sandbox"
 }
