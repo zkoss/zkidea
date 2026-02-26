@@ -7,6 +7,7 @@
 
      <description><![CDATA[
       <p>A ZK framework plugin for IntelliJ IDEA that helps developers work with the ZK Java Web Framework. The plugin provides powerful, schema-aware code completion and validation to accelerate development.</p>
+      <p>Enhance your ZK development experience with MVVM data binding support, featuring intelligent code completion and seamless navigation. Effortlessly jump from ZUL binding expressions to ViewModel properties, command methods, and template URIs. Benefit from deep type propagation for chained properties, smart command name suggestions, and automatic scope variable completion.</p>
       Features:
       <ul>
           <li>
@@ -28,7 +29,11 @@
           <li>
               <b>MVVM Development Support</b>
               <ul>
-                  <li>ZK MVVM annotation code completion (@init, @load, @bind, @save, @command, etc.)</li>
+                  <li>Intelligent code completion for MVVM annotations (@init, @load, @bind, @save, @command, etc.)</li>
+                  <li>Advanced property completion with deep type propagation for chained paths (e.g., <code>vm.user.name</code>)</li>
+                  <li>Context-aware suggestions for command names and scope variables</li>
+                  <li>Seamless navigation from ZUL to Java ViewModel properties, command methods, and template URIs</li>
+                  <li>Intelligent navigation between matching ZUL tags</li>
               </ul>
           </li>
           <li>
