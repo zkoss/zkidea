@@ -1,0 +1,53 @@
+<templateSet group="ZK">
+  <template name="ns"
+            value=" xmlns:n=&quot;native&quot; xmlns:ca=&quot;client/attribute&quot; xmlns:w=&quot;client&quot; xmlns:x=&quot;xhtml&quot;"
+            description="zk namespace"
+            toReformat="false" toShortenFQNames="false">
+    <context>
+      <option name="XML" value="true" />
+      <option name="XML_TEXT" value="false" />
+      <option name="XSL_TEXT" value="false" />
+    </context>
+  </template>
+  <template name="jspatch"
+            value="/**&#10; * Purpose: &#10; * Based on version: &#10; * Last update:&#10; * Check List:&#10; * 1. a patch should be specific to the targeted bug e.g. for specific browser or attribute value&#10; * 2. ensure copy all required private functions &#10; */&#10;zk.afterLoad('$package$', function() {&#10;    var exWidget = {};&#10;    zk.override($class$.prototype, exWidget, {&#10;&#9;&#9;doClick_: function(e){&#10;&#9;&#9;&#9;exWidget.doClick_.apply(this, arguments);&#10;&#9;&#9;},&#10;    });&#10;&#9;&#10;});&#10;let patchTargetVersion = '$version$';&#10;if (zk.version != patchTargetVersion) {&#10;    console.warn(`This overridden script was tested for ZK ${patchTargetVersion}. If you are running a different version, please check this script compatibility`);&#10;}"
+            description="ZK widget JS patch"
+            toReformat="false" toShortenFQNames="false">
+    <variable name="package" expression="" defaultValue="" alwaysStopAt="true" />
+    <variable name="class" expression="" defaultValue="" alwaysStopAt="true" />
+    <variable name="version" expression="" defaultValue="" alwaysStopAt="true" />
+    <context>
+      <option name="OTHER" value="true" />
+    </context>
+  </template>
+  <template name="grid"
+            value="&lt;grid&gt;&#10;    &lt;columns&gt;&#10;        &lt;column label=&quot;$COL1$&quot; /&gt;&#10;        &lt;column label=&quot;$COL2$&quot; /&gt;&#10;    &lt;/columns&gt;&#10;    &lt;rows&gt;&#10;        &lt;row&gt;&#10;            &lt;label value=&quot;$END$&quot; /&gt;&#10;            &lt;label value=&quot;&quot; /&gt;&#10;        &lt;/row&gt;&#10;    &lt;/rows&gt;&#10;&lt;/grid&gt;"
+            description="ZK grid"
+            toReformat="true" toShortenFQNames="false">
+    <variable name="COL1" expression="" defaultValue="&quot;Column 1&quot;" alwaysStopAt="true" />
+    <variable name="COL2" expression="" defaultValue="&quot;Column 2&quot;" alwaysStopAt="true" />
+    <context>
+      <option name="XML_TEXT" value="true" />
+    </context>
+  </template>
+  <template name="listbox"
+            value="&lt;listbox&gt;&#10;    &lt;listhead&gt;&#10;        &lt;listheader label=&quot;$HEAD1$&quot; /&gt;&#10;        &lt;listheader label=&quot;$HEAD2$&quot; /&gt;&#10;    &lt;/listhead&gt;&#10;    &lt;listitem&gt;&#10;        &lt;listcell label=&quot;$END$&quot; /&gt;&#10;        &lt;listcell label=&quot;&quot; /&gt;&#10;    &lt;/listitem&gt;&#10;&lt;/listbox&gt;"
+            description="ZK listbox"
+            toReformat="true" toShortenFQNames="false">
+    <variable name="HEAD1" expression="" defaultValue="&quot;Header 1&quot;" alwaysStopAt="true" />
+    <variable name="HEAD2" expression="" defaultValue="&quot;Header 2&quot;" alwaysStopAt="true" />
+    <context>
+      <option name="XML_TEXT" value="true" />
+    </context>
+  </template>
+  <template name="tree"
+            value="&lt;tree&gt;&#10;    &lt;treecols&gt;&#10;        &lt;treecol label=&quot;$COL1$&quot; /&gt;&#10;        &lt;treecol label=&quot;$COL2$&quot; /&gt;&#10;    &lt;/treecols&gt;&#10;    &lt;treechildren&gt;&#10;        &lt;treeitem&gt;&#10;            &lt;treerow&gt;&#10;                &lt;treecell label=&quot;$END$&quot; /&gt;&#10;                &lt;treecell label=&quot;&quot; /&gt;&#10;            &lt;/treerow&gt;&#10;        &lt;/treeitem&gt;&#10;    &lt;/treechildren&gt;&#10;&lt;/tree&gt;"
+            description="ZK tree"
+            toReformat="true" toShortenFQNames="false">
+    <variable name="COL1" expression="" defaultValue="&quot;Column 1&quot;" alwaysStopAt="true" />
+    <variable name="COL2" expression="" defaultValue="&quot;Column 2&quot;" alwaysStopAt="true" />
+    <context>
+      <option name="XML_TEXT" value="true" />
+    </context>
+  </template>
+</templateSet>

@@ -43,6 +43,12 @@
               </ul>
           </li>
           <li>
+              <b>Live Templates</b>
+              <ul>
+                  <li>Built-in ZK snippet templates: <code>grid</code>, <code>listbox</code>, <code>tree</code>, <code>ns</code>, <code>jspatch</code> — just type the abbreviation and press Tab</li>
+              </ul>
+          </li>
+          <li>
               <b>Feedback Menu</b>
               <ul>
                   <li>a feedback menu under the Help menu for feedback and documentation</li>
@@ -53,6 +59,10 @@
     ]]></description>
 
      <change-notes><![CDATA[
+      <p>0.8.0</p>
+      <ul>
+          <li>[feature] Built-in ZK Live Templates — type <code>grid</code>, <code>listbox</code>, <code>tree</code>, <code>ns</code>, <code>jspatch</code> + Tab in ZUL or JS files</li>
+      </ul>
       <p>0.6.0</p>
       <ul>
           <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/41">#41 Support navigation from ZUL component tags to Java declaration</a></li>
@@ -258,6 +268,8 @@
           <projectService serviceImplementation="org.zkoss.zkidea.dom.ZkDomElementDescriptorHolder" />
           <annotator language="XML"
                implementationClass="org.zkoss.zkidea.lang.ZkXmlValidationAnnotator" />
+          <defaultLiveTemplatesProvider
+               implementation="org.zkoss.zkidea.liveTemplates.ZkLiveTemplatesProvider" />
      </extensions>
 
      <extensions defaultExtensionNs="com.intellij">
