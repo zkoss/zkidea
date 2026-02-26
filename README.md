@@ -10,6 +10,8 @@ See `patchPluginXml` in [build.gradle](build.gradle) for detail.
 ### ZUL File Support
 *   **Code Completion**: Provides context-aware suggestions for ZK components, attributes, and events as you type in ZUL files, speeding up development.
 *   **Go to Declaration**: Quickly navigate from a component tag in a ZUL file to its corresponding Java class (e.g., Composer or ViewModel).
+*   [Feature & Implementation Overview](doc/feature_overview.md) - Mapping features to implementation classes
+*   [Data Binding Navigation & Completion](doc/data_binding_navigation_completion.md) - Technical overview of MVVM data binding features
 *   **Open in Browser**: For Maven projects, this feature intelligently constructs the correct URL to view your ZUL file in a browser, automatically detecting the server port and context path from your `pom.xml`.
 
 ### ZK Configuration File Support

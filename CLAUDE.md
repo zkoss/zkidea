@@ -82,7 +82,7 @@ Tests use JUnit 5 with Mockito for mocking. The test structure mirrors the main 
 
 ## Required Reading
 
-Before working on any feature, bug fix, or investigation, **always read `doc/feature_overview.md` first**. It maps every feature to its implementation classes and explains how each subsystem works. This is essential context for understanding the codebase.
+Before working on any feature, bug fix, or investigation, **always read [feature_overview.md](doc/feature_overview.md) and [data_binding_navigation_completion.md](doc/data_binding_navigation_completion.md) first**. They map every feature to its implementation classes and explain how each subsystem works. This is essential context for understanding the codebase.
 
 ## Development Notes
 

@@ -1,11 +1,11 @@
 <idea-plugin>
-  <id>org.zkoss.zkidea</id>
-  <name>ZK</name>
-  <vendor email="info@zkoss.org" url="https://www.zkoss.org">ZK Framework</vendor>
-  <depends>org.jetbrains.idea.maven</depends>
-  <depends>com.intellij.modules.java</depends>
+     <id>org.zkoss.zkidea</id>
+     <name>ZK</name>
+     <vendor email="info@zkoss.org" url="https://www.zkoss.org">ZK Framework</vendor>
+     <depends>org.jetbrains.idea.maven</depends>
+     <depends>com.intellij.modules.java</depends>
 
-  <description><![CDATA[
+     <description><![CDATA[
       <p>A ZK framework plugin for IntelliJ IDEA that helps developers work with the ZK Java Web Framework. The plugin provides powerful, schema-aware code completion and validation to accelerate development.</p>
       Features:
       <ul>
@@ -47,7 +47,20 @@
       See <a href="https://docs.zkoss.org/zk_dev_ref/zkidea" target="_blank">ZK Developer's Reference / Intellij IDEA ZK Plugin</a> for details.
     ]]></description>
 
-  <change-notes><![CDATA[
+     <change-notes><![CDATA[
+      <p>0.6.0</p>
+      <ul>
+          <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/41">#41 Support navigation from ZUL component tags to Java declaration</a></li>
+          <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/49">#49 ViewModel ID Reference Navigation</a></li>
+          <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/50">#50 MVVM Property Navigation</a></li>
+          <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/51">#51 MVVM Property Completion</a></li>
+          <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/52">#52 @command binding navigation in ZUL files</a></li>
+          <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/53">#53 @command name completion</a></li>
+          <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/54">#54 Template URI navigation in ZUL files</a></li>
+          <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/55">#55 Scope variable completion in ZUL files</a></li>
+          <li>[feature] <a href="https://github.com/zkoss/zkidea/issues/56">#56 ViewModel property completion (chained type propagation)</a></li>
+      </ul>
+      <p><b>Thanks to Uipko Stikker for the contribution of the above features.</b></p>
       <p>0.4.1</p>
       <ul>
           <li>update plugin icon and description</li>
@@ -196,77 +209,84 @@
       <br>
   ]]></change-notes>
 
-  <!-- please see https://confluence.jetbrains.com/display/IDEADEV/Plugin+Compatibility+with+IntelliJ+Platform+Products
+     <!-- please see
+     https://confluence.jetbrains.com/display/IDEADEV/Plugin+Compatibility+with+IntelliJ+Platform+Products
        on how to target different products -->
-  <!-- uncomment to enable plugin in all products
+     <!-- uncomment to enable plugin in all products
   <depends>com.intellij.modules.lang</depends>
   -->
 
-  <extensions defaultExtensionNs="org.jetbrains.idea.maven">
-    <archetypesProvider implementation="org.zkoss.zkidea.maven.ZKMavenArchetypesProvider"/>
-  </extensions>
+     <extensions defaultExtensionNs="org.jetbrains.idea.maven">
+          <archetypesProvider implementation="org.zkoss.zkidea.maven.ZKMavenArchetypesProvider" />
+     </extensions>
 
-  <extensions defaultExtensionNs="com.intellij">
-    <!-- Add your extensions here -->
-    <standardResourceProvider implementation="org.zkoss.zkidea.lang.ZulSchemaProvider"/>
-    <standardResourceProvider implementation="org.zkoss.zkidea.lang.ZkConfigSchemaProvider"/>
-    <standardResourceProvider implementation="org.zkoss.zkidea.lang.LangAddonSchemaProvider"/>
-    <typedHandler implementation="org.zkoss.zkidea.editorActions.ZulTypedHandler" id="zul"/>
-    <completion.contributor language="XML"
-                            implementationClass="org.zkoss.zkidea.completion.MVVMAnnotationCompletionProvider" order="first"/>
-    <completion.contributor language="XML"
-                            implementationClass="org.zkoss.zkidea.completion.ZulScopeVarCompletionContributor"/>
-    <gotoDeclarationHandler implementation="org.zkoss.zkidea.actions.GotoJavaClassHandler" order="first"/>
-    <gotoDeclarationHandler implementation="org.zkoss.zkidea.actions.ZulTagGotoHandler" order="first"/>
-    <psi.referenceContributor language="XML"
-                              implementation="org.zkoss.zkidea.reference.ZkBindingReferenceContributor"/>
-    <webBrowserUrlProvider implementation="org.zkoss.zkidea.editorActions.WebBrowserUrlProvider" order="first"/>
-    <java.programPatcher implementation="org.zkoss.zkidea.editorActions.MavenRunnerPatcher"/>
-    <!-- refer from Maven Plugin -->
-    <fileType name="XML" extensions="zul"/>
-    <fileType name="XML" patterns="zk.xml"/>
-    <fileType name="XML" patterns="lang-addon.xml"/>
-    <fileIconProvider implementation="org.zkoss.zkidea.lang.ZulIconProvider"/>
-    <xml.elementDescriptorProvider implementation="org.zkoss.zkidea.dom.ZkDomElementDescriptorProvider"/>
-    <projectService serviceImplementation="org.zkoss.zkidea.dom.ZkDomElementDescriptorHolder"/>
-    <annotator language="XML" implementationClass="org.zkoss.zkidea.lang.ZkXmlValidationAnnotator"/>
-  </extensions>
+     <extensions defaultExtensionNs="com.intellij">
+          <!-- Add your extensions here -->
+          <standardResourceProvider implementation="org.zkoss.zkidea.lang.ZulSchemaProvider" />
+          <standardResourceProvider implementation="org.zkoss.zkidea.lang.ZkConfigSchemaProvider" />
+          <standardResourceProvider implementation="org.zkoss.zkidea.lang.LangAddonSchemaProvider" />
+          <typedHandler implementation="org.zkoss.zkidea.editorActions.ZulTypedHandler" id="zul" />
+          <completion.contributor language="XML"
+               implementationClass="org.zkoss.zkidea.completion.MVVMAnnotationCompletionProvider"
+               order="first" />
+          <completion.contributor language="XML"
+               implementationClass="org.zkoss.zkidea.completion.ZulScopeVarCompletionContributor" />
+          <gotoDeclarationHandler implementation="org.zkoss.zkidea.actions.GotoJavaClassHandler"
+               order="first" />
+          <gotoDeclarationHandler implementation="org.zkoss.zkidea.actions.ZulTagGotoHandler"
+               order="first" />
+          <psi.referenceContributor language="XML"
+               implementation="org.zkoss.zkidea.reference.ZkBindingReferenceContributor" />
+          <webBrowserUrlProvider
+               implementation="org.zkoss.zkidea.editorActions.WebBrowserUrlProvider" order="first" />
+          <java.programPatcher implementation="org.zkoss.zkidea.editorActions.MavenRunnerPatcher" />
+          <!-- refer from Maven Plugin -->
+          <fileType name="XML" extensions="zul" />
+          <fileType name="XML" patterns="zk.xml" />
+          <fileType name="XML" patterns="lang-addon.xml" />
+          <fileIconProvider implementation="org.zkoss.zkidea.lang.ZulIconProvider" />
+          <xml.elementDescriptorProvider
+               implementation="org.zkoss.zkidea.dom.ZkDomElementDescriptorProvider" />
+          <projectService serviceImplementation="org.zkoss.zkidea.dom.ZkDomElementDescriptorHolder" />
+          <annotator language="XML"
+               implementationClass="org.zkoss.zkidea.lang.ZkXmlValidationAnnotator" />
+     </extensions>
 
-  <extensions defaultExtensionNs="com.intellij">
-    <postStartupActivity implementation="org.zkoss.zkidea.project.ZKProjectsManager"/>
-  </extensions>
+     <extensions defaultExtensionNs="com.intellij">
+          <postStartupActivity implementation="org.zkoss.zkidea.project.ZKProjectsManager" />
+     </extensions>
 
-  <extensions defaultExtensionNs="com.intellij">
-    <postStartupActivity implementation="org.zkoss.zkidea.newsNotification.ZKNews"/>
-    <postStartupActivity implementation="org.zkoss.zkidea.project.ZulFileTypeRegistrar"/>
-  </extensions>
+     <extensions defaultExtensionNs="com.intellij">
+          <postStartupActivity implementation="org.zkoss.zkidea.newsNotification.ZKNews" />
+          <postStartupActivity implementation="org.zkoss.zkidea.project.ZulFileTypeRegistrar" />
+     </extensions>
 
-  <extensions defaultExtensionNs="com.intellij">
-    <notificationGroup id="news notification" displayType="STICKY_BALLOON"/>
-  </extensions>
-  <actions>
-    <group id="ZK_Feedback_Group"
-           text="ZK Feedback"
-           description="Links for submitting feedback, reporting bugs, and accessing documentation."
-           popup="true">
-      <add-to-group group-id="HelpMenu" anchor="after" relative-to-action="HelpTopics"/>
-      <action id="ZK_Customer_Support"
-              class="org.zkoss.zkidea.feedback.CustomerSupportAction"
-              text="Customer Support"
-              description="Open ZK helpdesk site"/>
-      <action id="ZK_Documentation"
-              class="org.zkoss.zkidea.feedback.DocumentationAction"
-              text="ZK Documentation"
-              description="Open ZK documentation site"/>
-      <action id="ZK_Bug_Report"
-              class="org.zkoss.zkidea.feedback.ReportBugAction"
-              text="Report a Bug"
-              description="Open the ZK bug reporting form."/>
-      <action id="ZK_NEWS"
-              class="org.zkoss.zkidea.feedback.NewsAction"
-              text="What's New"
-              description="Open the ZK News"/>
-    </group>
-  </actions>
+     <extensions defaultExtensionNs="com.intellij">
+          <notificationGroup id="news notification" displayType="STICKY_BALLOON" />
+     </extensions>
+     <actions>
+          <group id="ZK_Feedback_Group"
+               text="ZK Feedback"
+               description="Links for submitting feedback, reporting bugs, and accessing documentation."
+               popup="true">
+               <add-to-group group-id="HelpMenu" anchor="after" relative-to-action="HelpTopics" />
+               <action id="ZK_Customer_Support"
+                    class="org.zkoss.zkidea.feedback.CustomerSupportAction"
+                    text="Customer Support"
+                    description="Open ZK helpdesk site" />
+               <action id="ZK_Documentation"
+                    class="org.zkoss.zkidea.feedback.DocumentationAction"
+                    text="ZK Documentation"
+                    description="Open ZK documentation site" />
+               <action id="ZK_Bug_Report"
+                    class="org.zkoss.zkidea.feedback.ReportBugAction"
+                    text="Report a Bug"
+                    description="Open the ZK bug reporting form." />
+               <action id="ZK_NEWS"
+                    class="org.zkoss.zkidea.feedback.NewsAction"
+                    text="What's New"
+                    description="Open the ZK News" />
+          </group>
+     </actions>
 
 </idea-plugin>
