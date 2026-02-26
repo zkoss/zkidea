@@ -110,13 +110,13 @@ Update version numbers in two locations:
 ./gradlew runIde
 ```
 
-## 3. Build Distribution
+## 3. Build and Publish to JetBrains Marketplace
 ```bash
-# Create plugin distribution ZIP
-./gradlew buildPlugin
+# it automatically runs `buildPlugin` first, so no need to run them separately.
+./gradlew publishPlugin
 ```
 
-## 4. Post-Release
+## 5. Post-Release
 1. **Create Git Tag**
    ```bash
    git tag v0.1.X

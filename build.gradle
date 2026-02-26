@@ -40,3 +40,7 @@ java.targetCompatibility = JavaVersion.VERSION_17
 test {
     useJUnitPlatform()
 }
+
+publishPlugin {
+    token = project.findProperty("intellijPublishToken") ?: ""
+}
