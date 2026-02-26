@@ -59,9 +59,10 @@
     ]]></description>
 
      <change-notes><![CDATA[
-      <p>0.8.0</p>
+      <p>0.7.0</p>
       <ul>
           <li>[feature] Built-in ZK Live Templates — type <code>grid</code>, <code>listbox</code>, <code>tree</code>, <code>ns</code>, <code>jspatch</code> + Tab in ZUL or JS files</li>
+          <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/48">#48 Method WebBrowserUrlProvider.getUrl(...) references an unresolved class MavenId</a></li>
       </ul>
       <p>0.6.0</p>
       <ul>
