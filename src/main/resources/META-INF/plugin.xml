@@ -59,6 +59,10 @@
     ]]></description>
 
      <change-notes><![CDATA[
+      <p>0.7.1</p>
+      <ul>
+          <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/58">#58 Component tag and attribute completion fails to work in a ZUL file</a></li>
+      </ul>
       <p>0.7.0</p>
       <ul>
           <li>[feature] Built-in ZK Live Templates — type <code>grid</code>, <code>listbox</code>, <code>tree</code>, <code>ns</code>, <code>jspatch</code> + Tab in ZUL or JS files</li>
