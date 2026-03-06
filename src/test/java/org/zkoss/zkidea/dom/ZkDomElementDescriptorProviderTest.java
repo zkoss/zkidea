@@ -1,6 +1,9 @@
 package org.zkoss.zkidea.dom;
 
+import com.intellij.javaee.ExternalResourceManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VfsUtil;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.util.CachedValue;
 import com.intellij.psi.util.CachedValuesManager;
@@ -12,6 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.zkoss.zkidea.lang.ZulSchemaProvider;
+
+import java.net.URL;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -140,6 +146,106 @@ class ZkDomElementDescriptorProviderTest {
 
         assertNull(result,
                 "Holder must return null when the PSI file is not an XmlFile");
+    }
+
+    /**
+     * Regression test for cold-start "no suggestion" bug.
+     *
+     * <p>On first {@code runIde} after {@code clean}, VFS may not have indexed the plugin JAR
+     * yet when the first completion is triggered. {@code doCreateDescriptor()} then returns null,
+     * and if that null is cached in {@code myDescriptorsMap}, suggestions stay broken for the
+     * entire IDE session until a PSI modification invalidates the cache.
+     *
+     * <p>This test verifies that a null descriptor is NOT permanently cached: the second call
+     * must retry {@code doCreateDescriptor()} and return the descriptor once the schema becomes
+     * available (e.g., after VFS finishes indexing the JAR).
+     */
+    @SuppressWarnings("unchecked")
+    @Test
+    void holder_getDescriptor_retriesAfterNull_untilSchemaBecomesAvailable() {
+        Project project = mock(Project.class);
+        XmlFile zulFile = mock(XmlFile.class);
+        XmlTag tag = mock(XmlTag.class);
+        XmlNSDescriptorImpl nsMock = mock(XmlNSDescriptorImpl.class);
+        CachedValue<XmlNSDescriptorImpl> nullCachedValue = mock(CachedValue.class);
+        CachedValue<XmlNSDescriptorImpl> validCachedValue = mock(CachedValue.class);
+        CachedValuesManager cacheManagerMock = mock(CachedValuesManager.class);
+        XmlElementDescriptor elementDescriptorMock = mock(XmlElementDescriptor.class);
+
+        when(tag.getContainingFile()).thenReturn(zulFile);
+        when(zulFile.getName()).thenReturn("index.zul");
+        when(tag.isValid()).thenReturn(true);
+        when(tag.getName()).thenReturn("window");
+        when(nsMock.isValid()).thenReturn(true);
+        when(nsMock.getDefaultNamespace()).thenReturn("http://www.zkoss.org/2005/zul");
+        when(nsMock.getElementDescriptor(eq("window"), anyString())).thenReturn(elementDescriptorMock);
+        when(nullCachedValue.getValue()).thenReturn(null);   // first attempt: schema not available
+        when(validCachedValue.getValue()).thenReturn(nsMock); // second attempt: schema ready
+        // First createCachedValue call → null descriptor; second call → valid descriptor
+        doReturn(nullCachedValue).doReturn(validCachedValue)
+                .when(cacheManagerMock).createCachedValue(any(), anyBoolean());
+
+        try (MockedStatic<CachedValuesManager> cvm = mockStatic(CachedValuesManager.class)) {
+            cvm.when(() -> CachedValuesManager.getManager(project)).thenReturn(cacheManagerMock);
+
+            ZkDomElementDescriptorHolder holder = new ZkDomElementDescriptorHolder(project);
+
+            // First call: schema not available yet (VFS not indexed) → null expected
+            XmlElementDescriptor first = holder.getDescriptor(tag);
+            assertNull(first, "First call must return null when schema is not yet available");
+
+            // Second call: schema is now available → must NOT return cached null, must retry
+            XmlElementDescriptor second = holder.getDescriptor(tag);
+            assertNotNull(second,
+                    "Second call must return a non-null descriptor after schema becomes available. "
+                            + "Permanently caching null breaks suggestions for the entire IDE session.");
+            assertSame(elementDescriptorMock, second);
+        }
+    }
+
+    /**
+     * Regression test for cold-start "no suggestion" bug caused by stale ExternalResourceManager state.
+     *
+     * <p>Root cause: {@code clean} only deletes the {@code build/} directory, NOT the sandbox
+     * ({@code .sandbox/config/}). The sandbox persists schema mappings across runs. If the user
+     * previously ran the plugin with a different project (e.g., {@code SUPPORT/plugin-test}),
+     * that wrong path remains in {@code ExternalResourceManager} when the next {@code runIde}
+     * starts. {@code ZKProjectsManager.updateZulSchema()} fixes it via {@code invokeLater}, but
+     * only after Maven initializes — which can be many seconds into the session.
+     *
+     * <p>This test verifies that {@code doCreateDescriptor()} falls back to the plugin's
+     * classpath (the JAR always has the XSD) when {@code ExternalResourceManager} returns a
+     * stale path that does not resolve to a valid schema file.
+     */
+    @Test
+    void doCreateDescriptor_usesClasspathFallback_whenExternalResourceManagerHasStalePath() {
+        Project project = mock(Project.class);
+        ExternalResourceManager ermMock = mock(ExternalResourceManager.class);
+        VirtualFile correctSchemaVF = mock(VirtualFile.class);
+
+        // Stale path from a previous session in a different project — not an XSD file path
+        when(ermMock.getResourceLocation(ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL, ""))
+                .thenReturn("/Users/hawk/Documents/workspace/SUPPORT/plugin-test");
+
+        ZkDomElementDescriptorHolder holder = new ZkDomElementDescriptorHolder(project);
+
+        try (MockedStatic<ExternalResourceManager> ermStatic = mockStatic(ExternalResourceManager.class);
+             MockedStatic<VfsUtil> vfsStatic = mockStatic(VfsUtil.class)) {
+
+            ermStatic.when(ExternalResourceManager::getInstance).thenReturn(ermMock);
+            // The stale path "/Users/hawk/.../plugin-test" has no "file:" prefix, so
+            // URI.create() throws IllegalArgumentException (URI is not absolute).
+            // Only the classpath URL reaches VfsUtil.findFileByURL().
+            vfsStatic.when(() -> VfsUtil.findFileByURL(any(URL.class))).thenReturn(correctSchemaVF);
+
+            VirtualFile result =
+                    holder.findSchemaFile(ZkDomElementDescriptorHolder.FileKind.ZUL_FILE);
+
+            assertNotNull(result,
+                    "Classpath fallback must provide the schema VirtualFile when "
+                            + "ExternalResourceManager holds a stale path from a previous session.");
+            assertSame(correctSchemaVF, result);
+        }
     }
 
     /**

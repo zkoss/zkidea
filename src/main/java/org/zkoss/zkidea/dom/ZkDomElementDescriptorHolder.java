@@ -129,36 +129,73 @@ public class ZkDomElementDescriptorHolder {
 					.createCachedValue(() ->
 							CachedValueProvider.Result.create(ZkDomElementDescriptorHolder.this.doCreateDescriptor(kind),
 									PsiModificationTracker.MODIFICATION_COUNT), false);
-			this.myDescriptorsMap.put(kind, result);
+			XmlNSDescriptorImpl value = result.getValue();
+			if (value != null) {
+				// Only cache on success. If null (e.g. VFS hasn't indexed the plugin JAR yet on
+				// cold start), don't store so the next completion attempt retries doCreateDescriptor().
+				this.myDescriptorsMap.put(kind, result);
+			}
+			return value;
 		}
 
 		return result.getValue();
 	}
 
+	/**
+	 * Locates the XSD schema {@link VirtualFile} for the given file kind.
+	 *
+	 * <p>Resolution order:
+	 * <ol>
+	 *   <li>Ask {@link ExternalResourceManager} for a registered location (may point to an
+	 *       on-disk copy maintained by {@code ZKProjectsManager}).</li>
+	 *   <li>Classpath fallback — the XSD is always bundled inside the plugin JAR. This covers
+	 *       cold-start scenarios where the sandbox config persists a <em>stale path from a
+	 *       previous session</em> (e.g., {@code /workspace/SUPPORT/plugin-test} instead of the
+	 *       actual XSD, because {@code clean} only wipes {@code build/}, not {@code .sandbox/}),
+	 *       as well as cases where the schema file was not yet created or VFS has not yet indexed
+	 *       the plugin JAR.</li>
+	 * </ol>
+	 *
+	 * Package-private for unit testing.
+	 */
 	@Nullable
-	private XmlNSDescriptorImpl doCreateDescriptor(ZkDomElementDescriptorHolder.FileKind kind) {
+	VirtualFile findSchemaFile(ZkDomElementDescriptorHolder.FileKind kind) {
 		String schemaUrl = kind.getSchemaUrl();
 		String location = ExternalResourceManager.getInstance().getResourceLocation(schemaUrl, "");
-		if (schemaUrl.equals(location)) {
-			return null;
+
+		VirtualFile schema = null;
+		if (!schemaUrl.equals(location)) {
+			// ExternalResourceManager has a registered location; try to resolve it.
+			try {
+				// ZKProjectsManager builds the location as "file:" + raw filesystem path.
+				// On macOS the path contains "Application Support" (a space), making it an
+				// invalid URI for URI.create(). Path.of(rawPath).toUri() uses the OS path
+				// abstraction to encode ALL special characters (spaces, #, etc.) correctly.
+				// For other schemes (jar:, https:) the URL is pre-encoded by the class loader.
+				URL url = location.startsWith("file:")
+						? Path.of(location.substring("file:".length())).toUri().toURL()
+						: URI.create(location).toURL();
+				schema = VfsUtil.findFileByURL(url);
+			} catch (MalformedURLException | IllegalArgumentException e) {
+				LOG.warn("Failed to resolve schema URL for location: " + location
+						+ ", falling back to classpath", e);
+			}
 		}
 
-		VirtualFile schema;
-		try {
-			// ZKProjectsManager builds the location as "file:" + raw filesystem path.
-			// On macOS the path contains "Application Support" (a space), making it an
-			// invalid URI for URI.create(). Path.of(rawPath).toUri() uses the OS path
-			// abstraction to encode ALL special characters (spaces, #, etc.) correctly.
-			// For other schemes (jar:, https:) the URL is pre-encoded by the class loader.
-			URL url = location.startsWith("file:")
-					? Path.of(location.substring("file:".length())).toUri().toURL()
-					: URI.create(location).toURL();
-			schema = VfsUtil.findFileByURL(url);
-		} catch (MalformedURLException | IllegalArgumentException e) {
-			LOG.warn("Failed to resolve schema URL for location: " + location, e);
-			return null;
+		if (schema == null) {
+			URL classpathUrl = ZkDomElementDescriptorHolder.class.getClassLoader()
+					.getResource(kind.getSchemaClassPath());
+			if (classpathUrl != null) {
+				schema = VfsUtil.findFileByURL(classpathUrl);
+			}
 		}
 
+		return schema;
+	}
+
+	@Nullable
+	private XmlNSDescriptorImpl doCreateDescriptor(ZkDomElementDescriptorHolder.FileKind kind) {
+		VirtualFile schema = findSchemaFile(kind);
 		if (schema == null) {
 			return null;
 		}
@@ -186,20 +223,29 @@ public class ZkDomElementDescriptorHolder {
 		}
 	}
 
-	private enum FileKind {
+	enum FileKind {
 		ZUL_FILE {
 			public String getSchemaUrl() {
 				return ZulSchemaProvider.ZUL_PROJECT_SCHEMA_URL;
+			}
+			public String getSchemaClassPath() {
+				return ZulSchemaProvider.ZUL_PROJECT_SCHEMA_PATH;
 			}
 		},
 		ZK_CONFIG_FILE {
 			public String getSchemaUrl() {
 				return ZkConfigSchemaProvider.ZK_CONFIG_PROJECT_SCHEMA_URL;
 			}
+			public String getSchemaClassPath() {
+				return ZkConfigSchemaProvider.ZK_CONFIG_PROJECT_SCHEMA_PATH;
+			}
 		},
 		LANG_ADDON_FILE {
 			public String getSchemaUrl() {
 				return LangAddonSchemaProvider.LANG_ADDON_SCHEMA_URL;
+			}
+			public String getSchemaClassPath() {
+				return LangAddonSchemaProvider.LANG_ADDON_PROJECT_SCHEMA_PATH;
 			}
 		};
 
@@ -207,5 +253,6 @@ public class ZkDomElementDescriptorHolder {
 		}
 
 		public abstract String getSchemaUrl();
+		public abstract String getSchemaClassPath();
 	}
 }
