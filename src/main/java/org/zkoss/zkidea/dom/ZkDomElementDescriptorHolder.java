@@ -36,6 +36,7 @@ import org.zkoss.zkidea.lang.LangAddonSchemaProvider;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -143,7 +144,15 @@ public class ZkDomElementDescriptorHolder {
 		} else {
 			VirtualFile schema;
 			try {
-				schema = VfsUtil.findFileByURL(URI.create(location).toURL());
+				// ZKProjectsManager builds the location as "file:" + raw filesystem path.
+				// On macOS the path contains "Application Support" (a space), making it an
+				// invalid URI for URI.create(). Path.of(rawPath).toUri() uses the OS path
+				// abstraction to encode ALL special characters (spaces, #, etc.) correctly.
+				// For other schemes (jar:, https:) the URL is pre-encoded by the class loader.
+				URL url = location.startsWith("file:")
+						? Path.of(location.substring("file:".length())).toUri().toURL()
+						: URI.create(location).toURL();
+				schema = VfsUtil.findFileByURL(url);
 			} catch (MalformedURLException | IllegalArgumentException var7) {
 				return null;
 			}
