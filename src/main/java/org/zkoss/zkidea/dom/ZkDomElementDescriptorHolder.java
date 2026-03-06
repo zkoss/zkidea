@@ -141,34 +141,36 @@ public class ZkDomElementDescriptorHolder {
 		String location = ExternalResourceManager.getInstance().getResourceLocation(schemaUrl, "");
 		if (schemaUrl.equals(location)) {
 			return null;
-		} else {
-			VirtualFile schema;
-			try {
-				// ZKProjectsManager builds the location as "file:" + raw filesystem path.
-				// On macOS the path contains "Application Support" (a space), making it an
-				// invalid URI for URI.create(). Path.of(rawPath).toUri() uses the OS path
-				// abstraction to encode ALL special characters (spaces, #, etc.) correctly.
-				// For other schemes (jar:, https:) the URL is pre-encoded by the class loader.
-				URL url = location.startsWith("file:")
-						? Path.of(location.substring("file:".length())).toUri().toURL()
-						: URI.create(location).toURL();
-				schema = VfsUtil.findFileByURL(url);
-			} catch (MalformedURLException | IllegalArgumentException var7) {
-				return null;
-			}
-			if (schema == null) {
-				return null;
-			} else {
-				PsiFile psiFile = PsiManager.getInstance(this.myProject).findFile(schema);
-				if (!(psiFile instanceof XmlFile)) {
-					return null;
-				} else {
-					XmlNSDescriptorImpl result = new XmlNSDescriptorImpl();
-					result.init(psiFile);
-					return result;
-				}
-			}
 		}
+
+		VirtualFile schema;
+		try {
+			// ZKProjectsManager builds the location as "file:" + raw filesystem path.
+			// On macOS the path contains "Application Support" (a space), making it an
+			// invalid URI for URI.create(). Path.of(rawPath).toUri() uses the OS path
+			// abstraction to encode ALL special characters (spaces, #, etc.) correctly.
+			// For other schemes (jar:, https:) the URL is pre-encoded by the class loader.
+			URL url = location.startsWith("file:")
+					? Path.of(location.substring("file:".length())).toUri().toURL()
+					: URI.create(location).toURL();
+			schema = VfsUtil.findFileByURL(url);
+		} catch (MalformedURLException | IllegalArgumentException e) {
+			LOG.warn("Failed to resolve schema URL for location: " + location, e);
+			return null;
+		}
+
+		if (schema == null) {
+			return null;
+		}
+
+		PsiFile psiFile = PsiManager.getInstance(this.myProject).findFile(schema);
+		if (!(psiFile instanceof XmlFile)) {
+			return null;
+		}
+
+		XmlNSDescriptorImpl result = new XmlNSDescriptorImpl();
+		result.init(psiFile);
+		return result;
 	}
 
 	@Nullable
