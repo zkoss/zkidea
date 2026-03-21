@@ -105,6 +105,35 @@ Feature: ZUL schema-based code completion for ZK components and attributes
     Then the completion list contains "label"
     And  the completion list contains "onClick"
 
+  # ── Context-sensitive child completion (parent-aware) ────────────────────────
+  # Bug: typing "<" inside <listbox> shows ALL ZK components instead of only the
+  # elements permitted by listboxType in zul.xsd:
+  #   listitem, listhead, listgroup, listgroupfoot, frozen, auxhead
+  #   (plus baseGroup items: attribute, custom-attributes, variables, template, zk)
+
+  Scenario: Child completion inside <listbox> shows only schema-valid children
+    Given the ZUL file has a <listbox> tag and the cursor is inside it after "<"
+    When the user invokes code completion
+    Then the completion list contains "listitem"
+    And  the completion list contains "listhead"
+    And  the completion list contains "listgroup"
+    And  the completion list contains "listgroupfoot"
+    And  the completion list contains "frozen"
+    And  the completion list contains "auxhead"
+    And  the completion list does not contain "window"
+    And  the completion list does not contain "button"
+    And  the completion list does not contain "grid"
+    And  the completion list does not contain "textbox"
+
+  Scenario: Child completion inside <listitem> shows only schema-valid children
+    # listitemType allows listcell and baseGroup elements; not other top-level ZK components.
+    Given the ZUL file has a <listitem> inside a <listbox> and the cursor is inside <listitem> after "<"
+    When the user invokes code completion
+    Then the completion list contains "listcell"
+    And  the completion list does not contain "listbox"
+    And  the completion list does not contain "window"
+    And  the completion list does not contain "button"
+
   # ── Schema descriptor must resolve correctly ─────────────────────────────────
 
   Scenario: ZkDomElementDescriptorProvider returns a non-null descriptor for a <window> tag

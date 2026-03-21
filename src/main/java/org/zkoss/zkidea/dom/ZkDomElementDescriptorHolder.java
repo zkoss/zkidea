@@ -117,7 +117,11 @@ public class ZkDomElementDescriptorHolder {
 
 			LOG.assertTrue(tag.isValid());
 			LOG.assertTrue(desc.isValid());
-			return desc.getElementDescriptor(tag.getName(), desc.getDefaultNamespace());
+			XmlElementDescriptor descriptor = desc.getElementDescriptor(tag.getName(), desc.getDefaultNamespace());
+			if (kind == FileKind.ZUL_FILE && descriptor != null) {
+				return new ZulChildCompletionDescriptor(descriptor);
+			}
+			return descriptor;
 		}
 	}
 

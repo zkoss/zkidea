@@ -199,7 +199,7 @@ class ZkDomElementDescriptorProviderTest {
             assertNotNull(second,
                     "Second call must return a non-null descriptor after schema becomes available. "
                             + "Permanently caching null breaks suggestions for the entire IDE session.");
-            assertSame(elementDescriptorMock, second);
+            // Note: result is wrapped in ZulChildCompletionDescriptor; assertSame on mock not applicable.
         }
     }
 
@@ -249,6 +249,102 @@ class ZkDomElementDescriptorProviderTest {
     }
 
     /**
+     * Regression test for context-sensitive child completion inside &lt;listbox&gt;.
+     *
+     * <p>Bug: typing "&lt;" inside &lt;listbox&gt; shows ALL ZK components instead of only
+     * elements permitted by {@code listboxType} in zul.xsd:
+     * {@code listitem}, {@code listhead}, {@code listgroup}, {@code listgroupfoot},
+     * {@code frozen}, {@code auxhead}, and {@code baseGroup} items.
+     *
+     * <p>The holder must return the XSD-based {@link XmlElementDescriptor} for the
+     * &lt;listbox&gt; tag so that IntelliJ can call its
+     * {@code getElementsDescriptors(XmlTag context)} and get schema-constrained children.
+     * If the holder returns a descriptor that ignores the parent element's type
+     * (i.e., returns all top-level elements from the schema), the completion list will
+     * show unrelated components like {@code window}, {@code button}, {@code grid}, etc.
+     *
+     * <p>Feature file: {@code zul-code-completion.feature} — scenarios
+     * "Child completion inside &lt;listbox&gt; shows only schema-valid children".
+     */
+    @SuppressWarnings("unchecked")
+    @Test
+    void holder_getDescriptor_forListbox_returnsSchemaDescriptorWithConstrainedChildren() {
+        Project project = mock(Project.class);
+        XmlFile zulFile = mock(XmlFile.class);
+        XmlTag listboxTag = mock(XmlTag.class);
+        XmlNSDescriptorImpl nsMock = mock(XmlNSDescriptorImpl.class);
+        CachedValue<XmlNSDescriptorImpl> cachedValueMock = mock(CachedValue.class);
+        CachedValuesManager cacheManagerMock = mock(CachedValuesManager.class);
+
+        // Descriptors for valid listbox children only
+        XmlElementDescriptor listitemDesc = mock(XmlElementDescriptor.class);
+        XmlElementDescriptor listheadDesc = mock(XmlElementDescriptor.class);
+        XmlElementDescriptor listgroupDesc = mock(XmlElementDescriptor.class);
+        XmlElementDescriptor listgroupfootDesc = mock(XmlElementDescriptor.class);
+        XmlElementDescriptor frozenDesc = mock(XmlElementDescriptor.class);
+        XmlElementDescriptor auxheadDesc = mock(XmlElementDescriptor.class);
+        when(listitemDesc.getName()).thenReturn("listitem");
+        when(listheadDesc.getName()).thenReturn("listhead");
+        when(listgroupDesc.getName()).thenReturn("listgroup");
+        when(listgroupfootDesc.getName()).thenReturn("listgroupfoot");
+        when(frozenDesc.getName()).thenReturn("frozen");
+        when(auxheadDesc.getName()).thenReturn("auxhead");
+
+        // The XSD-based descriptor for <listbox> knows its allowed children.
+        // ZulChildCompletionDescriptor calls delegate.getElementsDescriptors(null) to bypass the
+        // xs:any ##other expansion bug, so the mock must be set up with a null context.
+        XmlElementDescriptor listboxDescriptor = mock(XmlElementDescriptor.class);
+        when(listboxDescriptor.getElementsDescriptors(null)).thenReturn(new XmlElementDescriptor[]{
+                listitemDesc, listheadDesc, listgroupDesc, listgroupfootDesc, frozenDesc, auxheadDesc
+        });
+
+        when(listboxTag.getContainingFile()).thenReturn(zulFile);
+        when(zulFile.getName()).thenReturn("index.zul");
+        when(listboxTag.isValid()).thenReturn(true);
+        when(listboxTag.getName()).thenReturn("listbox");
+        when(nsMock.isValid()).thenReturn(true);
+        when(nsMock.getDefaultNamespace()).thenReturn("http://www.zkoss.org/2005/zul");
+        when(nsMock.getElementDescriptor(eq("listbox"), anyString())).thenReturn(listboxDescriptor);
+        when(cachedValueMock.getValue()).thenReturn(nsMock);
+        doReturn(cachedValueMock).when(cacheManagerMock).createCachedValue(any(), anyBoolean());
+
+        try (MockedStatic<CachedValuesManager> cvm = mockStatic(CachedValuesManager.class)) {
+            cvm.when(() -> CachedValuesManager.getManager(project)).thenReturn(cacheManagerMock);
+
+            ZkDomElementDescriptorHolder holder = new ZkDomElementDescriptorHolder(project);
+            XmlElementDescriptor result = holder.getDescriptor(listboxTag);
+
+            assertNotNull(result,
+                    "Holder must return a non-null descriptor for <listbox> in a .zul file");
+            // result is wrapped in ZulChildCompletionDescriptor to fix the xs:any expansion bug;
+            // identity check on the underlying mock is not applicable.
+
+            // Verify the descriptor supplies only schema-valid children — not all ZK components
+            XmlElementDescriptor[] children = result.getElementsDescriptors(listboxTag);
+            java.util.Set<String> childNames = new java.util.HashSet<>();
+            for (XmlElementDescriptor child : children) {
+                childNames.add(child.getName());
+            }
+
+            assertTrue(childNames.contains("listitem"),   "listitem must be a valid child of <listbox>");
+            assertTrue(childNames.contains("listhead"),   "listhead must be a valid child of <listbox>");
+            assertTrue(childNames.contains("listgroup"),  "listgroup must be a valid child of <listbox>");
+            assertTrue(childNames.contains("listgroupfoot"), "listgroupfoot must be a valid child of <listbox>");
+            assertTrue(childNames.contains("frozen"),     "frozen must be a valid child of <listbox>");
+            assertTrue(childNames.contains("auxhead"),    "auxhead must be a valid child of <listbox>");
+
+            assertFalse(childNames.contains("window"),
+                    "window must NOT appear as a child of <listbox> — bug: all components shown");
+            assertFalse(childNames.contains("button"),
+                    "button must NOT appear as a child of <listbox> — bug: all components shown");
+            assertFalse(childNames.contains("grid"),
+                    "grid must NOT appear as a child of <listbox> — bug: all components shown");
+            assertFalse(childNames.contains("textbox"),
+                    "textbox must NOT appear as a child of <listbox> — bug: all components shown");
+        }
+    }
+
+    /**
      * Feature: "ZkDomElementDescriptorProvider returns a non-null descriptor for a &lt;window&gt; tag".
      *
      * <p>A real {@link ZkDomElementDescriptorHolder} must return a non-null descriptor for a
@@ -291,8 +387,7 @@ class ZkDomElementDescriptorProviderTest {
             assertNotNull(result,
                     "ZkDomElementDescriptorHolder must return a non-null descriptor for a .zul tag. "
                             + "'No suggestion' regression occurs when this returns null.");
-            assertSame(elementDescriptorMock, result,
-                    "Holder must return the exact descriptor object from the cached NS descriptor.");
+            // result is wrapped in ZulChildCompletionDescriptor; identity check on mock not applicable.
         }
     }
 }
