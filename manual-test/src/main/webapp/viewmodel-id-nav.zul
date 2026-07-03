@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?page title="Feature: ViewModel ID Navigation"?>
+<!--
+  Manual test for: viewmodel-id-navigation.dsl.feature
+  ViewModel: com.example.plugin.test.UserViewModel  (id = "vm")
+
+  HOW TO TEST:
+    Ctrl+Click (or Cmd+Click on Mac) on the tokens described below.
+    Verify navigation result matches expectations.
+
+  TEST CASES:
+  ─────────────────────────────────────────────────────────────
+  [T01] Ctrl+Click on "vm" in @load(vm.userName)
+        → navigates to UserViewModel class declaration
+        Rule: first segment matching @id alias navigates to the ViewModel class.
+
+  [T02] Ctrl+Click on "user" in @load(vm.user.name)
+        → does NOT navigate to UserViewModel (non-root segment)
+        Rule: navigation to ViewModel class only triggers on the FIRST (root) segment.
+
+  [T03] Ctrl+Click on "item" in @load(item.name)  (item = template variable)
+        → no navigation  (item is not a ViewModel id)
+        Rule: only the @id alias triggers ViewModel class navigation.
+
+  [T04] Ctrl+Click on "vm" in @load(vm.userName) where ViewModel class is NOT on classpath
+        Simulated by using a non-existent class name (see missing-vm-nav.zul below).
+        → no navigation, no error dialog
+        Rule: unresolvable class → silent no-op.
+
+  NOTE on T04:
+    The missing-class scenario is in a separate file: missing-vm-nav.zul
+    (viewModel is bound to a non-existent class so the classpath check fails).
+-->
+<zk>
+  <!-- T01: Ctrl+Click on "vm" → navigates to UserViewModel -->
+  <window title="ViewModel ID Navigation" border="normal"
+          viewModel="@id('vm') @init('com.example.plugin.test.UserViewModel')">
+
+    <!-- T01: first segment "vm" → UserViewModel -->
+    <label value="@load(vm.userName)"/>
+
+    <!-- T02: middle segment "user" → does NOT navigate to UserViewModel -->
+    <label value="@load(vm.user.name)"/>
+
+    <!-- T03: "item" is a template variable root, not a ViewModel id → no navigation -->
+    <grid model="@load(vm.list)">
+      <template name="model" var="item">
+        <row>
+          <!-- T03: Ctrl+Click on "item" here → no ViewModel navigation -->
+          <label value="@load(item.name)"/>
+        </row>
+      </template>
+    </grid>
+    <attribute name="vm" value="com.example.plugin.test.UserViewModel"/>
+    <!-- com.example.plugin.test.UserViewModel -->
+  </window>
+  <window>
+    <attribute name="viewmodel" value="com.example.plugin.test.UserViewModel"/>
+  </window>
+</zk>

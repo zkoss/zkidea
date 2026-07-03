@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?page title="Feature: Command Name Completion"?>
+<!--
+  Manual test for: command-name-completion.feature
+  ViewModel: com.example.plugin.test.MyViewModel
+
+  Commands in MyViewModel:
+    saveItem    @Command
+    save        effective name from @Command(value="save") on persistItem()
+    validate    @Command
+    commit      @Command
+    hello       @Command
+    broadcast   @GlobalCommand
+
+  Non-annotated public methods (must NOT appear in command context):
+    init()
+
+  Getter-backed properties (must NOT appear in command context):
+    list, name, active, crew, selectedItem, value
+
+  HOW TO TEST:
+    Place the cursor at the "|" marker indicated in each test-case comment
+    and press Ctrl+Space (Cmd+Space on Mac).
+    Verify the completion popup matches the expected items listed.
+
+  TEST CASES:
+  ─────────────────────────────────────────────────────────────────────────
+  [C01] @Command method names — Ctrl+Space inside @command(|)
+        EXPECT: saveItem, save, broadcast, validate, commit, hello
+
+  [C02] @Command with explicit annotation value — Ctrl+Space inside @command(|)
+        EXPECT: "save"  (annotation value of persistItem's @Command)
+        DO NOT EXPECT: "persistItem"  (method name must not appear)
+
+  [C03] @GlobalCommand in @command context — Ctrl+Space inside @command(|)
+        EXPECT: "broadcast"  (annotated @GlobalCommand)
+
+  [C04] Non-annotated method excluded — Ctrl+Space inside @command(|)
+        DO NOT EXPECT: "init"  (plain public method without @Command)
+
+  [C05] Property names excluded — Ctrl+Space inside @command(|)
+        DO NOT EXPECT: list, name, active  (getter-backed properties)
+
+  [C06] Annotation template suppression (bug fix) — Ctrl+Space inside @command(|)
+        DO NOT EXPECT: "@global-command" or "@global-command()" as a template suggestion
+        REASON: MVVMAnnotationCompletionProvider.isInsideAnnotationBody("@command(") = true
+                → annotation-name completions are suppressed when cursor is inside parens.
+        NOTE: The verified absence of this is the regression guard for the bug where
+              MVVMAnnotationCompletionProvider incorrectly offered "@global-command()"
+              because "@command()" does not start with "@global-command".
+
+  [C07] @GlobalCommand context — Ctrl+Space inside @global-command(|)
+        EXPECT: "broadcast"  (annotated @GlobalCommand)
+
+  [C08] Insert with single quotes — @command() — select "saveItem"
+        Cursor inside @command(|), select "saveItem" from popup
+        EXPECT result: @command('saveItem')
+
+  [C09] Insert with single quotes — @command() — select @GlobalCommand name
+        Cursor inside @command(|), select "broadcast" from popup
+        EXPECT result: @command('broadcast')
+
+  [C10] Insert with single quotes — @global-command() — select "broadcast"
+        Cursor inside @global-command(|), select "broadcast" from popup
+        EXPECT result: @global-command('broadcast')
+
+  [C11] No closing paren — Ctrl+Space inside @command(|  (no ")")
+        EXPECT: saveItem, validate  (same command list as C01)
+        REASON: ZkBindingReferenceProvider.extractAnnotations() uses the rest of the
+                text as the body when no matching ")" is found.
+
+  [C12] No closing paren + insert — select "saveItem" inside @command(
+        Cursor inside @command(, select "saveItem" from popup
+        EXPECT result: @command('saveItem')
+  ─────────────────────────────────────────────────────────────────────────
+-->
+<zk>
+  <window title="Command Name Completion" border="normal"
+          viewModel="@id('vm') @init('com.example.plugin.test.MyViewModel')">
+
+    <!-- C01-C06: @command context — Ctrl+Space inside the parens                     -->
+    <!-- C01: EXPECT saveItem, save, broadcast, validate, commit, hello                -->
+    <!-- C02: EXPECT "save"; DO NOT EXPECT "persistItem"                               -->
+    <!-- C03: EXPECT "broadcast"                                                       -->
+    <!-- C04: DO NOT EXPECT "init"                                                     -->
+    <!-- C05: DO NOT EXPECT list, name, active                                         -->
+    <!-- C06: DO NOT EXPECT "@global-command" or "@global-command()" in the popup      -->
+    <button label="C01-C06" onClick="@command()"/>
+
+    <!-- C07: @global-command context — Ctrl+Space inside the parens                  -->
+    <!-- EXPECT: "broadcast"                                                           -->
+    <button label="C07" onClick="@global-command()"/>
+
+    <!-- C08: Insert from @command — select "saveItem" → @command('saveItem')          -->
+    <button label="C08" onClick="@command()"/>
+
+    <!-- C09: Insert from @command — select "broadcast" → @command('broadcast')       -->
+    <button label="C09" onClick="@command()"/>
+
+    <!-- C10: Insert from @global-command — select "broadcast"                        -->
+    <!--      → @global-command('broadcast')                                           -->
+    <button label="C10" onClick="@global-command()"/>
+
+    <!-- C11: No closing paren — Ctrl+Space right after "("                           -->
+    <!-- EXPECT: saveItem, validate  (regression: was showing no completions)          -->
+    <!-- C12: select "saveItem" → @command('saveItem')                                 -->
+    <button label="C11+C12" onClick="@command("/>
+
+    <!-- Reference: fully typed valid expressions (for navigation/go-to-declaration)  -->
+    <button onClick="@command('saveItem')"/>
+    <button onClick="@command('save')"/>
+    <button onClick="@global-command('broadcast')"/>
+  </window>
+</zk>

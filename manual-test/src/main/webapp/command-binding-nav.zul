@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?page title="Feature: @command Binding Navigation"?>
+<!--
+  Manual test for: command-binding-navigation.feature
+  ViewModel: com.example.plugin.test.MyViewModel
+
+  Commands declared on MyViewModel:
+    saveItem    → @Command
+    persistItem → @Command(value="save")
+    broadcast   → @GlobalCommand
+    validate    → @Command
+    commit      → @Command
+
+  HOW TO TEST:
+    Place cursor inside the command name string and press Ctrl+Click (or Cmd+Click on Mac).
+    The IDE should navigate to the corresponding @Command/@GlobalCommand method.
+
+  TEST CASES:
+  ─────────────────────────────────────────────────────────────
+  [T01] Ctrl+Click on 'saveItem'   in @command('saveItem')            → MyViewModel.saveItem()
+  [T02] Ctrl+Click on "saveItem"   in @command("saveItem")  (dbl-quote) → MyViewModel.saveItem()
+  [T03] Ctrl+Click on @command keyword itself                          → MyViewModel.saveItem()
+  [T04] Ctrl+Click on 'save'       in @command('save')                → MyViewModel.persistItem()  (annotation value match)
+  [T05] Ctrl+Click on 'broadcast'  in @global-command('broadcast')    → MyViewModel.broadcast()
+  [T06] Ctrl+Click on @global-command keyword itself                  → MyViewModel.broadcast()
+  [T07] Ctrl+Click on 'saveItem'   in mixed expression                → MyViewModel.saveItem()
+  [T08] Ctrl+Click on 'broadcast'  in mixed expression                → MyViewModel.broadcast()
+  [T09] Ctrl+Click on 'saveItem'   in @command with extra args        → MyViewModel.saveItem()
+  [T10] Ctrl+Click on arg key 'index'                                 → no navigation
+  [T11] Ctrl+Click on 'validate'   in before='validate' guard         → MyViewModel.validate()
+  [T12] Ctrl+Click on 'commit'     in after='commit' guard            → MyViewModel.commit()
+  [T13] Ctrl+Click on 'validate'   in before guard of @bind           → MyViewModel.validate()
+  [T14] Ctrl+Click on 'validate'   and 'commit' in combined guards    → each navigates independently
+  [T15] Ctrl+Click on keyword 'before' itself                         → no navigation
+-->
+<zk>
+  <window title="Command Binding Navigation" border="normal"
+          viewModel="@id('vm') @init('com.example.plugin.test.MyViewModel')">
+
+    <!-- T01: @command single-quoted -->
+    <button label="Save (single-quote)" onClick="@command('saveItem')"/>
+
+    <!-- T02: @command double-quoted -->
+    <button label="Save (double-quote)" onClick='@command("saveItem")'/>
+
+    <!-- T03: Ctrl+Click on the @command keyword itself → same target -->
+    <button label="Click on annotation keyword" onClick="@command('saveItem')"/>
+
+    <!-- T04: command name != method name; annotation value="save" matches -->
+    <button label="Persist (via annotation value)" onClick="@command('save')"/>
+
+    <!-- T05: @global-command single-quoted -->
+    <button label="Broadcast (global)" onClick="@global-command('broadcast')"/>
+
+    <!-- T06: Ctrl+Click on @global-command keyword itself -->
+    <button label="Broadcast keyword nav" onClick="@global-command('broadcast')"/>
+
+    <!-- T07 + T08: Mixed @command and @global-command in one attribute -->
+    <button label="Mixed: local + global"
+            onClick="@command('saveItem') @global-command('broadcast')"/>
+
+    <!-- T09: @command with extra key-value arguments -->
+    <button label="Command with args"
+            onClick="@command('saveItem', index=10, keyword='hello')"/>
+
+    <!-- T10: Ctrl+Click on argument key 'index' → no navigation -->
+    <button label="Arg key — no nav"
+            onClick="@command('saveItem', index=10)"/>
+
+    <!-- T11: before-guard in @save -->
+    <textbox value="@save(vm.value, before='validate')"/>
+
+    <!-- T12: after-guard in @save -->
+    <textbox value="@save(vm.value, after='commit')"/>
+
+    <!-- T13: before-guard in @bind -->
+    <textbox value="@bind(vm.value, before='validate')"/>
+
+    <!-- T14: both before and after guards present -->
+    <textbox value="@save(vm.value, before='validate', after='commit')"/>
+
+    <!-- T15: Ctrl+Click on 'before' keyword itself → no navigation -->
+    <textbox value="@save(vm.value, before='validate')"/>
+
+  </window>
+</zk>

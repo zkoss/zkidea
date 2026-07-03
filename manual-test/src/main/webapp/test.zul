@@ -1,0 +1,28 @@
+<zk>
+    <window title="">
+        <button iconSclass=""/>
+    </window>
+    <listbox>
+        <
+    </listbox>
+    <grid>
+        <
+    </grid>
+    <tree>
+        <
+    </tree>
+    <selectbox>
+        <
+    </selectbox>
+    <toolbar>
+        <
+    </toolbar>
+    <menubar>
+        <
+    </menubar>
+    <navbar>
+        <nav>
+            <
+        </nav>
+    </navbar>
+</zk>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?page title="Feature: ViewModel Property Completion"?>
+<!--
+  Manual test for: vm-property-completion.feature
+  ViewModel: com.example.plugin.test.MyViewModel
+  Nested:    com.example.plugin.test.CrewModel  (returned by MyViewModel.getCrew())
+
+  MyViewModel properties (getter-backed):
+    list          → getList()         : List<String>
+    name          → getName()         : String
+    active        → isActive()        : boolean
+    crew          → getCrew()         : CrewModel
+    selectedItem  → getSelectedItem() : CrewModel
+    value         → getValue()        : String
+
+  MyViewModel non-getter public methods:
+    init()
+    saveItem()          @Command
+    persistItem()       @Command(value="save")
+    broadcast()         @GlobalCommand
+    validate()          @Command
+    commit()            @Command
+    hello()             @Command
+    setValue(String)    1 param
+
+  MyViewModel edge-case members (excluded from all completion):
+    getFiltered(String) — parameterised getter, NOT a property
+    protectedHelper()   — non-public, excluded from all completion
+
+  CrewModel properties:
+    name          → getName()         : String
+
+  NOTE: Command name completion tests have been moved to command-name-completion.zul.
+
+  HOW TO TEST:
+    Place the cursor at the "|" marker indicated in each test-case comment
+    and press Ctrl+Space (Cmd+Space on Mac).
+    Verify the completion popup matches the expected items listed.
+
+  TEST CASES:
+  ─────────────────────────────────────────────────────────────────────────
+  [T01] Ctrl+Space after "vm." in @load(vm.|)
+        EXPECT: list, name, active, crew, selectedItem, value  (property icon)
+                saveItem, broadcast, validate, commit, hello, init, setValue  (method icon)
+        EXPECT type text:  "name" → String   |  "active" → boolean   |  "list" → List<String>
+        EXPECT tail text:  each property suggestion shows "(MyViewModel)"
+        EXPECT tail text:  "setValue" shows "(1 params)"
+        DO NOT EXPECT: toString, hashCode, equals, notify, notifyAll, wait  (Object methods)
+        DO NOT EXPECT: filtered   (getFiltered has 1 param — not a valid property getter)
+        DO NOT EXPECT: protectedHelper  (non-public method)
+        DO NOT EXPECT: MyViewModel  (constructor must not appear as a suggestion)
+        ALSO VERIFY:   "name" appears exactly once in the list (no duplicates)
+
+  [T02] Boolean getter — "active" (not "isActive") in the completion list
+        → same cursor position as T01, verify "active" appears WITHOUT the "is" prefix
+
+  [T03] Ctrl+Space after "vm." in @bind(vm.|)
+        EXPECT: same property list as T01
+
+  [T04] Ctrl+Space after "vm." in @save(vm.|)
+        EXPECT: same property list as T01
+
+  [T05] Ctrl+Space after "vm." in @init(vm.|)
+        EXPECT: same property list as T01
+
+  [T06] Chained completion — Ctrl+Space after "vm.crew." in @load(vm.crew.|)
+        EXPECT: name  (from CrewModel.getName())
+        DO NOT EXPECT: list, active, crew  (those belong to MyViewModel, not CrewModel)
+
+  [T07] select "setValue" from completion after "vm."
+        → IDE inserts "setValue()" and places caret INSIDE the parentheses
+
+  [T08] select "saveItem" from completion after "vm."
+        → IDE inserts "saveItem()" and places caret AFTER the closing parenthesis
+
+  [T09] Unresolvable chain — Ctrl+Space after "vm.nonExistent."
+        EXPECT: completion list is EMPTY
+
+  [T10] Incomplete expression (no closing ")") — Ctrl+Space after "vm." in @load(vm.|
+        EXPECT: same property + method list as T01 (regression test)
+
+  [T11] Chained incomplete expression — Ctrl+Space after "vm.crew." in @load(vm.crew.|
+        EXPECT: name  (CrewModel.getName())
+        DO NOT EXPECT: list  (MyViewModel-only property)
+-->
+<zk>
+  <window title="ViewModel Property Completion" border="normal"
+          viewModel="@id('vm') @init('com.example.plugin.test.MyViewModel')">
+
+    <!-- T01 + T02: Property completion — Ctrl+Space after "vm." (with closing paren) -->
+    <!-- Expected: list, name, active, crew, selectedItem, value (property icon)  -->
+    <!--           saveItem, broadcast, validate, commit, hello, init, setValue (method icon) -->
+    <!-- Type text: name→String, active→boolean, list→List<String> -->
+    <!-- Tail text: each shows "(MyViewModel)"; setValue shows "(1 params)" -->
+    <!-- NOT expected: toString, hashCode, equals, notify, notifyAll, wait -->
+    <!--               filtered, protectedHelper, MyViewModel -->
+    <label value="@load(vm.)"/>
+
+    <!-- T03: @bind — same property list -->
+    <textbox value="@bind(vm.)"/>
+
+    <!-- T04: @save — same property list -->
+    <textbox value="@save(vm.)"/>
+
+    <!-- T05: @init — same property list -->
+    <label value="@init(vm.)"/>
+
+    <!-- T06: Chained completion — Ctrl+Space after "vm.crew." -->
+    <!-- Expected: name  (CrewModel.getName()) -->
+    <!-- NOT expected: list, active, crew  (MyViewModel properties) -->
+    <label value="@load(vm.crew.)"/>
+
+    <!-- T07: Method with params — select "setValue" → inserts setValue(), caret inside "()" -->
+    <label value="@load(vm.)"/>
+
+    <!-- T08: Zero-param method — select "saveItem" → inserts saveItem(), caret after "()" -->
+    <label value="@load(vm.)"/>
+
+    <!-- T09: Unresolvable chain — Ctrl+Space after "vm.nonExistent." -->
+    <!-- Expected: completion list is EMPTY -->
+    <label value="@load(vm.nonExistent.)"/>
+
+    <!-- T10: Incomplete expression (no closing ")") — Ctrl+Space after "vm." -->
+    <!-- Expected: same property + method list as T01 (regression test) -->
+    <label value="@load(vm."/>
+
+    <!-- T11: Chained incomplete expression — Ctrl+Space after "vm.crew." -->
+    <!-- Expected: name; NOT list (MyViewModel-only property) -->
+    <label value="@load(vm.crew."/>
+
+    <!-- Reference: fully typed valid expressions (for navigation/go-to-declaration baseline) -->
+    <listbox model="@load(vm.list)"/>
+    <label value="@load(vm.name)"/>
+    <checkbox checked="@load(vm.active)"/>
+    <label value="@load(vm.crew.name)"/>
+  </window>
+</zk>

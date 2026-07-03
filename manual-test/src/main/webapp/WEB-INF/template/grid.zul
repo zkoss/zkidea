@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Target template file for template-uri-navigation tests.
+  Referenced as: @load('/WEB-INF/template/grid.zul')
+  Ctrl+Click on the path should navigate to THIS file.
+-->
+<zk>
+  <grid>
+    <columns>
+      <column label="Name"/>
+      <column label="Value"/>
+    </columns>
+    <rows>
+      <row>
+        <label value="Row 1"/>
+        <label value="Data"/>
+      </row>
+    </rows>
+  </grid>
+</zk>

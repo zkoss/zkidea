@@ -1,0 +1,5 @@
+<zk>
+    <div viewModel="@id('vm') @init('com.example.plugin.test.MyViewModel')">
+        <button label="vm property" onClick="@command(vm.value)"/>
+    </div>
+</zk>

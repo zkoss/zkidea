@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Target template file used by scope-var-completion tests.
+  Referenced from <apply templateURI="/WEB-INF/template/row.zul" ...>
+-->
+<zk>
+  <row>
+    <label value="Row template"/>
+  </row>
+</zk>

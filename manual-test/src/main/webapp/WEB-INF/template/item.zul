@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Target template file for template-uri-navigation tests.
+  Referenced as: @init('/WEB-INF/template/item.zul')
+  Ctrl+Click on the path should navigate to THIS file.
+-->
+<zk>
+  <div>
+    <label value="Item Template"/>
+  </div>
+</zk>

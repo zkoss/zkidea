@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?page title="ZKIdea Plugin Manual Tests"?>
+<!--
+  Index page listing all manual test ZUL files.
+  One test file per plugin feature in src/test/resources/features/.
+-->
+<zk>
+  <window title="ZKIdea Plugin Manual Tests" border="normal" width="600px">
+    <vlayout>
+      <label value="Open the file for the feature you want to test:"/>
+      <separator/>
+
+      <groupbox mold="3d">
+        <caption label="binding_property_navigation.feature"/>
+        <a href="binding-property-nav.zul">binding-property-nav.zul</a>
+        <label style="color:gray; font-size:11px"
+               value=" — ViewModel property Ctrl+Click navigation (getXxx/isXxx, nested paths)"/>
+      </groupbox>
+
+      <groupbox mold="3d">
+        <caption label="command-binding-navigation.feature"/>
+        <a href="command-binding-nav.zul">command-binding-nav.zul</a>
+        <label style="color:gray; font-size:11px"
+               value=" — @command/@global-command Ctrl+Click navigation, before/after guards"/>
+      </groupbox>
+
+      <groupbox mold="3d">
+        <caption label="PR #62 — generic-inheritance binding chain (#61)"/>
+        <a href="generic-inheritance-nav.zul">generic-inheritance-nav.zul</a>
+        <label style="color:gray; font-size:11px"
+               value=" — resolve/navigate/complete vm.model.name past an inherited generic getter"/>
+      </groupbox>
+
+      <groupbox mold="3d">
+        <caption label="template-uri-navigation.feature"/>
+        <a href="template-uri-nav.zul">template-uri-nav.zul</a>
+        <label style="color:gray; font-size:11px"
+               value=" — @load/@init path Ctrl+Click navigation, web root resolution"/>
+      </groupbox>
+
+      <groupbox mold="3d">
+        <caption label="scope-var-completion.feature"/>
+        <a href="scope-var-completion.zul">scope-var-completion.zul</a>
+        <label style="color:gray; font-size:11px"
+               value=" — Ctrl+Space completion: vm id, template var, apply passdown"/>
+      </groupbox>
+
+      <groupbox mold="3d">
+        <caption label="viewmodel-id-navigation.dsl.feature"/>
+        <a href="viewmodel-id-nav.zul">viewmodel-id-nav.zul</a>
+        <label style="color:gray; font-size:11px"
+               value=" — Ctrl+Click on 'vm' navigates to ViewModel class"/>
+        <a href="missing-vm-nav.zul">missing-vm-nav.zul</a>
+        <label style="color:gray; font-size:11px"
+               value=" — missing class → silent no-op"/>
+      </groupbox>
+    </vlayout>
+  </window>
+</zk>

@@ -1,0 +1,5 @@
+<zk>
+    <window title="separate wpd">
+        <button label="submit"/>
+    </window>
+</zk>

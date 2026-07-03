@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?page title="Feature: ViewModel ID Navigation — Missing Class"?>
+<!--
+  Manual test for: viewmodel-id-navigation.dsl.feature
+  Rule: If the ViewModel class is not found on the classpath,
+        no navigation occurs and no error is shown.
+
+  TEST CASE:
+  [T04] Ctrl+Click on "vm" in @load(vm.userName)
+        ViewModel class "com.example.plugin.test.MissingViewModel" does NOT exist.
+        → no navigation, no error dialog shown.
+-->
+<zk>
+  <window title="Missing ViewModel — No Navigation" border="normal"
+          viewModel="@id('vm') @init('com.example.plugin.test.MissingViewModel')">
+
+    <!-- T04: class is absent from classpath → silent no-op on Ctrl+Click on "vm" -->
+    <label value="@load(vm.userName)"/>
+
+  </window>
+</zk>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?page title="Feature: MVVM Binding Chain Past Inherited Generic Getter (PR #62 / #61)"?>
+<!--
+  Manual test for: PR #62 — "fix #61: resolve MVVM binding chain past inherited generic getters"
+  Mirrors the automated test: ViewModelGenericInheritanceResolutionTest (zkidea plugin).
+
+  CLASS HIERARCHY UNDER TEST:
+  ─────────────────────────────────────────────────────────────
+      class CrewModel                       { String getName(); }   // no getBogus()
+      abstract class GenericVM<T>           { T getModel(); }        // getter on the GENERIC base
+      class CrewVM extends GenericVM<CrewModel> { }                  // binds T = CrewModel
+
+  So in @load(vm.model.name):
+      getModel() declares return type T  →  T is bound to CrewModel by CrewVM
+      →  "name" must resolve to CrewModel.getName().
+
+  THE BUG (before this PR):
+      The chain walker read getModel()'s return type as the bare type variable T,
+      failed to resolve it to a class, and marked "model" AND everything after it
+      (i.e. "name") as unresolved — shown RED — with no navigation and no completion.
+
+  ══════════════════════════════════════════════════════════════════════════════
+  HOW TO TEST — open this file in IntelliJ IDEA with the zkidea plugin installed.
+  ══════════════════════════════════════════════════════════════════════════════
+
+  ── A. HIGHLIGHTING (the core regression) ─────────────────────────────────────
+  [T01] Look at @load(vm.model.name) on the <label> below.
+        PASS IF: NO segment is red — "vm", "model" and "name" are all resolved.
+        FAIL IF: "model" and/or "name" are underlined red (the pre-fix behaviour).
+
+  [T02] Look at @load(vm.model.bogus) on the <label> below.
+        PASS IF: "vm" and "model" are NOT red, but "bogus" IS red/unresolved
+                 (CrewModel has no getBogus() — the red highlight is intentionally kept).
+        FAIL IF: "bogus" resolves (false positive), or "model" is also red (over-eager).
+
+  ── B. NAVIGATION (Ctrl+Click, or Cmd+Click on Mac) ───────────────────────────
+  [T03] Ctrl+Click on "model" in @load(vm.model.name)
+        PASS IF: navigates to GenericVM.getModel()  (the inherited generic getter).
+
+  [T04] Ctrl+Click on "name"  in @load(vm.model.name)
+        PASS IF: navigates to CrewModel.getName()   ← the exact fix this PR delivers.
+        FAIL IF: nothing happens / no navigation (pre-fix behaviour).
+
+  [T05] Ctrl+Click on "vm"    in @load(vm.model.name)
+        PASS IF: navigates to the CrewVM class declaration.
+
+  ── C. COMPLETION (Ctrl+Space) ────────────────────────────────────────────────
+  [T06] Put the caret right after the dot in @load(vm.model.|) on the T06 line
+        below and press Ctrl+Space.
+        PASS IF: "name" appears in the completion popup (property reached through the
+                 substituted CrewModel type).
+        FAIL IF: no ViewModel properties are offered (pre-fix behaviour).
+
+  OVERALL PASS: T01, T03, T04, T05, T06 behave as their PASS lines describe, AND
+                T02 keeps "bogus" red. Any FAIL line means the PR fix is not active.
+-->
+<zk>
+  <window title="Generic Inheritance Binding Navigation" border="normal"
+          viewModel="@id('vm') @init('com.example.plugin.test.CrewVM')">
+
+    <!-- T01 / T03 / T04 / T05: model (T→CrewModel).name → CrewModel.getName() -->
+    <label value="@load(vm.model.name)"/>
+
+    <!-- T02: negative — CrewModel has no getBogus(); "bogus" must stay red -->
+    <label value="@load(vm.model.bogus)"/>
+
+    <!-- T06: caret after the last dot, then Ctrl+Space → expect "name" suggested -->
+    <label value="@load(vm.model.)"/>
+
+  </window>
+</zk>

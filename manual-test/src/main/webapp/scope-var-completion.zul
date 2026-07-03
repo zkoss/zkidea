@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?page title="Feature: Scope Variable Completion"?>
+<!--
+  Manual test for: scope-var-completion.feature
+  ViewModel: com.example.plugin.test.MyViewModel  (id = "vm")
+
+  HOW TO TEST:
+    Place the cursor at the indicated position and press Ctrl+Space for completion.
+    Expect the items listed in each test case.
+
+  TEST CASES:
+  ─────────────────────────────────────────────────────────────
+  [T01–T06] ViewModel ID "vm" is offered at root position inside ANY binding annotation:
+    @load(    @bind(    @save(    @init(    @command(    @global-command(
+    → completion list contains "vm"
+
+  [T07] Partial prefix already typed: @load(v  → "vm" still appears
+  [T08] <template var="member">: completion inside template body → "member" offered
+  [T09] Nested templates: outer var="item", inner var="row" → both "item" and "row" offered
+  [T10] <template> with no var attr → default variable "each" is suggested
+  [T11] <apply ctx="..."> → user-defined "ctx" offered; ZK-system "templateURI" excluded
+  [T12] <apply templateURI="..." if="${cond}"> → no suggestions (all are system attributes)
+  [T13] All 10 ZK system attributes on <apply> → none of them appear in completion
+  [T14] Editing own value on current <apply> → the tag's own attrs are NOT offered (circular guard)
+  [T15] Cursor after dot: @load(vm.  → no scope var suggestions (property chain position)
+  [T16] Property name follows dot: @load(vm.items  → no scope var suggestions
+  [T17] @converter( → no scope var suggestions (class-reference annotation)
+  [T18] @validator( → no scope var suggestions
+  [T19] No ViewModel bound → no suggestions at all
+  [T20] Plain XML file (not .zul) → no suggestions
+-->
+<zk>
+  <window title="Scope Variable Completion" border="normal"
+          viewModel="@id('vm') @init('com.example.plugin.test.MyViewModel')">
+
+    <!-- T01–T06: Root position in every recognised annotation — invoke Ctrl+Space after '(' -->
+    <label value="@load("/>       <!-- T01: expect "vm" in list -->
+    <label value="@bind("/>       <!-- T02 -->
+    <label value="@save("/>       <!-- T03 -->
+    <label value="@init("/>       <!-- T04 -->
+    <button onClick="@command("/> <!-- T05 -->
+    <button onClick="@global-command("/> <!-- T06 -->
+
+    <!-- T07: Partial prefix typed — still offers "vm" -->
+    <label value="@load(v"/>
+
+    <!-- T15: After dot — no scope var suggestion (this is property chain position) -->
+    <label value="@load(vm."/>
+
+    <!-- T16: Property name partially typed after dot — still no scope var suggestion -->
+    <label value="@load(vm.items"/>
+
+    <!-- T17: @converter — no scope var suggestion -->
+    <label value="@converter("/>
+
+    <!-- T18: @validator — no scope var suggestion -->
+    <label value="@validator("/>
+
+    <!-- ── T08: <template var="member"> ─────────────────────────────────────── -->
+    <!--
+      Place cursor after @load( inside the label below.
+      Completion list must contain "member".
+    -->
+    <grid model="@load(vm.list)">
+      <template name="model" var="member">
+        <row>
+          <!-- T08: cursor here, invoke Ctrl+Space → expect "member" and "vm" -->
+          <label value="@load("/>
+        </row>
+      </template>
+    </grid>
+
+    <!-- ── T09: Nested templates — both "row" and "item" offered ─────────────── -->
+    <grid model="@load(vm.list)">
+      <template name="model" var="item">
+        <row>
+          <grid model="@load(item.someList)">
+            <template name="model" var="row">
+              <row>
+                <!-- T09: cursor here → expect "row", "item", and "vm" in completion list -->
+                <label value="@load("/>
+              </row>
+            </template>
+          </grid>
+        </row>
+      </template>
+    </grid>
+
+    <!-- ── T10: <template> with no var attr — default "each" is suggested ─────── -->
+    <grid model="@load(vm.list)">
+      <template name="model">
+        <row>
+          <!-- T10: cursor here → "each" and "vm" in completion list -->
+          <label value="@load("/>
+        </row>
+      </template>
+    </grid>
+
+    <!-- ── T11: <apply> with user-defined attr "ctx" and system attr "templateURI" -->
+    <!--
+      Inside the included template (row.zul), "ctx" should be offered,
+      "templateURI" should NOT be offered.
+      Here we test it as an ancestor — the label inside the apply tag's scope.
+    -->
+    <apply ctx="@load(vm.crew)" templateURI="/WEB-INF/template/row.zul">
+      <!-- T11: cursor here → "ctx" in list, "templateURI" NOT in list -->
+      <label value="@load("/>
+    </apply>
+
+    <!-- ── T12: <apply> with only system attributes — no suggestions from apply ── -->
+    <apply templateURI="/WEB-INF/template/row.zul" if="${true}">
+      <!-- T12: cursor here → no attr from this apply offered -->
+      <label value="@load("/>
+    </apply>
+
+    <!-- ── T13: <apply> with all 10 reserved system attributes — none suggested ── -->
+    <!--
+      Reserved: templateURI, template, if, unless, forEach, forEachBegin,
+                forEachEnd, forEachStep, forEachStatus, forEachIndex
+    -->
+    <apply templateURI="/WEB-INF/template/row.zul"
+           template="someTemplate"
+           if="${true}"
+           unless="${false}"
+           forEach="${vm.list}"
+           forEachBegin="0"
+           forEachEnd="10"
+           forEachStep="1"
+           forEachStatus="status"
+           forEachIndex="idx">
+      <!-- T13: cursor here → none of the 10 reserved names in completion list -->
+      <label value="@load("/>
+    </apply>
+
+    <!-- ── T14: Editing own value of current <apply> — own attrs NOT suggested ── -->
+    <!--
+      The developer is typing the "ctx" attribute value on THIS apply tag.
+      "ctx" must not appear in its own completion (circular reference guard).
+      Test: place cursor inside the value of ctx and invoke Ctrl+Space.
+    -->
+    <apply ctx="@load(" templateURI="/WEB-INF/template/row.zul"/>
+    <!-- T14: cursor inside the @load( above → "ctx" must NOT appear in list -->
+
+  </window>
+</zk>

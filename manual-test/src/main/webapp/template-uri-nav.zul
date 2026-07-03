@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?page title="Feature: Template URI Navigation"?>
+<!--
+  Manual test for: template-uri-navigation.feature
+  Web root: src/main/webapp/  (contains WEB-INF/web.xml)
+
+  HOW TO TEST:
+    Place the cursor anywhere inside the path string and press Ctrl+Click.
+    The IDE should open the referenced .zul file.
+
+  IMPORTANT: The web root is determined by walking up from the ZUL file's location
+  until a directory containing WEB-INF/web.xml is found.
+
+  TEST CASES:
+  ─────────────────────────────────────────────────────────────
+  [T01] Ctrl+Click on '/WEB-INF/template/grid.zul' in @load  → opens WEB-INF/template/grid.zul
+  [T02] Ctrl+Click on '/WEB-INF/template/item.zul' in @init  → opens WEB-INF/template/item.zul
+  [T03] Double-quoted path in @load                            → same as T01
+  [T04] Space after '(' before path: @load( '/WEB-INF/grid.zul')  → still navigates
+  [T05] Start typing path: @load('/WEB-INF/template/  → completion offers files in that dir
+
+  NEGATIVE TESTS (no navigation expected):
+  [T06] @bind('/WEB-INF/template/grid.zul')   → @bind is not a template-uri annotation
+  [T07] @save('/WEB-INF/template/grid.zul')   → not recognised
+  [T08] @command('/WEB-INF/template/grid.zul') → not recognised
+  [T09] Relative path (no leading slash): @load('template/item.zul') → no navigation
+-->
+<zk>
+  <window title="Template URI Navigation" border="normal"
+          viewModel="@id('vm') @init('com.example.plugin.test.MyViewModel')">
+
+    <!-- T01: @load single-quoted absolute path -->
+    <apply templateURI="@load('/WEB-INF/template/grid.zul')"/>
+
+    <!-- T02: @init single-quoted absolute path -->
+    <apply templateURI="@init('/WEB-INF/template/item.zul')"/>
+
+<!--     T03: @load double-quoted absolute path -->
+    <apply templateURI='@load("/WEB-INF/template/grid.zul")'/>
+
+    <!-- T04: optional whitespace between '(' and the opening quote -->
+    <apply templateURI="@load( '/WEB-INF/template/grid.zul')"/>
+
+    <!--
+      T05: Partial path for completion testing.
+      Place cursor after the last '/' and invoke Ctrl+Space.
+      The IDE should offer: grid.zul, item.zul, row.zul
+    -->
+    <apply templateURI="@load('/WEB-INF/template/"/>
+
+    <!-- T06–T08: Annotations not recognised for template URI navigation -->
+    <apply templateURI="@bind('/WEB-INF/template/grid.zul')"/>
+    <apply templateURI="@save('/WEB-INF/template/grid.zul')"/>
+    <apply templateURI="@command('/WEB-INF/template/grid.zul')"/>
+
+    <!-- T09: Relative path — no navigation expected -->
+<!--    <apply templateURI="@load('template/item.zul')"/>-->
+
+  </window>
+</zk>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?page title="Feature: MVVM Property Navigation"?>
+<!--
+  Manual test for: binding_property_navigation.feature
+  ViewModel: com.example.plugin.test.MyViewModel
+
+  HOW TO TEST:
+    Place cursor on a property name and press Ctrl+Click (or Cmd+Click on Mac).
+    The IDE should navigate to the corresponding getter method in MyViewModel.
+
+  PROPERTY NAVIGATION TESTS:
+  ─────────────────────────────────────────────────────────────
+  [T01] Ctrl+Click on "list"   in @load(vm.list)   → navigates to MyViewModel.getList()
+  [T02] Ctrl+Click on "name"   in @load(vm.name)   → navigates to MyViewModel.getName()
+  [T03] Ctrl+Click on "active" in @load(vm.active) → navigates to MyViewModel.isActive()  (boolean getter)
+  [T04] Ctrl+Click on "crew"   in @load(vm.crew.name) → navigates to MyViewModel.getCrew()
+  [T05] Ctrl+Click on "name"   in @load(vm.crew.name) → navigates to CrewModel.getName()  (nested path, 2nd segment)
+
+  VIEWMODEL ID NAVIGATION TESTS (also see viewmodel-id-nav.zul):
+  [T06] Ctrl+Click on "vm" in @load(vm.list) → navigates to MyViewModel class declaration
+
+  ANNOTATION VARIANT TESTS (@load, @bind, @save, @init all work):
+  [T07] Ctrl+Click on "list" in @bind(vm.list) → navigates to MyViewModel.getList()
+  [T08] Ctrl+Click on "list" in @save(vm.list) → navigates to MyViewModel.getList()
+  [T09] Ctrl+Click on "list" in @init(vm.list) → navigates to MyViewModel.getList()  (unusual but valid)
+
+  NESTED VIEWMODEL SCOPE TESTS:
+  [T10] Inside inner div: Ctrl+Click on "inner" in @load(inner.innerProperty)
+        → navigates to InnerViewModel.getInnerProperty()  (nearest ancestor wins)
+  [T11] Inside outer label: Ctrl+Click on "outer" in @load(outer.outerProperty)
+        → navigates to OuterViewModel.getOuterProperty()
+
+  NEGATIVE TESTS (no navigation expected):
+  [T12] Ctrl+Click on "vm" in a non-@binding attribute (e.g. label value="vm.list")
+        → no navigation
+-->
+<zk>
+  <!-- ── T01–T06: Simple property navigation with @load ────────────────────── -->
+  <window title="Binding Property Navigation" border="normal"
+          viewModel="@id('vm') @init('com.example.plugin.test.MyViewModel')">
+
+    <!-- T01: getList() -->
+    <listbox model="@load(vm.list)">
+      <listitem label="static item"/>
+    </listbox>
+
+    <!-- T02: getName() -->
+    <label value="@load(vm.name)"/>
+
+    <!-- T03: isActive() — boolean getter -->
+    <checkbox checked="@load(vm.active)"/>
+
+    <!-- T04 + T05: getCrew() then CrewModel.getName() — nested path -->
+    <label value="@load(vm.crew.name)"/>
+
+    <!-- T06: vm itself navigates to MyViewModel class — see also viewmodel-id-nav.zul -->
+    <textbox value="@load(vm.list)"/>
+
+    <!-- T07: @bind annotation -->
+    <textbox value="@bind(vm.list)"/>
+
+    <!-- T08: @save annotation -->
+    <textbox value="@save(vm.list)"/>
+
+    <!-- T09: @init annotation (unusual but recognized) -->
+    <label value="@init(vm.list)"/>
+
+    <!-- T12: plain attribute — no navigation expected -->
+    <label value="vm.list"/>
+
+    <!-- ── T10 + T11: Nested viewModel — nearest ancestor wins ────────────── -->
+    <!--
+      outer label: Ctrl+Click on "outer" in @load(outer.outerProperty)
+                   → OuterViewModel.getOuterProperty()   [T11]
+    -->
+    <window viewModel="@id('outer') @init('com.example.plugin.test.OuterViewModel')">
+      <label value="@load(outer.outerProperty)"/>
+
+      <!--
+        inner div: Ctrl+Click on "inner" in @load(inner.innerProperty)
+                   → InnerViewModel.getInnerProperty()   [T10]
+        "outer.outerProperty" here must still resolve to OuterViewModel (not inner)
+        because findViewModelTag walks up to the nearest tag WITH viewModel attr.
+      -->
+      <div viewModel="@id('inner') @init('com.example.plugin.test.InnerViewModel')">
+        <label value="@load(inner.innerProperty)"/>
+        <!-- outer scope is no longer the nearest ancestor here -->
+        <label value="@load(outer.outerProperty)"/>
+      </div>
+    </window>
+
+  </window>
+</zk>
