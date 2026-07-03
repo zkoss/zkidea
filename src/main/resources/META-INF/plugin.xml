@@ -59,6 +59,11 @@
     ]]></description>
 
      <change-notes><![CDATA[
+      <p>0.7.2</p>
+      <ul>
+          <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/60">#60 Child completion inside &lt;listbox&gt; shows all ZK components instead of schema-valid children only</a></li>
+          <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/61">#61 MVVM binding chain stops resolving past an inherited generic getter (generic type arguments not substituted)</a></li>
+      </ul>
       <p>0.7.1</p>
       <ul>
           <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/58">#58 Component tag and attribute completion fails to work in a ZUL file</a></li>
