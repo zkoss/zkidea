@@ -25,11 +25,14 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiModifier;
+import com.intellij.psi.PsiSubstitutor;
 import com.intellij.psi.PsiType;
 import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.util.TypeConversionUtil;
 import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.zkoss.zkidea.lang.ZulFileType;
 
@@ -395,13 +398,18 @@ public class ZulDomUtil {
 		if (segments.length < 2 || !segments[0].equals(vmId) || vmClass == null) return null;
 
 		PsiClass currentClass = vmClass;
+		PsiSubstitutor currentSubst = PsiSubstitutor.EMPTY;
 		PsiType lastType = null;
 		for (int i = 1; i < segments.length; i++) {
 			PsiMethod getter = findGetter(currentClass, segments[i]);
 			if (getter == null) return null;
-			lastType = getter.getReturnType();
+			// Resolve the getter's return type through the receiver's type arguments so
+			// that a generic type inherited from a generic base (e.g. List<T> declared in
+			// GenericVM<T>) is seen with T bound to the concrete type argument.
+			lastType = substituteReturnType(currentClass, currentSubst, getter);
 			if (lastType == null) return null;
 			if (i < segments.length - 1) {
+				currentSubst = substitutorOf(lastType);
 				currentClass = resolveTypeToClass(lastType, context);
 				if (currentClass == null) return null;
 			}
@@ -436,11 +444,13 @@ public class ZulDomUtil {
 		if (segments.length < 2 || !segments[0].equals(vmId) || vmClass == null) return null;
 
 		PsiClass currentClass = vmClass;
+		PsiSubstitutor currentSubst = PsiSubstitutor.EMPTY;
 		for (int i = 1; i < segments.length; i++) {
 			PsiMethod getter = findGetter(currentClass, segments[i]);
 			if (getter == null) return null;
-			PsiType returnType = getter.getReturnType();
+			PsiType returnType = substituteReturnType(currentClass, currentSubst, getter);
 			if (returnType == null) return null;
+			currentSubst = substitutorOf(returnType);
 			currentClass = resolveTypeToClass(returnType, context);
 			if (currentClass == null) return null;
 		}
@@ -462,6 +472,69 @@ public class ZulDomUtil {
 		}
 		return JavaPsiFacade.getInstance(context.getProject())
 				.findClass(canonicalText, GlobalSearchScope.allScope(context.getProject()));
+	}
+
+	/**
+	 * Returns the return type of {@code method} as seen through {@code owner}, i.e.
+	 * with the type parameters declared on {@code method}'s class replaced by the type
+	 * arguments that {@code owner} (parameterised by {@code ownerSubstitutor}) binds for
+	 * them.
+	 * <p>
+	 * This is what makes an inherited generic getter resolve to a concrete type. For a
+	 * ViewModel {@code FooVM extends GenericVM<Entity>} where {@code GenericVM<T>}
+	 * declares {@code T getModel()}, calling this with {@code owner = FooVM} yields
+	 * {@code Entity} instead of the bare type variable {@code T} — so a chained binding
+	 * such as {@code vm.model.someProperty} can keep resolving past {@code model}.
+	 * <p>
+	 * Falls back to the raw (unsubstituted) return type when the hierarchy cannot be
+	 * analysed, so behaviour never regresses below the previous text-based resolution.
+	 *
+	 * @return the (possibly substituted) return type, or {@code null} if the method has
+	 *         no return type
+	 */
+	@Nullable
+	public static PsiType substituteReturnType(@Nullable PsiClass owner,
+	                                           @Nullable PsiSubstitutor ownerSubstitutor,
+	                                           @Nullable PsiMethod method) {
+		if (method == null) return null;
+		PsiType raw = method.getReturnType();
+		if (raw == null) return null;
+		PsiClass declaring = method.getContainingClass();
+		if (owner == null || declaring == null) return raw;
+		PsiSubstitutor base = ownerSubstitutor != null ? ownerSubstitutor : PsiSubstitutor.EMPTY;
+		try {
+			PsiSubstitutor substitutor = declaring.equals(owner)
+					? base
+					: TypeConversionUtil.getSuperClassSubstitutor(declaring, owner, base);
+			PsiType substituted = substitutor.substitute(raw);
+			return substituted != null ? substituted : raw;
+		} catch (RuntimeException e) {
+			// Hierarchy not analysable (e.g. unrelated classes or test mocks) — be
+			// conservative and keep the raw type rather than dropping resolution.
+			return raw;
+		}
+	}
+
+	/**
+	 * Returns the substitutor that resolves the type parameters of {@code type}'s class
+	 * (for arrays, of the component type), so the next segment of a binding chain can be
+	 * resolved with the correct type arguments. Returns {@link PsiSubstitutor#EMPTY} when
+	 * {@code type} is not a class type or cannot be resolved.
+	 */
+	@NotNull
+	public static PsiSubstitutor substitutorOf(@Nullable PsiType type) {
+		PsiType deep = type != null ? type.getDeepComponentType() : null;
+		if (deep instanceof PsiClassType) {
+			try {
+				PsiClassType.ClassResolveResult result = ((PsiClassType) deep).resolveGenerics();
+				if (result != null && result.getSubstitutor() != null) {
+					return result.getSubstitutor();
+				}
+			} catch (RuntimeException ignored) {
+				// fall through to EMPTY
+			}
+		}
+		return PsiSubstitutor.EMPTY;
 	}
 
 	/**

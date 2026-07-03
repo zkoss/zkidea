@@ -12,6 +12,8 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.PsiReferenceProvider;
+import com.intellij.psi.PsiSubstitutor;
+import com.intellij.psi.PsiType;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.util.ProcessingContext;
@@ -353,6 +355,7 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
         // Walk property/method segments — text ranges cover only the identifier name,
         // excluding any parenthesized arguments so only the method name is clickable.
         PsiClass currentClass = vmClass;
+        PsiSubstitutor currentSubst = PsiSubstitutor.EMPTY;
         for (int i = 1; i < segments.size(); i++) {
             ChainSegment seg = segments.get(i);
             int segStart = bodyOffsetInElement + seg.nameStartInBody;
@@ -360,18 +363,20 @@ public class ZkBindingReferenceProvider extends PsiReferenceProvider {
             references.add(new ViewModelPropertyReference(
                     element, propRange, currentClass, seg.name, isCommandContext));
 
-            // Resolve type for the next segment
-            currentClass = resolvePropertyType(currentClass, seg.name, element);
+            // Resolve the owner class for the next segment, carrying the generic type
+            // arguments so that properties reached through an inherited generic getter
+            // (e.g. T getModel() declared in a generic base) keep resolving.
+            PsiMethod method = currentClass != null
+                    ? ZulDomUtil.findGetterOrMethod(currentClass, seg.name) : null;
+            if (method == null) {
+                LOG.debug("processChain: no getter or method for '" + seg.name + "'");
+                currentClass = null;
+                currentSubst = PsiSubstitutor.EMPTY;
+                continue;
+            }
+            PsiType nextType = ZulDomUtil.substituteReturnType(currentClass, currentSubst, method);
+            currentSubst = ZulDomUtil.substitutorOf(nextType);
+            currentClass = ZulDomUtil.resolveTypeToClass(nextType, element);
         }
-    }
-
-    private PsiClass resolvePropertyType(PsiClass ownerClass, String property, PsiElement context) {
-        if (ownerClass == null) return null;
-        PsiMethod method = ZulDomUtil.findGetterOrMethod(ownerClass, property);
-        if (method == null) {
-            LOG.debug("resolvePropertyType: no getter or method for '" + property + "'");
-            return null;
-        }
-        return ZulDomUtil.resolveTypeToClass(method.getReturnType(), context);
     }
 }

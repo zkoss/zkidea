@@ -58,4 +58,25 @@ When a multi-segment chain is encountered (e.g., `vm.user.name`), the plugin res
 *   `user` → `User` class (via `MyViewModel.getUser()`)
 *   `name` → suggestion from `User` class
 
+#### Generic type substitution
+
+Getters are frequently inherited from a generic base class. To resolve the chain past
+such a getter, the plugin substitutes type parameters along the inheritance chain rather
+than reading the raw declared return type. For example:
+
+```
+class CrewModel        { String getName(); }
+abstract class GenericVM<T> { T getModel(); }   // getter declared on the generic base
+class CrewVM extends GenericVM<CrewModel> { }   // binds T = CrewModel
+```
+
+For `vm.model.name`, `getModel()` declares the return type as the type variable `T`.
+`ZulDomUtil.substituteReturnType(owner, ownerSubstitutor, method)` maps `T` to the type
+argument bound by the concrete ViewModel (`CrewModel`) using
+`TypeConversionUtil.getSuperClassSubstitutor`, and `ZulDomUtil.substitutorOf(type)` carries
+the resulting substitutor to the next segment so deeper generic chains keep resolving. Both
+`ZkBindingReferenceProvider` (navigation/highlighting) and the `ZulDomUtil` chain walkers
+(collection element / model type inference) use this path. The substitution falls back to
+the raw return type if the hierarchy cannot be analysed, so resolution never regresses.
+
 For more details, see the original implementation notes in the respective feature files.
