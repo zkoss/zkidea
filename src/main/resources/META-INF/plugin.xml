@@ -59,6 +59,10 @@
     ]]></description>
 
      <change-notes><![CDATA[
+      <p>0.7.3</p>
+      <ul>
+          <li><a href="https://github.com/zkoss/zkidea/issues/64">#64 Add support for IntelliJ IDEA 2026.2</a></li>
+      </ul>
       <p>0.7.2</p>
       <ul>
           <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/60">#60 Child completion inside &lt;listbox&gt; shows all ZK components instead of schema-valid children only</a></li>

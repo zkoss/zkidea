@@ -4,7 +4,7 @@ plugins {
 }
 
 group 'org.zkoss.zkidea'
-version '0.7.2'
+version '0.7.3'
 
 repositories {
     mavenCentral()
@@ -32,7 +32,7 @@ intellij {
 }
 patchPluginXml {
     sinceBuild = '233.2'
-    untilBuild = '261.*'
+    untilBuild = '262.*'
 }
 
 java.sourceCompatibility = JavaVersion.VERSION_17
