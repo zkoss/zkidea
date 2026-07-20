@@ -61,7 +61,7 @@
      <change-notes><![CDATA[
       <p>0.7.3</p>
       <ul>
-          <li><a href="https://github.com/zkoss/zkidea/issues/64">#64 Add support for IntelliJ IDEA 2026.2</a></li>
+          <li><a href="https://github.com/zkoss/zkidea/issues/64">#64 Add support for IntelliJ IDEA 2026.2</a> — remove the until-build upper bound so the plugin stays compatible with current and future IntelliJ IDEA releases without a per-version update</li>
       </ul>
       <p>0.7.2</p>
       <ul>

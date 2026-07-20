@@ -32,7 +32,9 @@ intellij {
 }
 patchPluginXml {
     sinceBuild = '233.2'
-    untilBuild = '262.*'
+    // No upper bound: compatible with all future IDE builds. Run `./gradlew runPluginVerifier`
+    // against new/EAP builds to catch API breakage instead of bumping until-build each release.
+    untilBuild = provider { null }
 }
 
 java.sourceCompatibility = JavaVersion.VERSION_17
