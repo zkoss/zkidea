@@ -1,0 +1,115 @@
+package org.zkoss.zkpreview.jakarta;
+
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletContextEvent;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import org.zkoss.zkpreview.*;
+import org.zkoss.zkpreview.jakarta.mock.*;
+
+import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Drives {@code DHtmlLayoutServlet} (page render) and {@code DHtmlUpdateServlet}
+ * (resource serving under {@code /zkau/web/*}) against a jakarta.servlet-flavoured
+ * ZK classpath, entirely via mock servlet objects and reflection (extends the
+ * proven approach in the uncommitted spike at {@code src/integrationTest/.../ZkMockRenderer.java}).
+ */
+public class JakartaRenderEngine implements RenderEngine {
+
+    private final ScopedZkClassLoader zkLoader;
+    private final MockServletContext servletContext;
+    private final MockHttpSession session;
+    private final Object layoutServlet;
+    private final Method layoutServiceMethod;
+    private final Object updateServlet;
+    private final Method updateServiceMethod;
+
+    public JakartaRenderEngine(List<File> zkJars, Path webappDir, ForbiddenLoadTracker forbiddenLoadTracker) {
+        this.zkLoader = IsolatedRuntime.buildZkClassLoader(zkJars, JakartaRenderEngine.class.getClassLoader(),
+                forbiddenLoadTracker);
+        this.servletContext = new MockServletContext(webappDir);
+        this.session = new MockHttpSession(servletContext);
+
+        ClassLoader prev = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(zkLoader);
+        try {
+            Class<?> listenerCls = zkLoader.loadClass("org.zkoss.zk.ui.http.HttpSessionListener");
+            Object listener = listenerCls.getConstructor().newInstance();
+            listenerCls.getMethod("contextInitialized", ServletContextEvent.class)
+                    .invoke(listener, new ServletContextEvent(servletContext));
+
+            Class<?> layoutCls = zkLoader.loadClass("org.zkoss.zk.ui.http.DHtmlLayoutServlet");
+            layoutServlet = layoutCls.getConstructor().newInstance();
+            MockServletConfig layoutConfig = new MockServletConfig("zkLoader", servletContext,
+                    Map.of("update-uri", "/zkau", "compress", "false"));
+            layoutCls.getMethod("init", ServletConfig.class).invoke(layoutServlet, layoutConfig);
+            layoutServiceMethod = layoutCls.getMethod("service", ServletRequest.class, ServletResponse.class);
+
+            Class<?> updateCls = zkLoader.loadClass("org.zkoss.zk.au.http.DHtmlUpdateServlet");
+            updateServlet = updateCls.getConstructor().newInstance();
+            MockServletConfig updateConfig = new MockServletConfig("auEngine", servletContext, Map.of());
+            updateCls.getMethod("init", ServletConfig.class).invoke(updateServlet, updateConfig);
+            updateServiceMethod = updateCls.getMethod("service", ServletRequest.class, ServletResponse.class);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Failed to bootstrap the ZK mock webapp", e);
+        } finally {
+            Thread.currentThread().setContextClassLoader(prev);
+        }
+    }
+
+    @Override
+    public RenderResult renderZul(String zulPath) {
+        ClassLoader prev = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(zkLoader);
+        try {
+            MockHttpServletRequest req = new MockHttpServletRequest(session, zulPath);
+            MockHttpServletResponse resp = new MockHttpServletResponse();
+            layoutServiceMethod.invoke(layoutServlet, req, resp);
+            return RenderResult.success(resp.getContent());
+        } catch (InvocationTargetException e) {
+            return RenderResult.failure(ErrorMapper.map(zulPath, e.getCause() != null ? e.getCause() : e));
+        } catch (Exception e) {
+            return RenderResult.failure(ErrorMapper.map(zulPath, e));
+        } finally {
+            Thread.currentThread().setContextClassLoader(prev);
+        }
+    }
+
+    @Override
+    public ResourceResult resource(String pathInfo) {
+        ClassLoader prev = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(zkLoader);
+        try {
+            MockHttpServletRequest req = new MockHttpServletRequest(session, "/zkau", pathInfo, "GET");
+            MockHttpServletResponse resp = new MockHttpServletResponse();
+            updateServiceMethod.invoke(updateServlet, req, resp);
+            int status = resp.getStatus();
+            if (status >= 400) return ResourceResult.notFound();
+            return ResourceResult.of(status, resp.getContentType(), resp.getContentBytes());
+        } catch (Exception e) {
+            return ResourceResult.notFound();
+        } finally {
+            Thread.currentThread().setContextClassLoader(prev);
+        }
+    }
+
+    @Override
+    public byte[] auStub() {
+        // Benign stub: an empty AU response envelope. First paint never issues an
+        // AU POST (RESEARCH.md U1 Q3); this only avoids a hard connection failure
+        // if the browser's client engine probes the channel after load.
+        return "<content/>".getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Override
+    public void close() throws java.io.IOException {
+        zkLoader.close();
+    }
+}

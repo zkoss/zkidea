@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Preview Fixture G" border="normal"
+            viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.CanaryViewModel')">
+        <!-- g1: complete, well-formed @load(...) annotation on a shadow-element attribute. -->
+        <apply templateURI="@load(vm.templatePath)"/>
+        <!-- g2: half-typed/incomplete annotation (missing closing paren), mirrors a
+             real-world IDE completion fixture (manual-test/template-uri-nav.zul T05). -->
+        <apply templateURI="@load('/WEB-INF/template/"/>
+        <label value="apply marker label"/>
+    </window>
+</zk>

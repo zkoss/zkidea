@@ -50,3 +50,27 @@ intellij {
     // Moves the sandbox to a hidden folder to avoid being cleaned
     sandboxDir = "${project.projectDir}/.sandbox"
 }
+
+// Bundle the standalone ZUL rendering core (zk-preview-launcher.jar) inside this
+// plugin's distribution so ZulPreviewServerService can spawn it as a helper JVM at
+// runtime. Landing spot: "<pluginName>/lib/zk-preview-launcher.jar", read back at
+// runtime via PluginManagerCore.getPlugin(...).getPluginPath(). buildPlugin packages
+// prepareSandbox's own output directory, so wiring it here covers both `runIde`'s
+// sandbox and the `buildPlugin` distribution zip.
+// (evaluationDependsOn is required so ':zk-preview-launcher's `jar` task already
+// exists by the time this project's build.gradle references it by name.)
+evaluationDependsOn(':zk-preview-launcher')
+tasks.named('prepareSandbox') {
+    dependsOn ':zk-preview-launcher:jar'
+    from(project(':zk-preview-launcher').tasks.named('jar')) {
+        into "${project.name}/lib"
+    }
+}
+
+// ZulPreviewLauncherSeamTest (E3-G1b) spawns the real packaged launcher jar; needs it
+// built first, and needs to know exactly where.
+tasks.named('test') {
+    dependsOn ':zk-preview-launcher:jar'
+    systemProperty 'zkpreview.launcherJar',
+            project(':zk-preview-launcher').tasks.named('jar').get().archiveFile.get().asFile.absolutePath
+}

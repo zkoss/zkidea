@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Preview Fixture C" border="normal">
+        <label value="${missing.prop}"/>
+        <label value="static sibling"/>
+    </window>
+</zk>

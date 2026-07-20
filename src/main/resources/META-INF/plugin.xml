@@ -280,6 +280,8 @@
                implementationClass="org.zkoss.zkidea.lang.ZkXmlValidationAnnotator" />
           <defaultLiveTemplatesProvider
                implementation="org.zkoss.zkidea.liveTemplates.ZkLiveTemplatesProvider" />
+          <fileEditorProvider implementation="org.zkoss.zkidea.preview.ZulPreviewFileEditorProvider" />
+          <projectService serviceImplementation="org.zkoss.zkidea.preview.ZulPreviewServerService" />
      </extensions>
 
      <extensions defaultExtensionNs="com.intellij">

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Preview Fixture G (bad literal)" border="normal">
+        <!-- Genuinely nonexistent literal path (not annotation syntax): must still
+             fail with a structured error; the D3 fix must not over-suppress this. -->
+        <apply templateURI="/no/such/file.zul"/>
+        <label value="apply marker label"/>
+    </window>
+</zk>

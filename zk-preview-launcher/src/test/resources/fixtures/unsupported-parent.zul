@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Fixture (h) for the ErrorMapper hierarchy-UiException watch item
+  (tasks/zul-preview/PLAN.md §8): a <row> directly under <window> (no <rows>/<grid>
+  ancestor) reproduces the exact "Unsupported parent for row" UiException the user hit
+  via manual-test/scope-var-completion.zul's <apply templateURI="/WEB-INF/template/row.zul">
+  (that template's <row> lands directly under <window> once applied).
+-->
+<zk>
+    <window title="Unsupported Parent">
+        <row>
+            <label value="row template"/>
+        </row>
+    </window>
+</zk>

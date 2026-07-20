@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Preview Fixture A" border="normal">
+        <label value="Hello ZK"/>
+        <button label="Click me"/>
+    </window>
+</zk>
