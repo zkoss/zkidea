@@ -29,25 +29,27 @@ $WJ 17 java -jar zk-preview-launcher/build/libs/zk-preview-launcher.jar \
 
 Then open **http://localhost:8123/preview/placeholders.zul** in a browser.
 
-**What you should see (this is the M-1 change):**
-- The window title, and the `@load`/`@bind`/`@save` labels & textbox, show the **bound
-  path itself in dimmed italic** — `vm.pageTitle`, `vm.greeting`, `vm.userName`, `vm.note`.
-  *Before M-1 these were blank.*
+**What you should see (this is the placeholder feature):**
+- **Text bindings** — the window title, the `@load`/`@bind` labels & textbox show the
+  **bound path in dimmed italic**: `vm.pageTitle`, `vm.greeting`, `vm.userName`.
+  *Before, these were blank.*
 - `User name:` and `plain static text` render normally (literals, not dimmed).
-- The listbox stays empty — its `model="@load(vm.rows)"` is a non-text binding, so M-1
-  deliberately leaves it alone (you won't see `vm.rows`).
+- **Model bindings** — the **grid shows 3 placeholder rows** under real Product/Qty/Price
+  columns, each cell reading its `each.*` expression (rendered through the grid's own
+  `<template name="model">`); the bare `<listbox model="@load(vm.tags)"/>` (no template)
+  shows 3 fallback rows. *Before, model-bound components were empty.*
 - No `LOADED`/real data anywhere — the ViewModel class is never loaded (isolation intact).
 
 Quick scriptable check (no browser):
 ```bash
-curl -s http://localhost:8123/preview/placeholders.zul | grep -oE 'vm\.[a-zA-Z.]+' | sort -u
-# → vm.greeting  vm.note  vm.pageTitle  vm.userName   (NOT vm.rows)
+curl -s http://localhost:8123/preview/placeholders.zul | grep -oE 'vm\.[a-zA-Z.]+|each\.[a-zA-Z]+' | sort -u
+# text: vm.greeting vm.pageTitle vm.userName ; model rows: each.product each.qty each.price
 ```
 
 Also try the richer real fixture **http://localhost:8123/binding-property-nav.zul**
 (`vm.name`, `vm.crew.name`, `vm.list` on labels/textbox become placeholders; the
-`@init(...)` value-binding and the checkbox `checked`/listbox `model` bindings stay blank
-— only `@load`/`@save`/`@bind` on text properties are placeholdered).
+`@init(...)` value-binding and the checkbox `checked` binding stay blank — only
+`@load`/`@save`/`@bind` on text properties are placeholdered, plus model bindings).
 
 Contrast: `master`/pre-M-1 shows all of these blank (see the "bound values are empty by
 design" note in `tasks/zul-preview/manual-qa/E2-manual-verify.md §3`).

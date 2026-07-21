@@ -120,12 +120,42 @@ class RenderFidelityTest {
                 () -> "M-1: static value must still render: " + html);
         assertFalse(html.contains("LOADED"), "real bound value must not leak: " + html);
         assertFalse(html.contains("CANARY"), "real bound value must not leak: " + html);
-        assertFalse(html.contains("vm.rows"),
-                "a @load on a non-text 'model' property must NOT be injected as text "
-                        + "(String-setter scoping guard): " + html);
+        assertTrue(html.contains("vm.rows"),
+                () -> "model placeholders: the listbox's @load('vm.rows') model binding must now "
+                        + "render synthetic placeholder rows (was empty pre-model-placeholders): " + html);
         assertTrue(tracker.getAttempts().isEmpty(),
                 "the isolation hook must intercept before ZK ever attempts to resolve the ViewModel class, "
                         + "but attempts were recorded: " + tracker.getAttempts());
+    }
+
+    @ParameterizedTest(name = "(g) binding-model.zul [{0}]")
+    @MethodSource("variants")
+    void fixtureG_boundModelRendersPlaceholderRowsFromTemplate(Variants.Named variant) throws Exception {
+        ForbiddenLoadTracker tracker = new ForbiddenLoadTracker(CANARY_PREFIX);
+        RenderResult r = render(variant, "binding-model.zul", tracker);
+        assertTrue(r.isSuccess(), () -> "expected SUCCESS, got: " + describeFailure(r));
+        String html = r.getHtml();
+        // the grid's static column structure renders
+        assertTrue(html.contains("Name"), () -> "column header must render: " + html);
+        assertTrue(html.contains("Price"), () -> "column header must render: " + html);
+        // a synthetic model makes ZK render the <template name="model"> server-side, N rows,
+        // and M-1 fills each cell's @load(each.*) with placeholder text
+        assertTrue(count(html, "each.name") >= 3,
+                () -> "model placeholders: expected >= 3 template rows binding each.name: " + html);
+        assertTrue(count(html, "each.price") >= 3,
+                () -> "model placeholders: expected >= 3 template rows binding each.price: " + html);
+        assertFalse(html.contains("LOADED"), "real bound value must not leak: " + html);
+        assertFalse(html.contains("CANARY"), "real bound value must not leak: " + html);
+        assertTrue(tracker.getAttempts().isEmpty(),
+                "no user class may be loaded to synthesize the model: " + tracker.getAttempts());
+    }
+
+    private static int count(String haystack, String needle) {
+        int n = 0;
+        for (int i = haystack.indexOf(needle); i >= 0; i = haystack.indexOf(needle, i + needle.length())) {
+            n++;
+        }
+        return n;
     }
 
     private static RenderResult render(Variants.Named variant, String fixture, ForbiddenLoadTracker tracker)

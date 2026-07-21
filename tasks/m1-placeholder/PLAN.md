@@ -98,8 +98,9 @@ variant resolves from cached `~/.m2` via `manual-test/pom.xml` and should run.
    (`isolation=false`) still leaks the real value (placeholder gated off).
 
 ## 6. Out of scope (v1)
-Typed/sample-value placeholders (positioning §6), EL `${…}` rendering, converters/formatting,
-per-component style theming. M-1 is the fidelity **ceiling** under the isolation guarantee.
+Realistic/typed sample *values* (positioning §6 — e.g. names/dates inferred from getter
+types), EL `${…}` rendering, converters/formatting, per-component style theming.
+(Model *structure* placeholders — synthetic rows — are handled; see §8.)
 
 ---
 
@@ -130,3 +131,46 @@ expression — including non-display String props like `width`/`sclass`. Harmles
 intent, but if we want to be strict we could restrict targets to a display-property set
 (`value`/`label`/`title`/`content`/`tooltiptext`). Left as a deliberate, easily-tightened
 choice; no test covers it yet.
+
+*(§7's "model-binding scoped out" note is superseded by §8 — model bindings now render
+placeholder rows.)*
+
+---
+
+## 8. Follow-up — model-binding placeholder rows (data components)
+
+**Problem:** M-1 deliberately skipped `model` bindings (a `ListModel`, not a String), so a
+`<grid|listbox|combobox model="@load(vm.rows)">` still rendered **empty** — the
+`<template name="model">` is only instantiated when a model is present, and the no-op
+composer means no binder ever supplies one.
+
+**Spike finding (verified via the launcher against ZK 10.1.0-jakarta):** setting a plain
+synthetic `ListModelList` on the component makes ZK render the component's own
+`<template name="model">` **server-side at first paint** (the row render is deferred to
+`onInitRender`, which runs after the template registers — so injecting at
+`afterComponentAttached` time is fine even though `getTemplateNames()` is still empty
+then). M-1's existing per-cell injector then fills each `@load(each.*)` cell for free.
+All edge cases render cleanly (HTTP 200, no error): grid+template, listbox+template,
+listbox-no-template, **grid-no-template** (ZK's default per-item rendering handles the
+no-template case — so no special guard is needed).
+
+**Implementation** (`PlaceholderInjector`): in `afterComponentAttached`, when a component
+has a binding (`load/bind/save/init`) on the `model` property, feed it a synthetic
+`ListModelList` of `N=3` rows (`"<expr>[0..2]"`) via reflected `setModel(ListModel)`.
+Components exposing only a non-`ListModel` setter (**Tree**'s `TreeModel`) are skipped —
+Tree support is a deferred fast-follow. Reflection-only (no `zul` compile dep); rows are
+our own Strings, so **no user class loads** (isolation preserved). Best-effort try/catch:
+any failure leaves the component empty, exactly as before — never worse.
+
+**Tests / verification:**
+- **RED** (against the committed M-1 baseline): `fixtureF`'s obsolete "model scoped out"
+  assertion flipped to require `vm.rows` to render; new `fixtureG` (grid + `<template>`)
+  requires ≥3 template rows with `each.name`/`each.price`. Both failed as expected (4 fails).
+- **GREEN:** both pass after the injector change. Full clean `:zk-preview-launcher:test`
+  = **40 tests, 0 failures, 0 errors, 0 skipped**, both servlet variants; isolation
+  (`ForbiddenLoadTracker` empty), no `LOADED`/`CANARY` leak, no regressions.
+- Manual demo `manual-test/.../preview/placeholders.zul` upgraded to show a templated grid
+  (3 rows under real columns) + a no-template listbox fallback.
+
+**Deferred:** `Tree`/`Treemodel` (needs a synthetic nested `DefaultTreeModel`);
+realistic/typed sample values (still §6).
