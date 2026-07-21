@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  M-1 manual demo. With M-1, @load/@bind/@save expressions render as dimmed
+  placeholder text (the bound path itself); before M-1 they were blank.
+  The ViewModel class is NEVER loaded (isolation) — the FQCN is just annotation text.
+  Non-text bindings (listbox model) and plain literals stay unaffected.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="@load(vm.pageTitle)" width="380px" border="normal"
+            viewModel="@id('vm') @init('com.example.plugin.test.MyViewModel')">
+        <vlayout>
+            <label value="@load(vm.greeting)"/>          <!-- shows: vm.greeting (dimmed) -->
+            <hlayout>
+                <label value="User name:"/>              <!-- literal, NOT dimmed -->
+                <textbox value="@bind(vm.userName)"/>    <!-- shows: vm.userName (dimmed) -->
+            </hlayout>
+            <label value="@save(vm.note)"/>              <!-- shows: vm.note (dimmed) -->
+            <label value="plain static text"/>           <!-- literal, NOT dimmed -->
+            <listbox model="@load(vm.rows)"/>            <!-- stays empty: model is non-text -->
+        </vlayout>
+    </window>
+</zk>

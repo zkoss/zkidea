@@ -10,4 +10,7 @@
         <disable-event-thread>true</disable-event-thread>
         <ui-factory-class>org.zkoss.zkpreview.hooks.PreviewUiFactory</ui-factory-class>
     </system-config>
+    <listener>
+        <listener-class>org.zkoss.zkpreview.hooks.PlaceholderInjector</listener-class>
+    </listener>
 </zk>

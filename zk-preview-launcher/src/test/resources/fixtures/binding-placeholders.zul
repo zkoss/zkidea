@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="@load(vm.pageTitle)" border="normal"
+            viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.CanaryViewModel')">
+        <label value="@load(vm.greeting)"/>
+        <textbox value="@bind(vm.name)"/>
+        <label value="static"/>
+        <grid model="@load(vm.rows)"/>
+    </window>
+</zk>

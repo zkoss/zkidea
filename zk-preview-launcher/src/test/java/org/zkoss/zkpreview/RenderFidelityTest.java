@@ -52,6 +52,8 @@ class RenderFidelityTest {
         assertTrue(html.contains("static sibling"), html);
         assertFalse(html.contains("LOADED"), "bound value must not leak: " + html);
         assertFalse(html.contains("CANARY"), "bound value must not leak: " + html);
+        assertTrue(html.contains("vm.greeting"),
+                () -> "M-1: the @load expression should render as placeholder text: " + html);
         assertTrue(tracker.getAttempts().isEmpty(),
                 "the isolation hook must intercept before ZK ever attempts to resolve the ViewModel class, "
                         + "but attempts were recorded: " + tracker.getAttempts());
@@ -65,6 +67,8 @@ class RenderFidelityTest {
         String html = r.getHtml();
         assertTrue(html.contains("zul.wnd.Window"), html);
         assertTrue(html.contains("static sibling"), html);
+        assertFalse(html.contains("missing.prop"),
+                "plain EL must NOT be turned into a placeholder (M-1 targets @-annotations only): " + html);
     }
 
     @ParameterizedTest(name = "(d) missing-composer.zul [{0}]")
@@ -97,6 +101,31 @@ class RenderFidelityTest {
                 "North", "South", "Tab 1", "Tab 2", "Name", "Row1", "Node", "Root"}) {
             assertTrue(html.contains(marker), "missing marker '" + marker + "' in: " + html);
         }
+    }
+
+    @ParameterizedTest(name = "(f) binding-placeholders.zul [{0}]")
+    @MethodSource("variants")
+    void fixtureF_bindingExpressionsRenderAsPlaceholders(Variants.Named variant) throws Exception {
+        ForbiddenLoadTracker tracker = new ForbiddenLoadTracker(CANARY_PREFIX);
+        RenderResult r = render(variant, "binding-placeholders.zul", tracker);
+        assertTrue(r.isSuccess(), () -> "expected SUCCESS, got: " + describeFailure(r));
+        String html = r.getHtml();
+        assertTrue(html.contains("vm.pageTitle"),
+                () -> "M-1: the @load title expression should render as placeholder text: " + html);
+        assertTrue(html.contains("vm.greeting"),
+                () -> "M-1: the @load value expression should render as placeholder text: " + html);
+        assertTrue(html.contains("vm.name"),
+                () -> "M-1: the @bind value expression should render as placeholder text: " + html);
+        assertTrue(html.contains("static"),
+                () -> "M-1: static value must still render: " + html);
+        assertFalse(html.contains("LOADED"), "real bound value must not leak: " + html);
+        assertFalse(html.contains("CANARY"), "real bound value must not leak: " + html);
+        assertFalse(html.contains("vm.rows"),
+                "a @load on a non-text 'model' property must NOT be injected as text "
+                        + "(String-setter scoping guard): " + html);
+        assertTrue(tracker.getAttempts().isEmpty(),
+                "the isolation hook must intercept before ZK ever attempts to resolve the ViewModel class, "
+                        + "but attempts were recorded: " + tracker.getAttempts());
     }
 
     private static RenderResult render(Variants.Named variant, String fixture, ForbiddenLoadTracker tracker)
