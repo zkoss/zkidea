@@ -102,10 +102,14 @@ public class JakartaRenderEngine implements RenderEngine {
 
     @Override
     public byte[] auStub() {
-        // Benign stub: an empty AU response envelope. First paint never issues an
-        // AU POST (RESEARCH.md U1 Q3); this only avoids a hard connection failure
-        // if the browser's client engine probes the channel after load.
-        return "<content/>".getBytes(StandardCharsets.UTF_8);
+        // Valid empty AU response envelope. The preview is a one-shot render with no
+        // live desktop, so any interaction (expand a tree node, sort a grid, page a
+        // listbox) fires an AU POST we cannot fulfil. The ZK client JSON.parse()es the
+        // response (zAu.pushReqCmds), so it must be a JSON object with an empty "rs"
+        // command list -- the client then runs zero commands (an inert no-op) instead
+        // of showing "Expected JSON format ... Unexpected token '<'". rid:0 is falsy on
+        // the client, so the empty command set is applied without a sequence check.
+        return "{\"rid\":0,\"rs\":[]}".getBytes(StandardCharsets.UTF_8);
     }
 
     @Override

@@ -56,9 +56,18 @@ shows placeholders (`item.name`) and the real value never leaks into the preview
   isn't a `GroupsModel`, so `model:group`/`model:groupfoot` templates don't fire (no group
   headers/footers). Acceptable v1 degradation.
 - **Tree** is supported (synthetic `DefaultTreeModel`: root → 3 branches → 2 leaves).
-  Top-level nodes render at first paint (child nodes on expand), matching ZK. Authoring
-  note: with a `DefaultTreeModel` the template var is the `DefaultTreeNode`, so cells bind
-  `@load(node.data.x)` (via `.data`), **not** `@load(node.x)` — the latter renders empty
-  and errors in the browser (this is what the `tree-mvvm` fixtures use).
+  Top-level nodes render at first paint. Expanding a node is an **inert no-op** in the
+  preview — there is no live desktop, so the AU request that would fetch the children is
+  answered with an empty envelope (see below); the node toggles open but shows nothing,
+  and crucially throws no error. Authoring note: with a `DefaultTreeModel` the template
+  var is the `DefaultTreeNode`, so cells bind `@load(node.data.x)` (via `.data`), **not**
+  `@load(node.x)` — the latter renders empty and errors in the browser (this is what the
+  `tree-mvvm` fixtures use).
+- **Interactions are inert no-ops, not errors.** The preview is a one-shot render with no
+  live desktop; any interaction (tree expand, grid sort, listbox paging, button click)
+  fires an AU `POST /zkau` the server can't fulfil. The stub returns a valid empty AU
+  envelope `{"rid":0,"rs":[]}` so the ZK client parses it and runs zero commands, instead
+  of the old `"<content/>"` which the client's `JSON.parse` rejected with *"Expected JSON
+  format ... Unexpected token '<'"*. Locked by `RenderFidelityTest`'s sibling `AuStubTest`.
 - **Java `rowRenderer`/`itemRenderer`** (no template) — nothing to draw without running the
   class; stays empty (cannot preview by design).
