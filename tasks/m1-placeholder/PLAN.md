@@ -172,5 +172,9 @@ any failure leaves the component empty, exactly as before — never worse.
 - Manual demo `manual-test/.../preview/placeholders.zul` upgraded to show a templated grid
   (3 rows under real columns) + a no-template listbox fallback.
 
-**Deferred:** `Tree`/`Treemodel` (needs a synthetic nested `DefaultTreeModel`);
-realistic/typed sample values (still §6).
+**Tree:** now supported — a synthetic `DefaultTreeModel` (root → 3 branches → 2 leaves)
+is fed when a component exposes `setModel(TreeModel)` instead of `setModel(ListModel)`.
+See `GRID-LISTBOX-COVERAGE.md` (cases `tree-mvvm`/`tree-static`, regression `fixtureI`).
+
+**Still deferred:** realistic/typed sample values (§6); `GroupsModel` grouping renders as
+plain rows (no group headers).

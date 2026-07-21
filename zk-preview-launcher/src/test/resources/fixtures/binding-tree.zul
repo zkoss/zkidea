@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <tree viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.CanaryViewModel')"
+          model="@load(vm.tree)">
+        <treecols><treecol label="Name"/></treecols>
+        <template name="model" var="node">
+            <treeitem open="true">
+                <treerow><treecell label="@load(node.label)"/></treerow>
+            </treeitem>
+        </template>
+    </tree>
+</zk>

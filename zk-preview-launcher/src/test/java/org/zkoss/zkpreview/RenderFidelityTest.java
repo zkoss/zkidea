@@ -167,6 +167,23 @@ class RenderFidelityTest {
                 "no user class may be loaded: " + tracker.getAttempts());
     }
 
+    @ParameterizedTest(name = "(i) binding-tree.zul [{0}]")
+    @MethodSource("variants")
+    void fixtureI_boundTreeRendersPlaceholderNodes(Variants.Named variant) throws Exception {
+        ForbiddenLoadTracker tracker = new ForbiddenLoadTracker(CANARY_PREFIX);
+        RenderResult r = render(variant, "binding-tree.zul", tracker);
+        assertTrue(r.isSuccess(), () -> "expected SUCCESS, got: " + describeFailure(r));
+        String html = r.getHtml();
+        // a synthetic TreeModel makes ZK render the tree's <template name="model">; the
+        // top-level nodes' @load(node.*) cells are filled by the text-placeholder pass
+        assertTrue(count(html, "node.label") >= 3,
+                () -> "tree placeholders: expected >= 3 top-level node cells: " + html);
+        assertFalse(html.contains("LOADED"), "real bound value must not leak: " + html);
+        assertFalse(html.contains("CANARY"), "real bound value must not leak: " + html);
+        assertTrue(tracker.getAttempts().isEmpty(),
+                "no user class may be loaded to synthesize the tree model: " + tracker.getAttempts());
+    }
+
     private static int count(String haystack, String needle) {
         int n = 0;
         for (int i = haystack.indexOf(needle); i >= 0; i = haystack.indexOf(needle, i + needle.length())) {

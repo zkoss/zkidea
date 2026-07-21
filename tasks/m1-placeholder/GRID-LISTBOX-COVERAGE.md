@@ -29,6 +29,8 @@ Jetty, **never** by the preview (isolation; the FQCN is just annotation text).
 | `listbox-select-mold` | L6 `mold="select"` + model | 200 | 200 | 3 placeholder options |
 | `combobox` | C1 static + C2 model (with/without template) | 200 | 200 | placeholder comboitems (`vm.tags[i]`, `p.name`) |
 | `selectbox` | C3 `selectbox` + model | 200 | 200 | 3 placeholder options |
+| `tree-mvvm` | T1 MVVM tree + model + template | 200 | 200 | 3 top-level nodes, `node.*` placeholder cells |
+| `tree-static` | T2 static nested treeitems | 200 | 200 | identical (nested) |
 
 Verified: on MVVM cases Jetty shows real data (`Keyboard`, `Displays`…) while the preview
 shows placeholders (`item.name`) and the real value never leaks into the preview
@@ -53,6 +55,10 @@ shows placeholders (`item.name`) and the real value never leaks into the preview
 - **Grouping (G4/L4)** renders as plain placeholder rows — a synthetic `ListModelList`
   isn't a `GroupsModel`, so `model:group`/`model:groupfoot` templates don't fire (no group
   headers/footers). Acceptable v1 degradation.
-- **Tree** — `setModel(TreeModel)` only; skipped (deferred fast-follow).
+- **Tree** is now supported (synthetic `DefaultTreeModel`: root → 3 branches → 2 leaves).
+  Only the top-level nodes render at first paint (children on expand), which matches ZK.
+  Note: real ZK also renders tree *node content* lazily via AU, so a raw Jetty curl shows
+  the treecells empty at first paint (a real browser fills them); the preview fills the
+  visible cells with placeholders eagerly.
 - **Java `rowRenderer`/`itemRenderer`** (no template) — nothing to draw without running the
   class; stays empty (cannot preview by design).

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- T2: static nested treeitems (no model) -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <tree width="300px">
+        <treecols><treecol label="Files"/></treecols>
+        <treechildren>
+            <treeitem open="true">
+                <treerow><treecell label="src"/></treerow>
+                <treechildren>
+                    <treeitem><treerow><treecell label="main.zul"/></treerow></treeitem>
+                    <treeitem><treerow><treecell label="app.js"/></treerow></treeitem>
+                </treechildren>
+            </treeitem>
+            <treeitem>
+                <treerow><treecell label="README.md"/></treerow>
+            </treeitem>
+        </treechildren>
+    </tree>
+</zk>

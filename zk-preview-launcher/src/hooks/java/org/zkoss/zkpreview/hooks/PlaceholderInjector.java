@@ -161,36 +161,70 @@ public class PlaceholderInjector implements UiLifeCycle {
     }
 
     /**
-     * Feeds a data component ({@code <grid|listbox|combobox ... model="@load(...)">}) a
-     * synthetic {@code ListModelList} of N placeholder rows so ZK renders the component's
-     * own {@code <template name="model">} server-side (or its default per-item rendering
-     * when there is no template); the per-cell {@code @load(each.*)} bindings are then
-     * filled by {@link #applyPlaceholder}. Reflection only (no zul compile dep); the rows
-     * are our own Strings, so no user class is loaded. Components exposing only a
-     * non-{@code ListModel} setter (e.g. {@code Tree}'s {@code TreeModel}) are skipped.
+     * Feeds a data component ({@code <grid|listbox|combobox|tree ... model="@load(...)">})
+     * a synthetic model of N placeholder rows/nodes so ZK renders the component's own
+     * {@code <template name="model">} server-side (or its default per-item rendering when
+     * there is no template); the per-cell {@code @load(each.*)} bindings are then filled by
+     * {@link #applyPlaceholder}. A {@code ListModelList} covers grid/listbox/combobox/
+     * selectbox; a {@code DefaultTreeModel} covers {@code Tree}. Reflection only (no zul
+     * compile dep); rows/nodes are our own Strings, so no user class is loaded.
      * Best-effort: any failure leaves the component empty, exactly as before.
      */
     private static void injectPlaceholderModel(Component comp, String expr) {
         try {
             ClassLoader cl = comp.getClass().getClassLoader();
-            Class<?> listModelIface = cl.loadClass("org.zkoss.zul.ListModel");
-            Class<?> listModelListCls = cl.loadClass("org.zkoss.zul.ListModelList");
-            Method setModel;
-            try {
-                setModel = comp.getClass().getMethod("setModel", listModelIface);
-            } catch (NoSuchMethodException noListModel) {
-                return; // e.g. Tree (TreeModel only) or a non-data component
+            Method setModel = findModelSetter(comp, cl, "org.zkoss.zul.ListModel");
+            Object model;
+            if (setModel != null) {
+                model = syntheticListModel(cl, expr);
+            } else {
+                setModel = findModelSetter(comp, cl, "org.zkoss.zul.TreeModel");
+                if (setModel == null) {
+                    return; // no supported model setter
+                }
+                model = syntheticTreeModel(cl, expr);
             }
-            List<String> rows = new ArrayList<>(PLACEHOLDER_ROW_COUNT);
-            for (int i = 0; i < PLACEHOLDER_ROW_COUNT; i++) {
-                rows.add(expr + "[" + i + "]");
-            }
-            Object model = listModelListCls.getConstructor(Collection.class).newInstance(rows);
             setModel.invoke(comp, model);
             comp.setAttribute(SYNTH_MODEL_FLAG, Boolean.TRUE);
         } catch (ReflectiveOperationException | RuntimeException ignore) {
             // best-effort only
         }
+    }
+
+    private static Method findModelSetter(Component comp, ClassLoader cl, String modelIface) {
+        try {
+            return comp.getClass().getMethod("setModel", cl.loadClass(modelIface));
+        } catch (ReflectiveOperationException notFound) {
+            return null;
+        }
+    }
+
+    private static Object syntheticListModel(ClassLoader cl, String expr) throws ReflectiveOperationException {
+        Class<?> listModelListCls = cl.loadClass("org.zkoss.zul.ListModelList");
+        List<String> rows = new ArrayList<>(PLACEHOLDER_ROW_COUNT);
+        for (int i = 0; i < PLACEHOLDER_ROW_COUNT; i++) {
+            rows.add(expr + "[" + i + "]");
+        }
+        return listModelListCls.getConstructor(Collection.class).newInstance(rows);
+    }
+
+    /** A shallow synthetic tree: root -> N branches, each with 2 leaves. */
+    private static Object syntheticTreeModel(ClassLoader cl, String expr) throws ReflectiveOperationException {
+        Class<?> nodeCls = cl.loadClass("org.zkoss.zul.DefaultTreeNode");
+        Class<?> modelCls = cl.loadClass("org.zkoss.zul.DefaultTreeModel");
+        Class<?> treeNodeIface = cl.loadClass("org.zkoss.zul.TreeNode");
+        java.lang.reflect.Constructor<?> leaf = nodeCls.getConstructor(Object.class);
+        java.lang.reflect.Constructor<?> branch = nodeCls.getConstructor(Object.class, Collection.class);
+        List<Object> branches = new ArrayList<>(PLACEHOLDER_ROW_COUNT);
+        for (int i = 0; i < PLACEHOLDER_ROW_COUNT; i++) {
+            List<Object> leaves = new ArrayList<>(2);
+            for (int j = 0; j < 2; j++) {
+                leaves.add(leaf.newInstance(expr + "[" + i + "." + j + "]"));
+            }
+            branches.add(branch.newInstance(expr + "[" + i + "]", leaves));
+        }
+        Object root = branch.newInstance(expr, branches);
+        return modelCls.getConstructor(treeNodeIface).newInstance(root);
     }
 
     private static void dim(Component comp) {

@@ -1,13 +1,18 @@
 package com.example.plugin.test.preview;
 
 import org.zkoss.bind.annotation.Init;
+import org.zkoss.zul.DefaultTreeModel;
+import org.zkoss.zul.DefaultTreeNode;
 import org.zkoss.zul.GroupsModel;
 import org.zkoss.zul.GroupsModelArray;
+import org.zkoss.zul.TreeNode;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * ViewModel backing the grid/listbox preview cases under
@@ -62,5 +67,25 @@ public class PreviewCasesVM {
                 return groupdata.length + " item(s)";
             }
         };
+    }
+
+    /** Tree grouping (T1): products under category branches (all nodes are Products so
+     * the template's @load(node.*) bindings stay typed). Root is not rendered. */
+    public DefaultTreeModel<Product> getTreeModel() {
+        Map<String, List<Product>> byCat = new LinkedHashMap<>();
+        for (Product p : products) {
+            byCat.computeIfAbsent(p.getCategory(), k -> new ArrayList<>()).add(p);
+        }
+        List<TreeNode<Product>> categories = new ArrayList<>();
+        for (Map.Entry<String, List<Product>> e : byCat.entrySet()) {
+            List<TreeNode<Product>> leaves = new ArrayList<>();
+            for (Product p : e.getValue()) {
+                leaves.add(new DefaultTreeNode<>(p));
+            }
+            categories.add(new DefaultTreeNode<>(new Product(0, e.getKey(), e.getKey(), 0, 0, true), leaves));
+        }
+        DefaultTreeNode<Product> root =
+                new DefaultTreeNode<>(new Product(0, "Catalog", "", 0, 0, true), categories);
+        return new DefaultTreeModel<>(root);
     }
 }
