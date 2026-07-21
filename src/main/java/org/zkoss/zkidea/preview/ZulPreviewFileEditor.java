@@ -82,7 +82,7 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
         component.add(new JLabel("Starting ZK preview server…", SwingConstants.CENTER), CARD_LOADING);
 
         if (!JBCefApp.isSupported()) {
-            showMessage("Preview unavailable: the embedded browser (JCEF) is not supported by this "
+            showMessage("Layout Preview unavailable: the embedded browser (JCEF) is not supported by this "
                     + "IDE runtime -- either the IDE was started with an alternative JDK that has no "
                     + "JCEF, or the bundled JCEF version is incompatible. You can still edit "
                     + file.getName() + " normally in the text editor.");
@@ -154,7 +154,7 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
 
     @Override
     public @NotNull String getName() {
-        return "Preview";
+        return "Layout Preview";
     }
 
     @Override

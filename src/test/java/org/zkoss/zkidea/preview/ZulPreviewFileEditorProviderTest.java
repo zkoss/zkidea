@@ -93,6 +93,28 @@ public class ZulPreviewFileEditorProviderTest extends BasePlatformTestCase {
         }
     }
 
+    /**
+     * M-2 (doc/zul_preview_product_positioning.md §2): the split editor and its preview
+     * pane must be named "Layout Preview" (never "ZUL Preview"/"live preview"), so a
+     * first-paint-only layout render sets the right expectation before it shows.
+     */
+    public void testCreateEditor_namesFeatureLayoutPreview() {
+        VirtualFile file = myFixture.configureByText("preview.zul", "<zk/>").getVirtualFile();
+        FileEditorProvider provider = findZulPreviewProvider();
+        assertNotNull(provider);
+
+        FileEditor editor = provider.createEditor(getProject(), file);
+        try {
+            assertEquals("split editor must be named \"Layout Preview\" (M-2)",
+                    "Layout Preview", editor.getName());
+            FileEditor preview = ((TextEditorWithPreview) editor).getPreviewEditor();
+            assertEquals("preview pane must be named \"Layout Preview\" (M-2)",
+                    "Layout Preview", preview.getName());
+        } finally {
+            Disposer.dispose(editor);
+        }
+    }
+
     private FileEditorProvider findZulPreviewProvider() {
         for (FileEditorProvider provider : FileEditorProvider.EP_FILE_EDITOR_PROVIDER.getExtensionList()) {
             if (provider instanceof ZulPreviewFileEditorProvider) {

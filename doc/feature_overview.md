@@ -197,14 +197,19 @@ Defined in `plugin.xml` as an action group `ZK_Feedback_Group` added to `HelpMen
 
 ---
 
-## 10. ZUL Preview (since 0.8.0, in development)
+## 10. Layout Preview (since 0.8.0, in development)
+
+> **Naming (M-2).** User-facing copy calls this feature **"Layout Preview"**, never
+> "live preview"/"live app preview" — it renders how a page *lays out*, not a running
+> application. See `doc/zul_preview_product_positioning.md` §2.
 
 ### What it does
-Adds a live, side-by-side preview to the ZUL editor (Markdown-editor style): the left
-pane is the normal text editor, the right pane renders the actual HTML ZK's own engine
-would produce, refreshed on save. Rendering never loads the project's own compiled
-classes (ViewModels, Composers, converters, ...) — it is a **first-paint-only**
-approximation: bound values render empty/placeholder rather than their real values.
+Adds a side-by-side **Layout Preview** to the ZUL editor (Markdown-editor style): the
+left pane is the normal text editor, the right pane renders the actual HTML ZK's own
+engine would produce, refreshed on save. Rendering never loads the project's own compiled
+classes (ViewModels, Composers, converters, ...) — it is a **first-paint-only** layout
+view: bound values render as dimmed placeholders (the binding expression text) rather than
+their real values.
 Rendering happens in a short-lived helper JVM, spawned and owned by the plugin, that
 drives the project's own ZK jars directly (not a bundled copy) via a small standalone
 "rendering core" module (`zk-preview-launcher`) that has zero IntelliJ dependencies and

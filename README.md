@@ -30,8 +30,8 @@ See `patchPluginXml` in [build.gradle](build.gradle) for detail.
 ### ZK News Notification
 *   **Startup Notification**: Displays a popup with the latest news from the official ZK framework website when you start IntelliJ IDEA, keeping you informed of updates and announcements.
 
-### ZUL Preview
-*   **Live Preview**: Adds a side-by-side preview pane to the ZUL editor, rendering the page through your project's own ZK jars in an isolated helper process (no ViewModel/Composer code is ever loaded), refreshed on save. See the [Feature & Implementation Overview](doc/feature_overview.md) for details and current v1 limitations.
+### Layout Preview
+*   **Layout Preview**: Adds a side-by-side preview pane to the ZUL editor showing how the page lays out — rendered through your project's own ZK jars in an isolated helper process, refreshed on save. Your own code never runs: ViewModels, Composers, and converters are never loaded, so bound values appear as placeholders rather than real data. It is a first-paint layout view, not a live application. See the [Feature & Implementation Overview](doc/feature_overview.md) for details and current v1 limitations.
 
 ### Feedback Menu
 *   **Easy Access to Support**: Adds a "ZK Feedback" menu under the "Help" menu with quick links to report bugs, request features, or get help from the community.

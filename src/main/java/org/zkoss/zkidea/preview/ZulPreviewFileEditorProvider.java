@@ -39,7 +39,7 @@ public class ZulPreviewFileEditorProvider implements FileEditorProvider, DumbAwa
     public @NotNull FileEditor createEditor(@NotNull Project project, @NotNull VirtualFile file) {
         TextEditor textEditor = (TextEditor) new PsiAwareTextEditorProvider().createEditor(project, file);
         ZulPreviewFileEditor previewEditor = new ZulPreviewFileEditor(project, file);
-        return new TextEditorWithPreview(textEditor, previewEditor, "ZUL Preview");
+        return new TextEditorWithPreview(textEditor, previewEditor, "Layout Preview");
     }
 
     @Override

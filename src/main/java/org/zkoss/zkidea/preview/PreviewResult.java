@@ -28,7 +28,7 @@ final class PreviewResult {
     static PreviewResult noZkJars() {
         return new PreviewResult(Status.NO_ZK_JARS, -1, null,
                 "No ZK framework jars (zk, zul, ...) were found on this file's module classpath. "
-                        + "Add a ZK dependency to the module to enable the live preview.");
+                        + "Add a ZK dependency to the module to enable the Layout Preview.");
     }
 
     static PreviewResult error(String message) {
