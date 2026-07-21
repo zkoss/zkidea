@@ -176,7 +176,7 @@ class RenderFidelityTest {
         String html = r.getHtml();
         // a synthetic TreeModel makes ZK render the tree's <template name="model">; the
         // top-level nodes' @load(node.*) cells are filled by the text-placeholder pass
-        assertTrue(count(html, "node.label") >= 3,
+        assertTrue(count(html, "node.data.label") >= 3,
                 () -> "tree placeholders: expected >= 3 top-level node cells: " + html);
         assertFalse(html.contains("LOADED"), "real bound value must not leak: " + html);
         assertFalse(html.contains("CANARY"), "real bound value must not leak: " + html);

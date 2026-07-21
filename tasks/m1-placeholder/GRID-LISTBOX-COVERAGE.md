@@ -55,10 +55,10 @@ shows placeholders (`item.name`) and the real value never leaks into the preview
 - **Grouping (G4/L4)** renders as plain placeholder rows — a synthetic `ListModelList`
   isn't a `GroupsModel`, so `model:group`/`model:groupfoot` templates don't fire (no group
   headers/footers). Acceptable v1 degradation.
-- **Tree** is now supported (synthetic `DefaultTreeModel`: root → 3 branches → 2 leaves).
-  Only the top-level nodes render at first paint (children on expand), which matches ZK.
-  Note: real ZK also renders tree *node content* lazily via AU, so a raw Jetty curl shows
-  the treecells empty at first paint (a real browser fills them); the preview fills the
-  visible cells with placeholders eagerly.
+- **Tree** is supported (synthetic `DefaultTreeModel`: root → 3 branches → 2 leaves).
+  Top-level nodes render at first paint (child nodes on expand), matching ZK. Authoring
+  note: with a `DefaultTreeModel` the template var is the `DefaultTreeNode`, so cells bind
+  `@load(node.data.x)` (via `.data`), **not** `@load(node.x)` — the latter renders empty
+  and errors in the browser (this is what the `tree-mvvm` fixtures use).
 - **Java `rowRenderer`/`itemRenderer`** (no template) — nothing to draw without running the
   class; stays empty (cannot preview by design).

@@ -5,7 +5,7 @@
         <treecols><treecol label="Name"/></treecols>
         <template name="model" var="node">
             <treeitem open="true">
-                <treerow><treecell label="@load(node.label)"/></treerow>
+                <treerow><treecell label="@load(node.data.label)"/></treerow>
             </treeitem>
         </template>
     </tree>
