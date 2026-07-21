@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Model binding with an EXPLICIT <rows> wrapping the template (the common G1 idiom).
+     Regression guard: injecting the synthetic model before <rows> has composed makes ZK
+     throw "Only one rows child is allowed" — the model must be injected post-composition. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <grid width="500px"
+          viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.CanaryViewModel')"
+          model="@load(vm.rows)">
+        <columns>
+            <column label="Name"/>
+            <column label="Price"/>
+        </columns>
+        <rows>
+            <template name="model">
+                <row>
+                    <label value="@load(each.name)"/>
+                    <label value="@load(each.price)"/>
+                </row>
+            </template>
+        </rows>
+    </grid>
+</zk>

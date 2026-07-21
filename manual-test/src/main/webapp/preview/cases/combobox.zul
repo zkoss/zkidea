@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- C1 static comboitems + C2 model (no template, and with template) -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <vlayout viewModel="@id('vm') @init('com.example.plugin.test.preview.PreviewCasesVM')">
+        <combobox>
+            <comboitem label="Draft"/>
+            <comboitem label="Submitted"/>
+            <comboitem label="Approved"/>
+        </combobox>
+        <combobox model="@load(vm.tags)"/>
+        <combobox model="@load(vm.products)">
+            <template name="model" var="p">
+                <comboitem label="@load(p.name)"/>
+            </template>
+        </combobox>
+    </vlayout>
+</zk>

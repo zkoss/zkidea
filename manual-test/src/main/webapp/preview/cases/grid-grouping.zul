@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- G4: grid grouping (GroupsModel) with group head + groupfoot -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <grid width="560px"
+          viewModel="@id('vm') @init('com.example.plugin.test.preview.PreviewCasesVM')"
+          model="@load(vm.productGroups)">
+        <columns>
+            <column label="Name"/>
+            <column label="Price" align="right"/>
+            <column label="Qty" align="right"/>
+        </columns>
+        <template name="model:group" var="g">
+            <group label="@load(g)"/>
+        </template>
+        <template name="model" var="item">
+            <row>
+                <label value="@load(item.name)"/>
+                <label value="@load(item.price)"/>
+                <label value="@load(item.qty)"/>
+            </row>
+        </template>
+        <template name="model:groupfoot" var="f">
+            <groupfoot>
+                <cell colspan="3"><label value="@load(f)"/></cell>
+            </groupfoot>
+        </template>
+    </grid>
+</zk>

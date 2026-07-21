@@ -150,6 +150,23 @@ class RenderFidelityTest {
                 "no user class may be loaded to synthesize the model: " + tracker.getAttempts());
     }
 
+    @ParameterizedTest(name = "(h) binding-model-rows.zul [{0}]")
+    @MethodSource("variants")
+    void fixtureH_boundModelWithExplicitRowsRenders(Variants.Named variant) throws Exception {
+        ForbiddenLoadTracker tracker = new ForbiddenLoadTracker(CANARY_PREFIX);
+        RenderResult r = render(variant, "binding-model-rows.zul", tracker);
+        // Regression: injecting the model before the explicit <rows> composed threw
+        // "Only one rows child is allowed"; it must be injected post-composition.
+        assertTrue(r.isSuccess(),
+                () -> "explicit <rows><template> + model must render, not fail: " + describeFailure(r));
+        String html = r.getHtml();
+        assertTrue(count(html, "each.name") >= 3,
+                () -> "expected >= 3 placeholder rows via the explicit <rows> template: " + html);
+        assertFalse(html.contains("LOADED"), "real bound value must not leak: " + html);
+        assertTrue(tracker.getAttempts().isEmpty(),
+                "no user class may be loaded: " + tracker.getAttempts());
+    }
+
     private static int count(String haystack, String needle) {
         int n = 0;
         for (int i = haystack.indexOf(needle); i >= 0; i = haystack.indexOf(needle, i + needle.length())) {

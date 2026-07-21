@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- L4: listbox grouping (GroupsModel) -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <listbox width="480px"
+             viewModel="@id('vm') @init('com.example.plugin.test.preview.PreviewCasesVM')"
+             model="@load(vm.productGroups)">
+        <listhead>
+            <listheader label="Name"/>
+            <listheader label="Price" align="right"/>
+        </listhead>
+        <template name="model:group" var="g">
+            <listgroup label="@load(g)"/>
+        </template>
+        <template name="model" var="item">
+            <listitem>
+                <listcell label="@load(item.name)"/>
+                <listcell label="@load(item.price)"/>
+            </listitem>
+        </template>
+    </listbox>
+</zk>

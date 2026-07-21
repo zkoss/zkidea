@@ -53,6 +53,10 @@ public class PlaceholderInjector implements UiLifeCycle {
 
     private static final int PLACEHOLDER_ROW_COUNT = 3;
 
+    /** Marks a component whose model we already synthesized, so overlapping composer
+     * subtrees (nested viewModels) don't double-inject. */
+    private static final String SYNTH_MODEL_FLAG = "zkpreview.syntheticModel";
+
     private static boolean isolationEnabled() {
         return !"false".equalsIgnoreCase(System.getProperty(ISOLATION_PROPERTY));
     }
@@ -68,17 +72,51 @@ public class PlaceholderInjector implements UiLifeCycle {
             return;
         }
         for (String prop : props) {
+            // Model bindings are injected post-composition (see injectModels): calling
+            // setModel here -- before the data component's explicit <rows>/<listhead>
+            // child has composed -- makes ZK auto-create a second rows/listhead
+            // ("Only one rows child is allowed").
             if ("model".equals(prop)) {
-                String expr = bindingExpression(ctrl, prop, MODEL_BINDINGS);
-                if (expr != null) {
-                    injectPlaceholderModel(comp, expr);
-                }
-            } else {
-                String expr = bindingExpression(ctrl, prop, DISPLAY_BINDINGS);
-                if (expr != null && applyPlaceholder(comp, prop, expr)) {
-                    dim(comp);
-                }
+                continue;
             }
+            String expr = bindingExpression(ctrl, prop, DISPLAY_BINDINGS);
+            if (expr != null && applyPlaceholder(comp, prop, expr)) {
+                dim(comp);
+            }
+        }
+    }
+
+    /**
+     * Post-composition model injection, invoked from {@link PreviewComposer#doAfterCompose}
+     * once the applied subtree (including any explicit {@code <rows>}/{@code <listhead>})
+     * is fully built -- the same point at which the real MVVM binder would set the model.
+     * Feeds every model-bound data component under {@code root} a synthetic
+     * {@code ListModelList} so ZK renders its {@code <template name="model">}; the per-cell
+     * text bindings are then filled by {@link #afterComponentAttached}.
+     */
+    public static void injectModels(Component root) {
+        if (root == null || !isolationEnabled()) {
+            return;
+        }
+        List<Component> targets = new ArrayList<>();
+        collectModelBound(root, targets);
+        for (Component comp : targets) {
+            String expr = bindingExpression((ComponentCtrl) comp, "model", MODEL_BINDINGS);
+            if (expr != null) {
+                injectPlaceholderModel(comp, expr);
+            }
+        }
+    }
+
+    private static void collectModelBound(Component comp, List<Component> out) {
+        if (comp instanceof ComponentCtrl) {
+            List<String> props = ((ComponentCtrl) comp).getAnnotatedProperties();
+            if (props != null && props.contains("model") && comp.getAttribute(SYNTH_MODEL_FLAG) == null) {
+                out.add(comp);
+            }
+        }
+        for (Component child : comp.getChildren()) {
+            collectModelBound(child, out);
         }
     }
 
@@ -149,6 +187,7 @@ public class PlaceholderInjector implements UiLifeCycle {
             }
             Object model = listModelListCls.getConstructor(Collection.class).newInstance(rows);
             setModel.invoke(comp, model);
+            comp.setAttribute(SYNTH_MODEL_FLAG, Boolean.TRUE);
         } catch (ReflectiveOperationException | RuntimeException ignore) {
             // best-effort only
         }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- G3: classic ${} model from inline zscript (non-MVVM). NOTE: with a compose-time
+     (EL) model you must NOT wrap the template in an explicit <rows> (ZK auto-creates
+     one for live data) — unlike the MVVM @load case where the binder sets it later. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <zscript><![CDATA[
+        import org.zkoss.zul.ListModelList;
+        ListModelList lm = new ListModelList();
+        lm.add("Apple");
+        lm.add("Banana");
+        lm.add("Cherry");
+    ]]></zscript>
+    <grid model="${lm}" width="300px">
+        <columns><column label="Fruit"/></columns>
+        <template name="model">
+            <row><label value="${each}"/></row>
+        </template>
+    </grid>
+</zk>

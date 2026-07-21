@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- G1: MVVM grid + template, columns w/ sort+hflex, paging, mixed cell components -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <grid width="680px" mold="paging" pageSize="5"
+          viewModel="@id('vm') @init('com.example.plugin.test.preview.PreviewCasesVM')"
+          model="@load(vm.products)">
+        <columns menupopup="auto" sizable="true">
+            <column label="Name" sort="auto(name)" hflex="min"/>
+            <column label="Category" sort="auto(category)"/>
+            <column label="Price" align="right" hflex="min"/>
+            <column label="Qty" align="right" hflex="min"/>
+            <column label="In stock" align="center" hflex="min"/>
+        </columns>
+        <rows>
+            <template name="model" var="item">
+                <row>
+                    <label value="@load(item.name)"/>
+                    <label value="@load(item.category)"/>
+                    <label value="@load(item.price)"/>
+                    <label value="@load(item.qty)"/>
+                    <checkbox checked="@load(item.inStock)" disabled="true"/>
+                </row>
+            </template>
+        </rows>
+    </grid>
+</zk>

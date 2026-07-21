@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- L6: listbox mold="select" (native HTML select) with model -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <listbox mold="select" width="220px"
+             viewModel="@id('vm') @init('com.example.plugin.test.preview.PreviewCasesVM')"
+             model="@load(vm.tags)">
+        <template name="model" var="t">
+            <listitem><listcell label="@load(t)"/></listitem>
+        </template>
+    </listbox>
+</zk>

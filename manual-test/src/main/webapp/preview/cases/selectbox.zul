@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- C3: selectbox with model (native select) -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <selectbox width="220px"
+               viewModel="@id('vm') @init('com.example.plugin.test.preview.PreviewCasesVM')"
+               model="@load(vm.tags)"/>
+</zk>

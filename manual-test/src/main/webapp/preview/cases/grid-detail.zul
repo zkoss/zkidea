@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- G5: grid with inline row <detail> (collapsed) -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <grid width="560px"
+          viewModel="@id('vm') @init('com.example.plugin.test.preview.PreviewCasesVM')"
+          model="@load(vm.products)">
+        <columns>
+            <column label="Name"/>
+            <column label="Category"/>
+            <column label="Price" align="right"/>
+        </columns>
+        <template name="model" var="item">
+            <row>
+                <detail open="false">
+                    <vlayout>
+                        <label value="@load(item.name)"/>
+                        <label value="@load(item.category)"/>
+                    </vlayout>
+                </detail>
+                <label value="@load(item.name)"/>
+                <label value="@load(item.category)"/>
+                <label value="@load(item.price)"/>
+            </row>
+        </template>
+    </grid>
+</zk>
