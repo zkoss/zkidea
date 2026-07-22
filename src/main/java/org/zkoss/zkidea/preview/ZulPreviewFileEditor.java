@@ -11,6 +11,7 @@ import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
+import com.intellij.ui.EditorNotificationPanel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.jcef.JBCefApp;
 import com.intellij.ui.jcef.JBCefBrowser;
@@ -27,6 +28,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
+import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
@@ -105,7 +107,7 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
                 previewUrl = "http://localhost:" + result.getPort() + result.getRequestPath();
                 browser = new JBCefBrowser(previewUrl);
                 Disposer.register(this, browser);
-                component.add(browser.getComponent(), CARD_BROWSER);
+                component.add(wrapWithHint(browser.getComponent()), CARD_BROWSER);
                 cardLayout.show(component, CARD_BROWSER);
             } else {
                 showMessage(result.getMessage());
@@ -135,6 +137,29 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
                 }
             }
         });
+    }
+
+    /**
+     * Pins the M-3 first-run hint above the render, so a first-paint layout with
+     * placeholder binding values is not read as a broken app. Skipped once the user has
+     * dismissed it (persisted application-wide -- see {@link LayoutPreviewHint}).
+     */
+    private JComponent wrapWithHint(JComponent renderComponent) {
+        if (LayoutPreviewHint.isDismissed()) {
+            return renderComponent;
+        }
+        JPanel wrapper = new JPanel(new BorderLayout());
+        EditorNotificationPanel banner = new EditorNotificationPanel(EditorNotificationPanel.Status.Info);
+        banner.text(LayoutPreviewHint.TEXT);
+        banner.createActionLabel("Got it", () -> {
+            LayoutPreviewHint.dismiss();
+            wrapper.remove(banner);
+            wrapper.revalidate();
+            wrapper.repaint();
+        });
+        wrapper.add(banner, BorderLayout.NORTH);
+        wrapper.add(renderComponent, BorderLayout.CENTER);
+        return wrapper;
     }
 
     private void showMessage(String text) {
