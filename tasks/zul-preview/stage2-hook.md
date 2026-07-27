@@ -1,9 +1,15 @@
 # Stage 2 hook: Fail-Render reporting
 
-> v1 (E1–E4) ships **no** reporting feature. This file documents where and how a future
+> v1 (E1–E4) shipped **no** reporting feature. This file documents where and how a future
 > stage-2 consumer plugs in, per PLAN.md §1 ("Stage 2 (out of v1 scope, design hook
-> only): Fail-Render reporting") and the E4 brief (W3). No UI, persistence, or network
-> reporting is built here — this is a design note plus one pointer comment in the code.
+> only): Fail-Render reporting") and the E4 brief (W3).
+>
+> **Update (L-10, `tasks/stage2-error-pane/`):** the browser-facing presentation is now
+> built — a failed `.zul` render is served as a formatted **HTML error page**
+> (`ErrorPageRenderer`), not raw JSON. The structured `RenderError` object + `toJson()`
+> are unchanged; what moved is only the wire bytes for the browser. The remaining stage-2
+> reporting concerns below (aggregation panel, persistence, off-machine reporting) are
+> still unbuilt.
 
 ## Shape decision: documentation, not a listener interface
 
@@ -46,21 +52,20 @@ see it:
 - `zk-preview-launcher/src/main/java/org/zkoss/zkpreview/RenderResult.java` —
   `toJson()` wraps it as `{"status":"FAILURE","error":{...}}`.
 - `zk-preview-launcher/src/main/java/org/zkoss/zkpreview/PreviewHttpServer.java`,
-  `handle()` — the `.zul` GET branch: on `!r.isSuccess()`, writes `r.toJson()` as the
-  HTTP 500 response body (`Content-Type: application/json`). **This is the single
-  wire-level point stage 2 should intercept** (a pointer comment is left here). Two
-  concrete integration options for stage 2, neither built now:
-  1. **Server-side**: add a second, opt-in sink inside `PreviewHttpServer` (e.g. a
-     `Consumer<RenderError>` passed in at construction) that fires alongside the HTTP
-     response — no JCEF/browser involvement, works even before the browser finishes
-     loading.
-  2. **Client-side**: attach a `CefLoadHandler.onLoadError`/status-code check on the
-     `JBCefBrowser` in `ZulPreviewFileEditor`, re-fetch `previewUrl` with a plain HTTP
-     client when a non-2xx load is observed, and parse the JSON body.
+  `handle()` — the `.zul` GET branch: on `!r.isSuccess()` it now writes an HTTP 500
+  **HTML** error page (`ErrorPageRenderer.render(r.getError())`, `Content-Type:
+  text/html`) so the browser shows a readable error, not raw JSON (L-10). The wire is
+  therefore no longer the place to tap a structured feed — the `RenderError` object is
+  still built here (`r.getError()`), which is where a future reporting sink should hook:
+  - **Server-side (recommended)**: add a second, opt-in sink inside `PreviewHttpServer`
+    (e.g. a `Consumer<RenderError>` passed in at construction) that fires alongside the
+    HTTP response — no JCEF/browser involvement, works even before the browser finishes
+    loading, and needs no JSON parser on the plugin side (the launcher already has the
+    typed object). This is the clean integration point now that the wire serves HTML.
 
-  Option 1 is simpler and doesn't need a JSON parser dependency on the plugin side
-  (the launcher already serializes; stage 2's plugin-side consumer would need one only
-  under option 2).
+  (The former client-side option — intercept the load in `ZulPreviewFileEditor` and parse
+  a JSON body — no longer applies: the body is HTML, and the structured object never
+  leaves the launcher JVM.)
 
 ## JSON schema (already shipped, stable since E1 — AC-6)
 

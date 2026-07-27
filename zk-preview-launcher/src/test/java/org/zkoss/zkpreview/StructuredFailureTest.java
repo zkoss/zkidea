@@ -46,6 +46,11 @@ class StructuredFailureTest {
                     "message must name the missing FQCN: " + error.getMessage());
             assertEquals("/zscript-missing-class.zul", error.getZulFile());
             assertNotNull(error.getLine(), "line should be available for a zscript-time failure");
+            // The full stack trace is captured for the collapsible "Show full stack trace"
+            // section + the GitHub report payload (not just the 4-level summary message).
+            assertNotNull(error.getStackTrace(), "a render failure must capture the full stack trace");
+            assertTrue(error.getStackTrace().contains("CanaryZscriptTarget"),
+                    "captured trace must include the real failure: " + error.getStackTrace());
 
             // Machine-readable: valid enough JSON shape (not merely a stack trace dump).
             String json = r.toJson();

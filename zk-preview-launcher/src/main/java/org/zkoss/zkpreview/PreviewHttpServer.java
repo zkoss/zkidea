@@ -66,11 +66,13 @@ public final class PreviewHttpServer {
                 if (r.isSuccess()) {
                     send(exchange, 200, "text/html;charset=UTF-8", r.getHtml().getBytes(StandardCharsets.UTF_8));
                 } else {
-                    // Stage 2 hook (out of v1 scope, tasks/zul-preview/stage2-hook.md):
-                    // this is the single wire-level point where a structured failure
-                    // becomes the JSON a future consumer would observe.
-                    send(exchange, 500, "application/json;charset=UTF-8",
-                            r.toJson().getBytes(StandardCharsets.UTF_8));
+                    // L-10 (tasks/stage2-error-pane/PLAN.md): serve a formatted HTML error
+                    // page so the browser shows a readable error, not the raw JSON it used
+                    // to paint verbatim. The structured RenderError (r.getError()/toJson())
+                    // is unchanged and still the place a future programmatic sink would tap
+                    // (a server-side Consumer<RenderError>, see stage2-hook.md).
+                    send(exchange, 500, "text/html;charset=UTF-8",
+                            ErrorPageRenderer.render(r.getError()).getBytes(StandardCharsets.UTF_8));
                 }
                 return;
             }

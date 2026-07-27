@@ -1,5 +1,7 @@
 package org.zkoss.zkpreview;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -54,7 +56,15 @@ public final class ErrorMapper {
             phase = RenderPhase.UNKNOWN;
             message = summarize(chain);
         }
-        return new RenderError(phase, message, zulPath, pos[0], pos[1]);
+        return new RenderError(phase, message, zulPath, pos[0], pos[1], stackTraceOf(t));
+    }
+
+    /** Full stack trace (including causes) of the render-time exception, for the collapsible
+     * "Show full stack trace" section and the GitHub report payload. */
+    private static String stackTraceOf(Throwable t) {
+        StringWriter sw = new StringWriter();
+        t.printStackTrace(new PrintWriter(sw));
+        return sw.toString();
     }
 
     private static List<Throwable> chainOf(Throwable t) {

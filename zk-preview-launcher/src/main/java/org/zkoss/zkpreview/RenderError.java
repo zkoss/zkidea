@@ -13,8 +13,14 @@ public final class RenderError {
     private final String zulFile;
     private final Integer line;
     private final Integer column;
+    private final String stackTrace;
 
     public RenderError(RenderPhase phase, String message, String zulFile, Integer line, Integer column) {
+        this(phase, message, zulFile, line, column, null);
+    }
+
+    public RenderError(RenderPhase phase, String message, String zulFile, Integer line, Integer column,
+                       String stackTrace) {
         if (phase == null) throw new IllegalArgumentException("phase must not be null");
         if (message == null || message.isEmpty()) throw new IllegalArgumentException("message must not be empty");
         this.phase = phase;
@@ -22,6 +28,7 @@ public final class RenderError {
         this.zulFile = zulFile;
         this.line = line;
         this.column = column;
+        this.stackTrace = stackTrace;
     }
 
     public RenderPhase getPhase() {
@@ -44,6 +51,11 @@ public final class RenderError {
         return column;
     }
 
+    /** Full stack trace of the causal exception (incl. causes), or {@code null} if unavailable. */
+    public String getStackTrace() {
+        return stackTrace;
+    }
+
     /** Minimal, dependency-free JSON so the launcher never needs a JSON library. */
     public String toJson() {
         StringBuilder sb = new StringBuilder("{");
@@ -52,6 +64,7 @@ public final class RenderError {
         sb.append(",\"zulFile\":").append(zulFile == null ? "null" : jsonString(zulFile));
         sb.append(",\"line\":").append(line == null ? "null" : line);
         sb.append(",\"column\":").append(column == null ? "null" : column);
+        sb.append(",\"stackTrace\":").append(stackTrace == null ? "null" : jsonString(stackTrace));
         sb.append('}');
         return sb.toString();
     }
