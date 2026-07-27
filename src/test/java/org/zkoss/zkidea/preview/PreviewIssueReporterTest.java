@@ -54,4 +54,20 @@ class PreviewIssueReporterTest {
         assertTrue(body.toLowerCase().contains("reproduce") || body.toLowerCase().contains("steps"),
                 () -> "body should invite the user to add repro steps: " + body);
     }
+
+    @Test
+    void body_inlinesZulSourceInAFencedCodeBlockWhenProvided() {
+        String body = PreviewIssueReporter.body("ctx", "env", "<zk><label value='SRC_MARKER'/></zk>");
+
+        assertTrue(body.contains("SRC_MARKER"),
+                () -> "source must be inlined so the failure can be debugged later: " + body);
+        assertTrue(body.contains("```xml"), () -> "source must be a fenced code block: " + body);
+    }
+
+    @Test
+    void body_truncatesAnOverlongSource() {
+        String body = PreviewIssueReporter.body("ctx", "env", "y".repeat(20000));
+
+        assertTrue(body.contains("truncated"), () -> "an over-long source must be truncated: " + body);
+    }
 }

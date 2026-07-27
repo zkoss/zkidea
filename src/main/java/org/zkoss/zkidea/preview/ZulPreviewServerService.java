@@ -104,7 +104,11 @@ public final class ZulPreviewServerService implements Disposable {
                 .withParameters("-jar", resolveLauncherJar().toString(),
                         "--classpath", joinClasspath(target.libraryJars),
                         "--webapp", target.docroot.toString(),
-                        "--port", "0");
+                        "--port", "0",
+                        // Identify this plugin/IDE in the error page's "Report on GitHub"
+                        // link (the launcher can't know them); OS/JDK it fills in itself.
+                        "--report-plugin", "ZKIdea " + PreviewIssueReporter.pluginVersion(),
+                        "--report-ide", PreviewIssueReporter.ideDescription());
         try {
             ManagedPreviewServer server = new ManagedPreviewServer(commandLine);
             server.start();

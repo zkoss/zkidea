@@ -30,7 +30,7 @@ public final class Main {
         Path webappDir = Paths.get(webappArg);
 
         RenderEngine engine = RenderEngineFactory.create(zkJars, webappDir);
-        PreviewHttpServer server = new PreviewHttpServer(engine, port);
+        PreviewHttpServer server = new PreviewHttpServer(engine, port, reportEnv(opts), webappDir);
         server.start();
 
         System.out.println("PREVIEW_PORT=" + server.getPort());
@@ -53,6 +53,28 @@ public final class Main {
             }
         }
         return opts;
+    }
+
+    /**
+     * Environment block for the error page's "Report on GitHub" link. Plugin/IDE identity
+     * comes from the plugin (optional {@code --report-plugin}/{@code --report-ide}); OS/JDK
+     * are this (launcher) JVM's, which is the JVM actually running ZK. Returns {@code null}
+     * when the plugin passed no identity (e.g. the standalone CLI), so the link still works
+     * but omits the env block.
+     */
+    private static String reportEnv(Map<String, String> opts) {
+        String plugin = opts.get("report-plugin");
+        String ide = opts.get("report-ide");
+        if (plugin == null && ide == null) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        if (plugin != null) sb.append("Plugin: ").append(plugin).append('\n');
+        if (ide != null) sb.append("IDE: ").append(ide).append('\n');
+        sb.append("OS: ").append(System.getProperty("os.name")).append(' ')
+                .append(System.getProperty("os.version")).append('\n');
+        sb.append("JDK: ").append(System.getProperty("java.version"));
+        return sb.toString();
     }
 
     private static String require(Map<String, String> opts, String key) {

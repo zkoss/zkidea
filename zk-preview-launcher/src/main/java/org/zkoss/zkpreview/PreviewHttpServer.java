@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * JDK built-in HTTP server bridging plain HTTP to the mock servlet environment.
@@ -21,9 +23,17 @@ public final class PreviewHttpServer {
 
     private final HttpServer httpServer;
     private final RenderEngine engine;
+    private final String reportEnv;
+    private final Path webappDir;
 
     public PreviewHttpServer(RenderEngine engine, int port) throws IOException {
+        this(engine, port, null, null);
+    }
+
+    public PreviewHttpServer(RenderEngine engine, int port, String reportEnv, Path webappDir) throws IOException {
         this.engine = engine;
+        this.reportEnv = reportEnv;
+        this.webappDir = webappDir;
         this.httpServer = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
         this.httpServer.createContext("/", this::handle);
     }
@@ -72,13 +82,33 @@ public final class PreviewHttpServer {
                     // is unchanged and still the place a future programmatic sink would tap
                     // (a server-side Consumer<RenderError>, see stage2-hook.md).
                     send(exchange, 500, "text/html;charset=UTF-8",
-                            ErrorPageRenderer.render(r.getError()).getBytes(StandardCharsets.UTF_8));
+                            ErrorPageRenderer.render(r.getError(), reportEnv, readZulSource(path))
+                                    .getBytes(StandardCharsets.UTF_8));
                 }
                 return;
             }
             send(exchange, 404, "text/plain;charset=UTF-8", new byte[0]);
         } finally {
             exchange.close();
+        }
+    }
+
+    /** The failing {@code .zul}'s own source, for the error report's source block; {@code null}
+     * if unavailable (no webapp dir, unreadable, or outside the docroot). */
+    private String readZulSource(String path) {
+        if (webappDir == null) {
+            return null;
+        }
+        try {
+            String rel = path.startsWith("/") ? path.substring(1) : path;
+            Path root = webappDir.normalize();
+            Path f = root.resolve(rel).normalize();
+            if (!f.startsWith(root) || !Files.isRegularFile(f)) {
+                return null;
+            }
+            return Files.readString(f);
+        } catch (Exception e) {
+            return null;
         }
     }
 

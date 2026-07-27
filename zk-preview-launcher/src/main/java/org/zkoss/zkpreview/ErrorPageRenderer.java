@@ -1,18 +1,38 @@
 package org.zkoss.zkpreview;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
 /**
  * Renders a {@link RenderError} as a self-contained, theme-aware HTML page for the preview
  * pane, shown in place of the raw HTTP-500 JSON the browser used to paint verbatim (L-10,
  * doc/zul_preview_product_positioning.md §3). Dependency-free (no template/JSON library);
  * every interpolated field is HTML-escaped. The structured {@link RenderError} object and
  * its {@code toJson()} are unaffected — this only changes what the browser receives.
+ *
+ * <p>The page also offers a one-click "Report this issue on GitHub" link, prefilled with
+ * the error + environment (Phase 2b). The plugin routes external links to the system
+ * browser; {@code reportEnv} carries the plugin/IDE identity the launcher can't know.
  */
 public final class ErrorPageRenderer {
+
+    private static final String NEW_ISSUE_URL = "https://github.com/zkoss/zkidea/issues/new";
+    private static final int MAX_BODY_CHARS = 6000;
+    private static final int SOURCE_BUDGET = 3500;
+    private static final int TRACE_BUDGET = 1500;
 
     private ErrorPageRenderer() {
     }
 
     public static String render(RenderError error) {
+        return render(error, null, null);
+    }
+
+    public static String render(RenderError error, String reportEnv) {
+        return render(error, reportEnv, null);
+    }
+
+    public static String render(RenderError error, String reportEnv, String zulSource) {
         String phase = escape(String.valueOf(error.getPhase()));
         String message = escape(error.getMessage());
         String location = location(error);
@@ -20,6 +40,8 @@ public final class ErrorPageRenderer {
         String details = (trace == null || trace.isBlank()) ? ""
                 : "<details class=\"trace\"><summary>Show full stack trace</summary>"
                 + "<pre>" + escape(trace) + "</pre></details>\n";
+        String report = "<p class=\"report\"><a href=\"" + escape(reportUrl(error, reportEnv, zulSource))
+                + "\">Report this issue on GitHub ↗</a></p>\n";
 
         return "<!doctype html>\n"
                 + "<html lang=\"en\">\n"
@@ -37,6 +59,7 @@ public final class ErrorPageRenderer {
                 + details
                 + "<p class=\"note\">Binding values are not evaluated and your ViewModel is not executed in the "
                 + "Layout Preview. Fix the ZUL (or its classpath) and save to re-render.</p>\n"
+                + report
                 + "</div>\n"
                 + "</body>\n"
                 + "</html>\n";
@@ -54,6 +77,52 @@ public final class ErrorPageRenderer {
             }
         }
         return sb.toString();
+    }
+
+    /**
+     * Prefilled GitHub new-issue URL for this failure (phase, message, location, stack
+     * trace, and the plugin/IDE/OS/JDK environment). Body length-capped so the URL stays
+     * within browser/GitHub limits; the user reviews and submits — nothing is auto-posted,
+     * and the ZUL source is never included.
+     */
+    private static String reportUrl(RenderError error, String reportEnv, String zulSource) {
+        String title = "[Layout Preview] " + error.getPhase() + " error"
+                + (error.getZulFile() == null ? "" : " rendering " + error.getZulFile());
+        StringBuilder body = new StringBuilder();
+        body.append("Phase: ").append(error.getPhase()).append('\n');
+        body.append("Message: ").append(error.getMessage()).append('\n');
+        if (error.getZulFile() != null) {
+            body.append("File: ").append(error.getZulFile());
+            if (error.getLine() != null) body.append(':').append(error.getLine());
+            body.append('\n');
+        }
+        if (reportEnv != null && !reportEnv.isBlank()) {
+            body.append("\n---\n").append(reportEnv).append('\n');
+        }
+        // The .zul source is the key debugging artifact; budgeted (a prefilled URL can't
+        // attach a file and its body is length-limited), so large files truncate.
+        if (zulSource != null && !zulSource.isBlank()) {
+            body.append("\n---\nZUL source:\n```xml\n").append(truncate(zulSource, SOURCE_BUDGET)).append("\n```\n");
+        }
+        if (error.getStackTrace() != null && !error.getStackTrace().isBlank()) {
+            body.append("\n---\nStack trace:\n```\n").append(truncate(error.getStackTrace(), TRACE_BUDGET))
+                    .append("\n```\n");
+        }
+        body.append("\n---\nSteps to reproduce:\n1. \n");
+        return NEW_ISSUE_URL + "?title=" + enc(title) + "&body=" + enc(cap(body.toString()));
+    }
+
+    private static String truncate(String s, int budget) {
+        return s.length() <= budget ? s : s.substring(0, budget) + "\n…(truncated)";
+    }
+
+    private static String cap(String body) {
+        return body.length() <= MAX_BODY_CHARS ? body
+                : body.substring(0, MAX_BODY_CHARS) + "\n```\n…(truncated — see the preview pane for the full details)";
+    }
+
+    private static String enc(String s) {
+        return URLEncoder.encode(s, StandardCharsets.UTF_8);
     }
 
     private static String escape(String s) {
@@ -90,8 +159,11 @@ public final class ErrorPageRenderer {
             + "details.trace>pre{white-space:pre-wrap;word-break:break-word;font-size:.78rem;margin:.6rem 0 0;"
             + "padding:.75rem .9rem;background:#fff;border:1px solid #e3e5e8;border-radius:8px;max-height:22rem;"
             + "overflow:auto;font-family:ui-monospace,SFMono-Regular,\"SF Mono\",Menlo,Consolas,monospace}"
-            + ".note{font-size:.82rem;opacity:.72;margin:0}"
+            + ".note{font-size:.82rem;opacity:.72;margin:0 0 .6rem}"
+            + ".report{font-size:.84rem;margin:0}.report>a{color:#2563eb;text-decoration:none}"
+            + ".report>a:hover{text-decoration:underline}"
             + "@media(prefers-color-scheme:dark){body{color:#dfe1e5;background:#1e1f22}"
+            + ".report>a{color:#6ea8fe}"
             + ".card{background:#2b2d30;border-color:#43454a}.phase{background:#43454a;color:#cfd2d6}"
             + ".msg,details.trace>pre{background:#1e1f22;border-color:#43454a}}";
 }

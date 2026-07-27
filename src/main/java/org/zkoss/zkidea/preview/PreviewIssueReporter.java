@@ -24,6 +24,7 @@ final class PreviewIssueReporter {
 
     /** Body cap (chars, pre-encoding) so the resulting URL stays within browser/GitHub limits. */
     static final int MAX_BODY_CHARS = 6000;
+    private static final int SOURCE_BUDGET = 3500;
 
     private PreviewIssueReporter() {
     }
@@ -38,28 +39,46 @@ final class PreviewIssueReporter {
 
     /** Pure: assemble the issue body from the failure context + environment + a repro prompt. */
     static String body(String context, String environment) {
-        return context
-                + "\n\n---\n" + environment
-                + "\n\n---\nSteps to reproduce:\n1. \n";
+        return body(context, environment, null);
+    }
+
+    /** Pure: as {@link #body(String, String)} but also inlines the {@code .zul} source (budgeted,
+     * fenced) so a failure can be debugged later. */
+    static String body(String context, String environment, String zulSource) {
+        StringBuilder sb = new StringBuilder(context).append("\n\n---\n").append(environment);
+        if (zulSource != null && !zulSource.isBlank()) {
+            String src = zulSource.length() <= SOURCE_BUDGET ? zulSource
+                    : zulSource.substring(0, SOURCE_BUDGET) + "\n…(truncated)";
+            sb.append("\n\n---\nZUL source:\n```xml\n").append(src).append("\n```\n");
+        }
+        sb.append("\n---\nSteps to reproduce:\n1. \n");
+        return sb.toString();
     }
 
     /** Current plugin / IDE / OS / JDK, formatted for the report. */
     static String environment() {
-        ApplicationInfo app = ApplicationInfo.getInstance();
         return "Plugin: ZKIdea " + pluginVersion()
-                + "\nIDE: " + app.getFullApplicationName() + " (" + app.getBuild().asString() + ")"
+                + "\nIDE: " + ideDescription()
                 + "\nOS: " + System.getProperty("os.name") + " " + System.getProperty("os.version")
                 + "\nJDK: " + System.getProperty("java.version");
     }
 
-    /** Open a prefilled GitHub issue for a preview failure in the system browser. */
-    static void report(String title, String context) {
-        BrowserUtil.browse(issueUrl(title, body(context, environment())));
+    /** Open a prefilled GitHub issue for a preview failure in the system browser (with the
+     * {@code .zul} source inlined for later debugging; {@code zulSource} may be {@code null}). */
+    static void report(String title, String context, String zulSource) {
+        BrowserUtil.browse(issueUrl(title, body(context, environment(), zulSource)));
     }
 
-    private static String pluginVersion() {
+    /** Plugin version (e.g. {@code 0.8.0}); also passed to the launcher for the error-page report link. */
+    static String pluginVersion() {
         IdeaPluginDescriptor descriptor = PluginManagerCore.getPlugin(PluginId.getId("org.zkoss.zkidea"));
         return descriptor != null ? descriptor.getVersion() : "unknown";
+    }
+
+    /** IDE name + build (e.g. {@code IntelliJ IDEA 2024.3 (IU-243.x)}); shared with the launcher report link. */
+    static String ideDescription() {
+        ApplicationInfo app = ApplicationInfo.getInstance();
+        return app.getFullApplicationName() + " (" + app.getBuild().asString() + ")";
     }
 
     private static String enc(String s) {

@@ -1,6 +1,9 @@
 package org.zkoss.zkidea.preview;
 
+import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.fileEditor.FileEditorState;
 import com.intellij.openapi.project.Project;
@@ -20,6 +23,10 @@ import com.intellij.util.Alarm;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.update.MergingUpdateQueue;
 import com.intellij.util.ui.update.Update;
+import org.cef.browser.CefBrowser;
+import org.cef.browser.CefFrame;
+import org.cef.handler.CefRequestHandlerAdapter;
+import org.cef.network.CefRequest;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -90,7 +97,8 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
         JPanel reportBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         reportBar.setBorder(JBUI.Borders.empty(4, 12, 8, 12));
         reportBar.add(new ActionLink("Report this issue on GitHub", (ActionListener) e ->
-                PreviewIssueReporter.report("[Layout Preview] Cannot display preview", messageArea.getText())));
+                PreviewIssueReporter.report("[Layout Preview] Cannot display preview",
+                        messageArea.getText(), currentSource())));
         messagePanel.add(reportBar, BorderLayout.SOUTH);
         component.add(messagePanel, CARD_MESSAGE);
         component.add(new JLabel("Starting ZK preview server…", SwingConstants.CENTER), CARD_LOADING);
@@ -119,12 +127,37 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
                 previewUrl = "http://localhost:" + result.getPort() + result.getRequestPath();
                 browser = new JBCefBrowser(previewUrl);
                 Disposer.register(this, browser);
+                installExternalLinkHandler(browser);
                 component.add(wrapWithHint(browser.getComponent()), CARD_BROWSER);
                 cardLayout.show(component, CARD_BROWSER);
             } else {
                 showMessage(result.getMessage());
             }
         });
+    }
+
+    /**
+     * Routes external links (e.g. the error page's "Report on GitHub" link, or any
+     * {@code <a href="http…">} in a rendered ZUL) to the system browser instead of letting
+     * them navigate inside the preview pane, which would replace the render with a web page
+     * and no way back. Localhost URLs (the preview itself and its {@code /zkau} resources)
+     * are left to load in-pane. {@code onBeforeBrowse} fires only for navigations, not
+     * sub-resource loads, so JS/CSS are unaffected.
+     */
+    private void installExternalLinkHandler(JBCefBrowser browser) {
+        browser.getJBCefClient().addRequestHandler(new CefRequestHandlerAdapter() {
+            @Override
+            public boolean onBeforeBrowse(CefBrowser cefBrowser, CefFrame frame, CefRequest request,
+                                          boolean userGesture, boolean isRedirect) {
+                String url = request.getURL();
+                if (userGesture && url != null && (url.startsWith("http://") || url.startsWith("https://"))
+                        && !url.startsWith("http://127.0.0.1:") && !url.startsWith("http://localhost")) {
+                    BrowserUtil.browse(url);
+                    return true; // cancel in-pane navigation
+                }
+                return false;
+            }
+        }, browser.getCefBrowser());
     }
 
     /**
@@ -172,6 +205,17 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
         wrapper.add(banner, BorderLayout.NORTH);
         wrapper.add(renderComponent, BorderLayout.CENTER);
         return wrapper;
+    }
+
+    /** The previewed file's current text (as loaded in the editor), for the issue report's
+     * source block; {@code null} if no document is available. */
+    private String currentSource() {
+        try {
+            Document document = FileDocumentManager.getInstance().getDocument(file);
+            return document != null ? document.getText() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private void showMessage(String text) {

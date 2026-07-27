@@ -50,8 +50,21 @@ pattern (the `feedback` actions).
 
 ## Out of scope
 - Auto-submitting issues / GitHub API auth (user always reviews + clicks submit).
-- Including ZUL source (declined for privacy).
 - A "Preview Problems" aggregation panel (broader stage 2).
+
+## Update — include the .zul source in the report (user, reversing the earlier "no source")
+The user asked for the source in the report ("so we can debug in the future"), accepting
+that it lands in a public issue. A prefilled GitHub URL **can't attach a file** and its
+body is length-limited (URL-encoding inflates ~2–3×), so — per the user's choice — the
+source is **inlined, budgeted** (`SOURCE_BUDGET` chars, fenced ```xml, truncated with a
+marker for large files):
+- Launcher: `PreviewHttpServer` reads the failing `.zul` from the docroot (path-guarded)
+  and passes it to `ErrorPageRenderer.render(error, reportEnv, zulSource)`.
+- Plugin (message cards): `ZulPreviewFileEditor` reads the document text and passes it to
+  `PreviewIssueReporter.report(title, context, zulSource)` → `body(context, env, source)`.
+- Tests: `ErrorPageRendererTest` (source carried + truncated), `PreviewIssueReporterTest`
+  (fenced source block + truncation). Verified via curl: the render-error report href
+  carries the file's own content (`ZUL+source`, `mismatched+open`).
 
 ## Success criteria
 - RED→GREEN per phase; full suite green.
@@ -69,9 +82,17 @@ pattern (the `feedback` actions).
   + runtime `environment`/`report`); message cards show a "Report this issue on GitHub"
   `ActionLink`. Tests: `PreviewIssueReporterTest` (encoding + length cap + body). Visual is
   runIde-only. Covers the setup-failure cases (no-ZK-jars / server-failed / JCEF-unavailable).
-- **Phase 2b (render-error page report link) — NOT STARTED.** Chosen approach: launcher
-  builds the prefilled GitHub link in the error HTML (its own small URL builder — the
-  module has no plugin dep; ~15 lines duplicated with `PreviewIssueReporter` by design),
-  plugin passes `--report-plugin`/`--report-ide` at spawn, and `ZulPreviewFileEditor`
-  installs a JBCef request handler so external `http(s)` links open in the system browser.
-  The JCEF routing + CLI wiring are **runIde-only** (no JCEF headless — lesson #1).
+- **Phase 2b (render-error page report link) — DONE.** `ErrorPageRenderer.render(error,
+  reportEnv)` builds the prefilled GitHub link in the error HTML (phase, message,
+  file:line, stack trace, env — body-capped, URL-encoded, href HTML-escaped); the launcher
+  owns this small builder (no plugin dep). `Main` parses `--report-plugin`/`--report-ide`
+  and fills OS/JDK itself; `ZulPreviewServerService` passes the plugin/IDE identity at
+  spawn (reusing `PreviewIssueReporter.pluginVersion()`/`ideDescription()`).
+  `ZulPreviewFileEditor` installs a JBCef `onBeforeBrowse` handler that routes external
+  `http(s)` links to the system browser (also fixes external links in any rendered ZUL);
+  localhost preview/`/zkau` URLs still load in-pane.
+  - **Verified via curl:** the error page carries a `github.com/zkoss/zkidea/issues/new`
+    link with the phase in the title and the env (`ZKIdea 0.8.0`, `IU-243…`) encoded in
+    the body. Tests: `ErrorPageRendererTest` (+2: link + env, link without env).
+  - **runIde-only:** the JCEF external-link routing and the `--report-*` spawn wiring
+    (no JCEF headless — lesson #1).

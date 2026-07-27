@@ -100,4 +100,53 @@ class ErrorPageRendererTest {
         assertFalse(html.contains("<details"),
                 () -> "no stack-trace disclosure when there is no trace to show: " + html);
     }
+
+    @Test
+    void offersReportToGithubLinkCarryingEnvironment() {
+        String html = ErrorPageRenderer.render(
+                new RenderError(RenderPhase.COMPOSE, "boom", "/a.zul", null, null, "trace here"),
+                "Plugin: ZKIdea 0.8.0\nIDE: IU-243");
+
+        assertTrue(html.contains("github.com/zkoss/zkidea/issues/new"),
+                () -> "a failed render must offer a one-click GitHub report: " + html);
+        assertTrue(html.toLowerCase(Locale.ROOT).contains("report"),
+                () -> "the report link must be labelled: " + html);
+        // The environment string is URL-encoded into the issue body; "ZKIdea" survives
+        // encoding verbatim, so its presence proves the env reached the report URL.
+        assertTrue(html.contains("ZKIdea"),
+                () -> "report URL must carry the environment (plugin/IDE): " + html);
+        // The href is a valid HTML attribute (query '&' escaped as '&amp;').
+        assertTrue(html.contains("issues/new?") && html.contains("&amp;body="),
+                () -> "report href must be a valid, HTML-escaped GitHub new-issue URL: " + html);
+    }
+
+    @Test
+    void offersReportLinkEvenWithoutEnvironment() {
+        String html = ErrorPageRenderer.render(composeError("boom")); // 1-arg -> null env
+
+        assertTrue(html.contains("github.com/zkoss/zkidea/issues/new"),
+                () -> "report link should be offered even when no env was supplied: " + html);
+    }
+
+    @Test
+    void reportLinkCarriesTheZulSource() {
+        String html = ErrorPageRenderer.render(
+                new RenderError(RenderPhase.PARSE, "bad tag", "/a.zul", 7, null, "trace"),
+                "Plugin: ZKIdea 0.8.0",
+                "<zk><label value='SOURCE_MARKER'/></zk>");
+
+        // The source is URL-encoded into the issue body; "SOURCE_MARKER" survives verbatim.
+        assertTrue(html.contains("SOURCE_MARKER"),
+                () -> "report URL must carry the .zul source so it can be debugged later: " + html);
+    }
+
+    @Test
+    void reportLinkTruncatesAnOverlongSource() {
+        String huge = "x".repeat(20000);
+        String html = ErrorPageRenderer.render(
+                new RenderError(RenderPhase.PARSE, "bad", "/a.zul", null, null, null), null, huge);
+
+        assertTrue(html.contains("truncated"),
+                () -> "an over-long .zul source must be truncated to keep the URL usable: " + html);
+    }
 }
