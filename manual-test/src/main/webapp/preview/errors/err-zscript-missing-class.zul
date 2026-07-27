@@ -1,0 +1,11 @@
+<zk>
+    <window title="zscript missing class">
+        <!-- zscript executes in the preview; this class is not on the classpath,
+             so BeanShell fails at compose time -> COMPOSE error naming the FQCN.
+             (Same shape a real page hits when a helper class isn't compiled yet.) -->
+        <zscript>
+            com.example.reporting.ReportBuilder b = new com.example.reporting.ReportBuilder();
+        </zscript>
+        <label value="never reached"/>
+    </window>
+</zk>

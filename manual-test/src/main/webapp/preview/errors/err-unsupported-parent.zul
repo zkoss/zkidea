@@ -1,0 +1,12 @@
+<zk>
+    <window title="unsupported parent">
+        <!-- <row> is only valid inside <grid><rows>. Directly under <window> it has an
+             unsupported parent -> ZK throws "Unsupported parent for row" at compose time
+             (classified COMPOSE). A common copy-out-of-context / apply-a-row-template
+             mistake. (Must be under a real component like <window>: a <row> directly
+             under the <zk> page root is tolerated and renders.) -->
+        <row>
+            <label value="a row must live inside grid &gt; rows"/>
+        </row>
+    </window>
+</zk>
