@@ -12,6 +12,7 @@ import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
 import com.intellij.ui.EditorNotificationPanel;
+import com.intellij.ui.components.ActionLink;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.jcef.JBCefApp;
 import com.intellij.ui.jcef.JBCefBrowser;
@@ -30,6 +31,8 @@ import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
+import java.awt.FlowLayout;
+import java.awt.event.ActionListener;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.util.List;
@@ -80,7 +83,16 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
         messageArea.setBorder(JBUI.Borders.empty(12));
         JBScrollPane messageScroll = new JBScrollPane(messageArea);
         messageScroll.setBorder(BorderFactory.createEmptyBorder());
-        component.add(messageScroll, CARD_MESSAGE);
+        // Every "can't display preview" message offers a one-click GitHub report
+        // (prefilled with the message + environment; the user reviews and submits).
+        JPanel messagePanel = new JPanel(new BorderLayout());
+        messagePanel.add(messageScroll, BorderLayout.CENTER);
+        JPanel reportBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        reportBar.setBorder(JBUI.Borders.empty(4, 12, 8, 12));
+        reportBar.add(new ActionLink("Report this issue on GitHub", (ActionListener) e ->
+                PreviewIssueReporter.report("[Layout Preview] Cannot display preview", messageArea.getText())));
+        messagePanel.add(reportBar, BorderLayout.SOUTH);
+        component.add(messagePanel, CARD_MESSAGE);
         component.add(new JLabel("Starting ZK preview server…", SwingConstants.CENTER), CARD_LOADING);
 
         if (!JBCefApp.isSupported()) {
