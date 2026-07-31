@@ -13,12 +13,27 @@ import java.nio.charset.StandardCharsets;
  * <p>The page also offers a one-click "Report this issue on GitHub" link, prefilled with
  * the error + environment (Phase 2b). The plugin routes external links to the system
  * browser; {@code reportEnv} carries the plugin/IDE identity the launcher can't know.
+ *
+ * <p>When the full report (source + environment + complete stack trace) would exceed a safe
+ * GitHub URL length ({@link #MAX_URL_LENGTH}), the report link instead copies the complete
+ * report to the clipboard and opens a new issue whose <em>body</em> is pre-filled with a short
+ * paste instruction ({@link #CLIPBOARD_NOTE}) — so nothing is truncated, and the guidance is
+ * seen only by someone who actually clicks to file (not every reader of the error pane).
  */
 public final class ErrorPageRenderer {
 
     private static final String NEW_ISSUE_URL = "https://github.com/zkoss/zkidea/issues/new";
-    private static final int MAX_BODY_CHARS = 6000;
-    private static final int SOURCE_BUDGET = 3500;
+    /** Pre-filled into the opened issue's body when the report is too large to pre-fill; the
+     *  complete report is on the clipboard, so this just tells the user to paste it. */
+    static final String CLIPBOARD_NOTE =
+            "⚠️ This Layout Preview error report was too large to pre-fill automatically.\n\n"
+            + "The full details — the ZUL source, the environment, and the complete stack trace — "
+            + "have been copied to your clipboard.\n\n"
+            + "**Please paste them below (⌘V / Ctrl+V) before submitting.**\n";
+    /** Above this full-URL length a prefilled GitHub link risks a 414 / silent truncation
+     *  (classic web-server request-line limit is ~8 KB), so we switch to the clipboard
+     *  hand-off. See tasks/error-reporting/URL-LENGTH.md. */
+    private static final int MAX_URL_LENGTH = 8000;
 
     private ErrorPageRenderer() {
     }
@@ -39,8 +54,7 @@ public final class ErrorPageRenderer {
         String details = (trace == null || trace.isBlank()) ? ""
                 : "<details class=\"trace\"><summary>Show full stack trace</summary>"
                 + "<pre>" + escape(trace) + "</pre></details>\n";
-        String report = "<p class=\"report\"><a href=\"" + escape(reportUrl(error, reportEnv, zulSource))
-                + "\">Report this issue on GitHub ↗</a></p>\n";
+        String report = reportSection(error, reportEnv, zulSource);
 
         return "<!doctype html>\n"
                 + "<html lang=\"en\">\n"
@@ -79,30 +93,41 @@ public final class ErrorPageRenderer {
     }
 
     /**
-     * Prefilled GitHub new-issue URL for this failure. The phase + file live in the title;
-     * the body is length-capped (via {@link #cap}) so the URL stays within browser/GitHub
-     * limits. The user reviews and submits — nothing is auto-posted.
+     * The report affordance for the page. If the prefilled new-issue URL fits within
+     * {@link #MAX_URL_LENGTH} it is a one-click link carrying the whole report; otherwise the
+     * same-looking link instead copies the <em>complete</em> report to the clipboard (never
+     * truncated) and opens an issue whose body carries only the short paste instruction. Phase
+     * + file live in the title; the user always reviews and submits — nothing is auto-posted.
      */
-    private static String reportUrl(RenderError error, String reportEnv, String zulSource) {
-        String title = "[Layout Preview] " + error.getPhase() + " error"
+    private static String reportSection(RenderError error, String reportEnv, String zulSource) {
+        String title = reportTitle(error);
+        String body = reportBody(error, reportEnv, zulSource);
+        String directUrl = NEW_ISSUE_URL + "?title=" + enc(title) + "&body=" + enc(body);
+        if (directUrl.length() <= MAX_URL_LENGTH) {
+            return "<p class=\"report\"><a href=\"" + escape(directUrl)
+                    + "\">Report this issue on GitHub ↗</a></p>\n";
+        }
+        // Too large to prefill -> the link copies the full body to the clipboard and opens an
+        // issue whose body is the paste instruction (the error info rides on the clipboard).
+        String fallbackUrl = NEW_ISSUE_URL + "?title=" + enc(title) + "&body=" + enc(CLIPBOARD_NOTE);
+        return clipboardReportSection(fallbackUrl, body);
+    }
+
+    private static String reportTitle(RenderError error) {
+        return "[Layout Preview] " + error.getPhase() + " error"
                 + (error.getZulFile() == null ? "" : " rendering " + error.getZulFile());
-        return NEW_ISSUE_URL + "?title=" + enc(title) + "&body=" + enc(cap(reportBody(error, reportEnv, zulSource)));
     }
 
     /**
-     * The (uncapped) issue body, ordered <em>source → environment → full stack trace</em>
-     * per user feedback. The stack trace's first lines already carry the complete exception
-     * message, so no separate "Message:" header is emitted (it would be redundant), and the
-     * always-empty "Steps to reproduce" prompt is omitted. The trace is placed last and
-     * carried in full here — {@link #cap} trims only the tail if the whole body overflows,
-     * and the pane's {@code <details>} disclosure always shows the complete trace. The
-     * {@code .zul} source is budgeted (a prefilled URL can't attach a file), so a huge file
-     * can't starve the trace of room.
+     * The issue body, ordered <em>source → environment → full stack trace</em> per user
+     * feedback, carried in full (no truncation). The stack trace's first lines already carry
+     * the complete exception message, so no separate "Message:" header is emitted (it would
+     * be redundant), and the always-empty "Steps to reproduce" prompt is omitted.
      */
     static String reportBody(RenderError error, String reportEnv, String zulSource) {
         StringBuilder body = new StringBuilder();
         if (zulSource != null && !zulSource.isBlank()) {
-            body.append("ZUL source:\n```xml\n").append(truncate(zulSource, SOURCE_BUDGET)).append("\n```\n\n");
+            body.append("ZUL source:\n```xml\n").append(zulSource).append("\n```\n\n");
         }
         if (reportEnv != null && !reportEnv.isBlank()) {
             body.append("---\n").append(reportEnv).append("\n\n");
@@ -118,17 +143,63 @@ public final class ErrorPageRenderer {
         return body.toString();
     }
 
-    private static String truncate(String s, int budget) {
-        return s.length() <= budget ? s : s.substring(0, budget) + "\n…(truncated)";
-    }
-
-    private static String cap(String body) {
-        return body.length() <= MAX_BODY_CHARS ? body
-                : body.substring(0, MAX_BODY_CHARS) + "\n```\n…(truncated — see the preview pane for the full details)";
+    /**
+     * The copy-to-clipboard report link, used when the report is too large to prefill. It
+     * looks exactly like the direct link (same label), but a click first copies the full body
+     * to the clipboard ({@code execCommand('copy')} on a temporary textarea — the classic
+     * gesture-driven approach that needs no permission — with the async Clipboard API as a
+     * best-effort enhancement) and then lets the anchor navigate to {@code issueUrl}, which the
+     * plugin's JCEF handler routes to the system browser. The paste instruction lives in the
+     * opened issue's body (see {@link #CLIPBOARD_NOTE}), not in this pane.
+     */
+    private static String clipboardReportSection(String issueUrl, String body) {
+        return "<p class=\"report\"><a href=\"" + escape(issueUrl) + "\" id=\"copyReport\">"
+                + "Report this issue on GitHub ↗</a> <span id=\"copyStatus\" class=\"copy-status\"></span></p>\n"
+                + "<script>\n"
+                + "(function(){\n"
+                + "var REPORT=" + jsString(body) + ";\n"
+                + "var a=document.getElementById('copyReport'),st=document.getElementById('copyStatus');\n"
+                + "a.addEventListener('click',function(){\n"
+                + "var ok=false;\n"
+                + "try{var ta=document.createElement('textarea');ta.value=REPORT;ta.style.position='fixed';"
+                + "ta.style.left='-9999px';document.body.appendChild(ta);ta.focus();ta.select();"
+                + "ok=document.execCommand('copy');document.body.removeChild(ta);}catch(e){}\n"
+                + "if(navigator.clipboard&&navigator.clipboard.writeText){"
+                + "try{navigator.clipboard.writeText(REPORT);ok=true;}catch(e){}}\n"
+                + "if(st)st.textContent=ok?' ✓ report copied — paste it into the description':"
+                + "' — copy failed; please copy the stack trace above manually';\n"
+                + "});\n"
+                + "})();\n"
+                + "</script>\n";
     }
 
     private static String enc(String s) {
         return URLEncoder.encode(s, StandardCharsets.UTF_8);
+    }
+
+    /** A safe double-quoted JS string literal for embedding in an inline {@code <script>};
+     *  {@code <}, {@code >} and {@code &} are escaped so the content can't break out. */
+    private static String jsString(String s) {
+        StringBuilder sb = new StringBuilder(s.length() + 16).append('"');
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '"': sb.append("\\\""); break;
+                case '\\': sb.append("\\\\"); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                case '\t': sb.append("\\t"); break;
+                case '<': sb.append("\\u003C"); break;
+                case '>': sb.append("\\u003E"); break;
+                case '&': sb.append("\\u0026"); break;
+                case ' ': sb.append("\\u2028"); break;
+                case ' ': sb.append("\\u2029"); break;
+                default:
+                    if (c < 0x20) sb.append(String.format("\\u%04x", (int) c));
+                    else sb.append(c);
+            }
+        }
+        return sb.append('"').toString();
     }
 
     private static String escape(String s) {

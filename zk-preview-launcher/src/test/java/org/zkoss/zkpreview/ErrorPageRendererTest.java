@@ -2,6 +2,8 @@ package org.zkoss.zkpreview;
 
 import org.junit.jupiter.api.Test;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -141,13 +143,41 @@ class ErrorPageRendererTest {
     }
 
     @Test
-    void reportLinkTruncatesAnOverlongSource() {
-        String huge = "x".repeat(20000);
+    void smallReport_usesDirectPrefilledLink_noClipboardButton() {
         String html = ErrorPageRenderer.render(
-                new RenderError(RenderPhase.PARSE, "bad", "/a.zul", null, null, null), null, huge);
+                new RenderError(RenderPhase.COMPOSE, "boom", "/a.zul", null, null, "short trace"),
+                "Plugin: ZKIdea 0.8.0", "<zk/>");
 
-        assertTrue(html.contains("truncated"),
-                () -> "an over-long .zul source must be truncated to keep the URL usable: " + html);
+        assertTrue(html.contains("issues/new?") && html.contains("&amp;body="),
+                () -> "a small report must stay a one-click prefilled link: " + html);
+        assertFalse(html.contains("id=\"copyReport\""),
+                () -> "a small report must not need the clipboard fallback: " + html);
+    }
+
+    @Test
+    void overlongReport_copiesToClipboard_withTheInstructionInTheIssueBodyNotThePane() {
+        // A report far past the ~8 KB URL limit (a large .zul); it must NOT be truncated.
+        String huge = "<zk>\n" + "  <label value=\"SRC_MARKER\"/>\n".repeat(1500) + "</zk>";
+        String html = ErrorPageRenderer.render(
+                new RenderError(RenderPhase.PARSE, "bad", "/a.zul", null, null, "trace"),
+                "Plugin: ZKIdea 0.8.0", huge);
+
+        // The action is a copy-to-clipboard report link...
+        assertTrue(html.contains("id=\"copyReport\""),
+                () -> "an over-long report must use the copy-to-clipboard report action: " + html);
+        // ...but the IDE pane stays clean -- no explanatory paragraph (user feedback: a
+        // non-reporter shouldn't have to read it; it belongs in the issue).
+        assertFalse(html.contains("class=\"report-note\""),
+                () -> "the 'too large / paste' guidance must NOT appear in the IDE pane: " + html);
+        // The guidance is pre-filled into the opened GitHub issue's body instead.
+        String encodedNote = URLEncoder.encode(ErrorPageRenderer.CLIPBOARD_NOTE, StandardCharsets.UTF_8);
+        assertTrue(html.contains(encodedNote),
+                () -> "the paste instruction must be pre-filled into the issue body: " + html);
+        // The full report rides on the clipboard, untruncated.
+        assertTrue(html.contains("SRC_MARKER"),
+                () -> "the full source must be carried in the clipboard payload: " + html);
+        assertFalse(html.contains("(truncated)"),
+                () -> "the fallback must not truncate -- carrying the full report is the point: " + html);
     }
 
     // --- report body layout (user feedback): source -> environment -> full stack trace,

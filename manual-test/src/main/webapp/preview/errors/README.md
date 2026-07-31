@@ -21,6 +21,7 @@ in the preview pane — **never** the raw HTTP-500 JSON.
 | `err-zscript-runtime.zul` | `<zscript>` throws at runtime (logic bug, not a missing class) | **UNKNOWN** | `java.lang.IllegalStateException: simulated failure from zscript` |
 | `err-unsupported-parent.zul` | `<row>` under `<window>` (no `<grid><rows>`) | **COMPOSE** | `Unsupported parent for row: <Window …>` |
 | `err-unknown-component.zul` | Typo'd component tag (`<labell/>`) | **COMPOSE** | `DefinitionNotFoundException … Component definition not found: labell`, line 5:53 |
+| `err-large-report.zul` | Large layout that also fails (missing class) | **COMPOSE** | Same card, but the report is too big to pre-fill into a URL, so it offers the **copy-to-clipboard** hand-off instead of the direct link (see `tasks/error-reporting/MANUAL-clipboard-fallback.md`) |
 
 Every card also carries the note *"Binding values are not evaluated and your ViewModel is
 not executed in the Layout Preview. Fix the ZUL (or its classpath) and save to
