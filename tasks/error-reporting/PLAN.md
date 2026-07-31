@@ -66,6 +66,21 @@ marker for large files):
   (fenced source block + truncation). Verified via curl: the render-error report href
   carries the file's own content (`ZUL+source`, `mismatched+open`).
 
+## Update — report body layout (user feedback, after manual IDE testing)
+The user clicked Report on a real render error and found the body noisy. Revised layout
+(both the render-error page and the Swing message cards, kept consistent):
+- **Order: ZUL source → environment → the failure detail** (the full stack trace on the
+  render-error path; the card's message on the setup-failure path).
+- **Dropped the redundant `Phase:/Message:/File:` header** — the stack trace's first lines
+  already carry the complete exception message. Phase + file stay in the issue **title**.
+- **Dropped the always-empty "Steps to reproduce"** section.
+- The stack trace is now carried in full (placed last; the overall body cap trims only its
+  tail if the URL overflows, and the pane's `<details>` always shows the complete trace) —
+  replacing the old fixed 1500-char trace budget. `ErrorPageRenderer.reportBody(...)` was
+  extracted (package-private) so the layout is unit-tested directly.
+- Tests: `ErrorPageRendererTest` (order, no header/steps, full trace), `PreviewIssueReporterTest`
+  (order, no steps). Verified via a probe decoding the real `render(...)` href.
+
 ## Success criteria
 - RED→GREEN per phase; full suite green.
 - Manual (runIde): expand the stack trace; click Report on both a render error and a

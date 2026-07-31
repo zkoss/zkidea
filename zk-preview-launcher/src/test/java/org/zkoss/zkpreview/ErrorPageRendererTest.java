@@ -149,4 +149,51 @@ class ErrorPageRendererTest {
         assertTrue(html.contains("truncated"),
                 () -> "an over-long .zul source must be truncated to keep the URL usable: " + html);
     }
+
+    // --- report body layout (user feedback): source -> environment -> full stack trace,
+    // no redundant "Message:" header (the trace carries it), no empty "Steps to reproduce". ---
+
+    @Test
+    void reportBody_ordersSourceThenEnvironmentThenStackTrace() {
+        String body = ErrorPageRenderer.reportBody(
+                new RenderError(RenderPhase.COMPOSE, "boom", "/a.zul", 7, null, "TRACE_MARKER\n\tat x"),
+                "ENV_MARKER",
+                "<zk>SRC_MARKER</zk>");
+
+        int src = body.indexOf("SRC_MARKER");
+        int env = body.indexOf("ENV_MARKER");
+        int trace = body.indexOf("TRACE_MARKER");
+        assertTrue(src >= 0 && env >= 0 && trace >= 0, () -> "all three sections must be present: " + body);
+        assertTrue(src < env && env < trace,
+                () -> "report body order must be source -> environment -> stack trace: " + body);
+    }
+
+    @Test
+    void reportBody_dropsRedundantMessageHeaderAndEmptyStepsSection() {
+        String body = ErrorPageRenderer.reportBody(
+                new RenderError(RenderPhase.COMPOSE, "boom", "/a.zul", 7, null, "trace text"),
+                "env", "<zk/>");
+
+        // The full stack trace already carries the complete exception message, so the
+        // partial "Message:" header is redundant; phase + file stay in the issue title.
+        assertFalse(body.contains("Message: boom"),
+                () -> "the redundant 'Message:' header must be gone: " + body);
+        assertFalse(body.toLowerCase(Locale.ROOT).contains("steps to reproduce"),
+                () -> "the empty 'Steps to reproduce' section must be gone: " + body);
+    }
+
+    @Test
+    void reportBody_keepsTheFullStackTrace_notTruncatedAtAFixedBudget() {
+        // A trace far larger than the old fixed 1500-char trace budget, but within the
+        // overall body cap -- it must be carried in full (the user wants the complete trace).
+        String trace = "org.zkoss.zk.ui.UiException: boom\n"
+                + "\tat frame.method(File.java:10)\n".repeat(60);
+        String body = ErrorPageRenderer.reportBody(
+                new RenderError(RenderPhase.COMPOSE, "boom", "/a.zul", null, null, trace), null, null);
+
+        assertTrue(body.contains(trace),
+                () -> "the complete stack trace must be carried (no per-field truncation): " + body);
+        assertFalse(body.contains("(truncated)"),
+                () -> "a trace within the body cap must not be truncated: " + body);
+    }
 }

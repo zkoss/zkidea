@@ -13,7 +13,8 @@ import java.nio.charset.StandardCharsets;
  * Builds and opens a prefilled GitHub new-issue when a preview can't be displayed, so the
  * user can report it in one click (positioning doc §4 / user request). Reuses the plugin's
  * existing {@link BrowserUtil#browse} feedback pattern; the user always reviews and submits
- * on GitHub — nothing is posted automatically, and the ZUL source is never included.
+ * on GitHub — nothing is posted automatically. The {@code .zul} source is inlined (budgeted)
+ * so the failure can be debugged later.
  *
  * <p>The URL/body building ({@link #issueUrl}/{@link #body}) is pure and unit-tested; the
  * environment probe and {@link #report} are thin platform wrappers verified in the IDE.
@@ -37,21 +38,23 @@ final class PreviewIssueReporter {
         return NEW_ISSUE_URL + "?title=" + enc(title) + "&body=" + enc(capped);
     }
 
-    /** Pure: assemble the issue body from the failure context + environment + a repro prompt. */
+    /** Pure: assemble the issue body from the environment + the failure context. */
     static String body(String context, String environment) {
         return body(context, environment, null);
     }
 
-    /** Pure: as {@link #body(String, String)} but also inlines the {@code .zul} source (budgeted,
-     * fenced) so a failure can be debugged later. */
+    /** Pure: the issue body, ordered <em>source → environment → failure detail</em> (user
+     * feedback). The {@code .zul} source (budgeted, fenced) leads so a failure can be
+     * debugged later; the empty "Steps to reproduce" prompt is intentionally omitted. */
     static String body(String context, String environment, String zulSource) {
-        StringBuilder sb = new StringBuilder(context).append("\n\n---\n").append(environment);
+        StringBuilder sb = new StringBuilder();
         if (zulSource != null && !zulSource.isBlank()) {
             String src = zulSource.length() <= SOURCE_BUDGET ? zulSource
                     : zulSource.substring(0, SOURCE_BUDGET) + "\n…(truncated)";
-            sb.append("\n\n---\nZUL source:\n```xml\n").append(src).append("\n```\n");
+            sb.append("ZUL source:\n```xml\n").append(src).append("\n```\n\n");
         }
-        sb.append("\n---\nSteps to reproduce:\n1. \n");
+        sb.append("---\n").append(environment).append("\n\n");
+        sb.append("---\n").append(context).append('\n');
         return sb.toString();
     }
 

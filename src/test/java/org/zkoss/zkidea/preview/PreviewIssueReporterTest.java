@@ -44,15 +44,29 @@ class PreviewIssueReporterTest {
     }
 
     @Test
-    void body_carriesContextEnvironmentAndAReproSection() {
+    void body_carriesContextAndEnvironment_withoutAnEmptyStepsSection() {
         String body = PreviewIssueReporter.body("phase: PARSE\nmessage: bad tag", "Plugin: 0.8.0\nIDE: IU-243");
 
         assertTrue(body.contains("phase: PARSE"), body);
         assertTrue(body.contains("message: bad tag"), body);
         assertTrue(body.contains("Plugin: 0.8.0"), body);
         assertTrue(body.contains("IDE: IU-243"), body);
-        assertTrue(body.toLowerCase().contains("reproduce") || body.toLowerCase().contains("steps"),
-                () -> "body should invite the user to add repro steps: " + body);
+        // The pre-filled "Steps to reproduce: 1." was always empty when the user submitted;
+        // it is noise and must be gone (user feedback).
+        assertFalse(body.toLowerCase().contains("steps to reproduce"),
+                () -> "the empty 'Steps to reproduce' section must be gone: " + body);
+    }
+
+    @Test
+    void body_ordersSourceThenEnvironmentThenContext() {
+        String body = PreviewIssueReporter.body("CTX_MARKER", "ENV_MARKER", "<zk>SRC_MARKER</zk>");
+
+        int src = body.indexOf("SRC_MARKER");
+        int env = body.indexOf("ENV_MARKER");
+        int ctx = body.indexOf("CTX_MARKER");
+        assertTrue(src >= 0 && env >= 0 && ctx >= 0, () -> "all three sections must be present: " + body);
+        assertTrue(src < env && env < ctx,
+                () -> "report body order must be source -> environment -> error detail: " + body);
     }
 
     @Test

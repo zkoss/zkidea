@@ -19,7 +19,6 @@ public final class ErrorPageRenderer {
     private static final String NEW_ISSUE_URL = "https://github.com/zkoss/zkidea/issues/new";
     private static final int MAX_BODY_CHARS = 6000;
     private static final int SOURCE_BUDGET = 3500;
-    private static final int TRACE_BUDGET = 1500;
 
     private ErrorPageRenderer() {
     }
@@ -80,36 +79,43 @@ public final class ErrorPageRenderer {
     }
 
     /**
-     * Prefilled GitHub new-issue URL for this failure (phase, message, location, stack
-     * trace, and the plugin/IDE/OS/JDK environment). Body length-capped so the URL stays
-     * within browser/GitHub limits; the user reviews and submits — nothing is auto-posted,
-     * and the ZUL source is never included.
+     * Prefilled GitHub new-issue URL for this failure. The phase + file live in the title;
+     * the body is length-capped (via {@link #cap}) so the URL stays within browser/GitHub
+     * limits. The user reviews and submits — nothing is auto-posted.
      */
     private static String reportUrl(RenderError error, String reportEnv, String zulSource) {
         String title = "[Layout Preview] " + error.getPhase() + " error"
                 + (error.getZulFile() == null ? "" : " rendering " + error.getZulFile());
+        return NEW_ISSUE_URL + "?title=" + enc(title) + "&body=" + enc(cap(reportBody(error, reportEnv, zulSource)));
+    }
+
+    /**
+     * The (uncapped) issue body, ordered <em>source → environment → full stack trace</em>
+     * per user feedback. The stack trace's first lines already carry the complete exception
+     * message, so no separate "Message:" header is emitted (it would be redundant), and the
+     * always-empty "Steps to reproduce" prompt is omitted. The trace is placed last and
+     * carried in full here — {@link #cap} trims only the tail if the whole body overflows,
+     * and the pane's {@code <details>} disclosure always shows the complete trace. The
+     * {@code .zul} source is budgeted (a prefilled URL can't attach a file), so a huge file
+     * can't starve the trace of room.
+     */
+    static String reportBody(RenderError error, String reportEnv, String zulSource) {
         StringBuilder body = new StringBuilder();
-        body.append("Phase: ").append(error.getPhase()).append('\n');
-        body.append("Message: ").append(error.getMessage()).append('\n');
-        if (error.getZulFile() != null) {
-            body.append("File: ").append(error.getZulFile());
-            if (error.getLine() != null) body.append(':').append(error.getLine());
-            body.append('\n');
+        if (zulSource != null && !zulSource.isBlank()) {
+            body.append("ZUL source:\n```xml\n").append(truncate(zulSource, SOURCE_BUDGET)).append("\n```\n\n");
         }
         if (reportEnv != null && !reportEnv.isBlank()) {
-            body.append("\n---\n").append(reportEnv).append('\n');
+            body.append("---\n").append(reportEnv).append("\n\n");
         }
-        // The .zul source is the key debugging artifact; budgeted (a prefilled URL can't
-        // attach a file and its body is length-limited), so large files truncate.
-        if (zulSource != null && !zulSource.isBlank()) {
-            body.append("\n---\nZUL source:\n```xml\n").append(truncate(zulSource, SOURCE_BUDGET)).append("\n```\n");
+        String trace = error.getStackTrace();
+        if (trace != null && !trace.isBlank()) {
+            body.append("---\nStack trace:\n```\n").append(trace).append("\n```\n");
+        } else {
+            // No trace captured (synthetic errors): fall back to the message so the report
+            // still describes the failure.
+            body.append("---\n").append(error.getMessage()).append('\n');
         }
-        if (error.getStackTrace() != null && !error.getStackTrace().isBlank()) {
-            body.append("\n---\nStack trace:\n```\n").append(truncate(error.getStackTrace(), TRACE_BUDGET))
-                    .append("\n```\n");
-        }
-        body.append("\n---\nSteps to reproduce:\n1. \n");
-        return NEW_ISSUE_URL + "?title=" + enc(title) + "&body=" + enc(cap(body.toString()));
+        return body.toString();
     }
 
     private static String truncate(String s, int budget) {
