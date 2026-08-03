@@ -34,6 +34,10 @@ The sandbox runs on the JetBrains Runtime, so the reproducible path is the **reg
 - Re-enable `ide.browser.jcef.enabled`, restart, reopen the `.zul` → the in-pane JCEF render is back
   (regression check: the normal path still works).
 
+Verified fallback card (registry-disabled variant):
+
+![JCEF-unavailable fallback card: diagnosis text + "Open preview in external browser" + "Report this issue on GitHub"](../../doc/jcef-unavailable.png)
+
 ## Boot-JDK-without-JCEF branch (`BOOT_JDK_NO_JCEF`)
 Reproducing this in runIde means running the sandbox on a non-JBR JDK, which is awkward and not
 required: the card, the external-browser hand-off, and the report link are the **same Swing
