@@ -65,12 +65,16 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
     private static final String CARD_LOADING = "loading";
     private static final String CARD_BROWSER = "browser";
     private static final String CARD_MESSAGE = "message";
+    private static final String CARD_EXTERNAL = "external";
 
     private final Project project;
     private final VirtualFile file;
     private final JPanel component;
     private final CardLayout cardLayout;
     private final JTextArea messageArea;
+    /** Non-null when the embedded browser (JCEF) is unavailable: the why + how-to-fix used by the
+     * external-browser fallback card (P1). Null when JCEF is available. */
+    private final JcefAvailability.Diagnosis jcefDiagnosis;
     private final PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
 
     private JBCefBrowser browser;
@@ -103,13 +107,10 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
         component.add(messagePanel, CARD_MESSAGE);
         component.add(new JLabel("Starting ZK preview server…", SwingConstants.CENTER), CARD_LOADING);
 
-        if (!JBCefApp.isSupported()) {
-            showMessage("Layout Preview unavailable: the embedded browser (JCEF) is not supported by this "
-                    + "IDE runtime -- either the IDE was started with an alternative JDK that has no "
-                    + "JCEF, or the bundled JCEF version is incompatible. You can still edit "
-                    + file.getName() + " normally in the text editor.");
-            return;
-        }
+        // When JCEF is unavailable we don't stop here: the preview server still renders over
+        // localhost, so we start it anyway and offer an external-browser fallback once it's READY
+        // (see startPreview). The diagnosis explains *why* the in-pane browser is missing (P1).
+        this.jcefDiagnosis = JBCefApp.isSupported() ? null : JcefAvailability.diagnose();
 
         cardLayout.show(component, CARD_LOADING);
         MergingUpdateQueue refreshQueue = new MergingUpdateQueue(
@@ -125,15 +126,49 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
             }
             if (result.getStatus() == PreviewResult.Status.READY) {
                 previewUrl = "http://localhost:" + result.getPort() + result.getRequestPath();
-                browser = new JBCefBrowser(previewUrl);
-                Disposer.register(this, browser);
-                installExternalLinkHandler(browser);
-                component.add(wrapWithHint(browser.getComponent()), CARD_BROWSER);
-                cardLayout.show(component, CARD_BROWSER);
+                if (jcefDiagnosis != null) {
+                    showExternalBrowserFallback(jcefDiagnosis, previewUrl);
+                } else {
+                    browser = new JBCefBrowser(previewUrl);
+                    Disposer.register(this, browser);
+                    installExternalLinkHandler(browser);
+                    component.add(wrapWithHint(browser.getComponent()), CARD_BROWSER);
+                    cardLayout.show(component, CARD_BROWSER);
+                }
             } else {
                 showMessage(result.getMessage());
             }
         });
+    }
+
+    /**
+     * JCEF is unavailable but the preview server started, so the render is reachable over
+     * localhost: instead of a dead-end message, explain <em>why</em> the in-pane browser is
+     * missing (the {@link JcefAvailability} diagnosis) and offer a one-click hand-off to the
+     * system browser (P1). The GitHub report link mirrors the other can't-display cards.
+     */
+    private void showExternalBrowserFallback(JcefAvailability.Diagnosis diagnosis, String url) {
+        JTextArea area = new JTextArea(diagnosis.getExplanation()
+                + "\n\nThe preview is ready — you can open it in your system browser instead:");
+        area.setEditable(false);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setBorder(JBUI.Borders.empty(12));
+        JBScrollPane scroll = new JBScrollPane(area);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(scroll, BorderLayout.CENTER);
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 0));
+        bar.setBorder(JBUI.Borders.empty(4, 12, 8, 12));
+        bar.add(new ActionLink("Open preview in external browser", (ActionListener) e -> BrowserUtil.browse(url)));
+        bar.add(new ActionLink("Report this issue on GitHub", (ActionListener) e ->
+                PreviewIssueReporter.report("[Layout Preview] Cannot display preview",
+                        area.getText(), currentSource())));
+        panel.add(bar, BorderLayout.SOUTH);
+
+        component.add(panel, CARD_EXTERNAL);
+        cardLayout.show(component, CARD_EXTERNAL);
     }
 
     /**
