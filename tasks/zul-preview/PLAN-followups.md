@@ -3,11 +3,15 @@
 > Source: [tasks.md](tasks.md) (the four open issues). Builds on the shipped v1 in [PLAN.md](PLAN.md).
 > Related: [../error-reporting/PLAN.md](../error-reporting/PLAN.md).
 
-- **Version**: v4
+- **Version**: v5
 - **Status**: P1 DONE (headless + manual verified); P2 DONE (headless) incl. a `~./` classpath-resource
   fix (runIde re-test pending); **P3 DONE (headless)** — see
   [PLAN-P3-syntax-corpus.md](PLAN-P3-syntax-corpus.md) + [SYNTAX-MATRIX.md](SYNTAX-MATRIX.md) (48 cases ×
-  2 variants, 0 gaps; Playwright live-DOM sample); P4 NOT STARTED
+  2 variants, 0 gaps; Playwright live-DOM sample); **P4 DONE (headless)** — Spring-Boot-jar docroot rule
+  in `DocrootResolver` (`<resourceRoot>/web` classpath web root) + `DocrootResolverTest` (9 green) +
+  minimal `manual-test-springboot/` sample; see
+  [PLAN-P4-springboot-jar.md](PLAN-P4-springboot-jar.md) + [MANUAL-springboot-jar.md](MANUAL-springboot-jar.md)
+  (runIde verification pending)
 - **Scope**: robustness (P1), render-path coverage (P2, P3), new environment support (P4)
 
 ---
@@ -187,3 +191,5 @@ P2 and P3 share the launcher-test harness; P1 and P4 touch the plugin side and c
 | v1 | 2026-07-31 | P1 implemented (headless): `JcefAvailability` + 7 tests; editor external-browser fallback; MANUAL-jcef-fallback.md. Manual runIde pending |
 | v2 | 2026-08-03 | P1 manual verified (user). P2 DONE (headless): apply render-assert + `IncludeTest` (static/annotation/missing) on javax+jakarta; finding — `<include>` needs no `RequestDispatcher` fix (ZK instant-include for `.zul`); manual-test spot-checks added |
 | v3 | 2026-08-04 | P2 path-form coverage (`PathResolutionTest`) + `~./` classpath-resource **bug fix**: user hit `Page not found` on a user-project `~./` page (works under Jetty); `resolveTarget` now passes module resource roots to the launcher classpath (`filterResourceRoots`, not output dir); `ClasspathResourceResolutionTest` locks the mechanism. runIde re-test pending |
+| v4 | 2026-08-04 | P3 DONE (headless): syntax corpus + manual fixtures + EL implicit-objects coverage committed (`a6ea674`) |
+| v5 | 2026-08-04 | **P4 DONE (headless):** Spring-Boot-jar docroot rule — `DocrootResolver` now treats `<resourceRoot>/web` (ZK classpath web root) as the docroot so an SB-jar page previews at its production url (`/index.zul`), not `/src/main/resources/web/index.zul`. 3-arg `resolve(zul, boundaryRoots, resourceRoots)` overload (2-arg preserved → WAR untouched); `resolveTarget` wires the module RESOURCE roots through. `DocrootResolverTest` 9 green (2 SB + negative guard + WAR-wins ordering); full plugin suite green (321). Minimal `manual-test-springboot/` sample added. runIde verification pending — [MANUAL-springboot-jar.md](MANUAL-springboot-jar.md) |

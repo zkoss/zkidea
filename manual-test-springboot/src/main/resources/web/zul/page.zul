@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Nested classpath page at src/main/resources/web/zul/page.zul (== ~./zul/page.zul).
+  Opened directly it must preview at /zul/page.zul; it is also included by index.zul.
+  The live desktop id proves the launcher rendered through a real ZK Execution/Desktop
+  (same liveness signal used by the EL implicit-objects coverage).
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <vlayout spacing="4px">
+        <label style="font-weight:bold" value="Nested page: src/main/resources/web/zul/page.zul"/>
+        <label value="Reached as ~./zul/page.zul (classpath /web/zul/page.zul)"/>
+        <label value="live desktop id = ${desktop.id}"/>
+    </vlayout>
+</zk>

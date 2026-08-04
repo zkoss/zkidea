@@ -153,12 +153,19 @@ public final class ZulPreviewServerService implements Disposable {
         // This is NOT the module *output* dir (AC-4(i)/filterLibraryJars still exclude that):
         // a resource root holds resources, not compiled user classes, so isolation (the
         // UiFactory hook) is unaffected. Only meaningful when the module has ZK at all.
+        // The module's RESOURCE source roots (e.g. src/main/resources), computed once and used
+        // for two things: (a) the launcher classpath below (the ~./ fix), and (b) docroot
+        // resolution -- a Spring-Boot-jar page under <resourceRoot>/web has no webapp/WEB-INF,
+        // so DocrootResolver needs these roots to recognise its classpath web root.
+        List<String> resourceRootPaths = (module != null)
+                ? ModuleRootManager.getInstance(module)
+                        .getSourceRoots(JavaResourceRootType.RESOURCE).stream()
+                        .map(VirtualFile::getPath)
+                        .collect(Collectors.toList())
+                : List.of();
+
         List<File> resourceRoots = (module != null && hasZkJars)
-                ? ZkClasspathFilter.filterResourceRoots(
-                        ModuleRootManager.getInstance(module)
-                                .getSourceRoots(JavaResourceRootType.RESOURCE).stream()
-                                .map(VirtualFile::getPath)
-                                .collect(Collectors.toList()))
+                ? ZkClasspathFilter.filterResourceRoots(resourceRootPaths)
                 : List.of();
 
         // Jars first so ZK's own bundled web/ resources win over any user name collision.
@@ -172,7 +179,8 @@ public final class ZulPreviewServerService implements Disposable {
                         .collect(Collectors.toList());
 
         Path zulPath = Paths.get(zulFile.getPath());
-        Path docroot = DocrootResolver.resolve(zulPath, contentRoots);
+        List<Path> resourceRootDirs = resourceRootPaths.stream().map(Paths::get).collect(Collectors.toList());
+        Path docroot = DocrootResolver.resolve(zulPath, contentRoots, resourceRootDirs);
         String relative = docroot.relativize(zulPath).toString().replace(File.separatorChar, '/');
         return new PreviewTarget(docroot, libraryJars, launcherClasspath, signature, "/" + relative);
     }

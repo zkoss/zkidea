@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Spring Boot jar layout: this page lives on the CLASSPATH at
+  src/main/resources/web/index.zul (ZK's ClassWebResource path), with no src/main/webapp.
+
+  Preview expectation (the P4 fix): the page is served at its PRODUCTION url /index.zul,
+  i.e. the docroot resolves to .../src/main/resources/web — NOT the module root with a
+  request path of /src/main/resources/web/index.zul.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Spring Boot jar preview: index" border="normal" width="520px">
+        <vlayout spacing="4px">
+            <label style="font-weight:bold" value="Top-level page: src/main/resources/web/index.zul"/>
+            <label value="Served at /index.zul (production url), not /src/main/resources/web/index.zul"/>
+            <separator/>
+            <label value="Nested include below resolves via the classpath (~./ = classpath /web):"/>
+            <include src="~./zul/page.zul"/>
+        </vlayout>
+    </window>
+</zk>

@@ -13,9 +13,15 @@ import java.util.List;
  * <ol>
  *   <li>The first ancestor directory that either contains a {@code WEB-INF}
  *       subdirectory, or is itself named {@code webapp} (case-insensitive), is the
- *       docroot. This matches the standard Maven/Gradle webapp layout
+ *       docroot. This matches the standard Maven/Gradle webapp (WAR) layout
  *       ({@code src/main/webapp/WEB-INF/...}).</li>
- *   <li>If no such ancestor is found, fall back to the nearest of {@code boundaryRoots}
+ *   <li>Otherwise, the first ancestor that is a ZK <em>classpath web root</em> -- a
+ *       directory named {@code web} directly under one of {@code resourceRoots}
+ *       ({@code src/main/resources/web}) -- is the docroot. This is the Spring-Boot-jar
+ *       layout: pages live on the classpath ({@code ~./...}), with no {@code webapp}/{@code WEB-INF},
+ *       and must be served at their production url ({@code /index.zul}, not
+ *       {@code /src/main/resources/web/index.zul}).</li>
+ *   <li>If neither matches, fall back to the nearest of {@code boundaryRoots}
  *       that is an ancestor of the file (typically a module's source/content root).</li>
  *   <li>If none of the boundary roots contains the file either, fall back to the
  *       file's own parent directory.</li>
@@ -27,12 +33,21 @@ public final class DocrootResolver {
     }
 
     public static Path resolve(Path zulFile, List<Path> boundaryRoots) {
+        return resolve(zulFile, boundaryRoots, List.of());
+    }
+
+    public static Path resolve(Path zulFile, List<Path> boundaryRoots, List<Path> resourceRoots) {
         Path parent = zulFile.getParent();
         if (parent == null) {
             return zulFile;
         }
         for (Path candidate = parent; candidate != null; candidate = candidate.getParent()) {
             if (hasWebInf(candidate) || isNamedWebapp(candidate)) {
+                return candidate;
+            }
+        }
+        for (Path candidate = parent; candidate != null; candidate = candidate.getParent()) {
+            if (isClasspathWebRoot(candidate, resourceRoots)) {
                 return candidate;
             }
         }
@@ -51,5 +66,22 @@ public final class DocrootResolver {
     private static boolean isNamedWebapp(Path dir) {
         Path name = dir.getFileName();
         return name != null && "webapp".equalsIgnoreCase(name.toString());
+    }
+
+    /**
+     * ZK's classpath web-resource root: a directory named {@code web} sitting directly under a
+     * module resource root (e.g. {@code src/main/resources/web}). This is the Spring-Boot-jar
+     * layout -- pages served from the classpath ({@code ~./}) with no {@code webapp}/{@code WEB-INF}.
+     * Gated on "parent is a known resource root" so an unrelated {@code web} directory is not
+     * mistaken for it. {@code web} is a fixed ZK convention (ClassWebResource {@code /web}), so
+     * the name match is exact, not case-insensitive.
+     */
+    private static boolean isClasspathWebRoot(Path dir, List<Path> resourceRoots) {
+        Path name = dir.getFileName();
+        if (name == null || !"web".equals(name.toString())) {
+            return false;
+        }
+        Path parent = dir.getParent();
+        return parent != null && resourceRoots.contains(parent);
     }
 }
