@@ -23,19 +23,59 @@ final class PreviewIssueReporter {
 
     private static final String NEW_ISSUE_URL = "https://github.com/zkoss/zkidea/issues/new";
 
-    /** Body cap (chars, pre-encoding) so the resulting URL stays within browser/GitHub limits. */
+    /** Body pre-cap (chars, before encoding): a cheap guard so we never URL-encode a multi-megabyte
+     *  stack trace. The real length guarantee is {@link #MAX_URL_CHARS}, applied to the encoded URL. */
     static final int MAX_BODY_CHARS = 6000;
+
+    /** Whole-URL cap (chars, <em>after</em> encoding). Dense ZUL markup ({@code < > " =}, newlines)
+     *  expands ~3x under URL-encoding, so a pre-encoding char cap alone let the final URL balloon past
+     *  GitHub's request-URI limit (HTTP 414) and browser limits — "Report on GitHub" then silently
+     *  failed to open (review M2). The full, untruncated report is always shown in the preview pane
+     *  (and is copyable), so the prefilled URL is a best-effort convenience kept reliably openable. */
+    static final int MAX_URL_CHARS = 8000;
     private static final int SOURCE_BUDGET = 3500;
 
     private PreviewIssueReporter() {
     }
 
-    /** Pure: the prefilled new-issue URL, with the body capped and everything URL-encoded. */
+    private static final String TRUNCATION_NOTE =
+            "\n\n…(truncated — see the preview pane for the full details)";
+
+    /** Pure: the prefilled new-issue URL. The body is capped on its <em>encoded</em> length so the
+     *  whole URL stays within {@link #MAX_URL_CHARS} regardless of how much markup expands under
+     *  encoding (review M2), and everything is URL-encoded. */
     static String issueUrl(String title, String body) {
-        String capped = body.length() > MAX_BODY_CHARS
-                ? body.substring(0, MAX_BODY_CHARS) + "\n\n…(truncated — see the preview pane for the full details)"
+        String raw = body.length() > MAX_BODY_CHARS
+                ? body.substring(0, MAX_BODY_CHARS) + TRUNCATION_NOTE
                 : body;
-        return NEW_ISSUE_URL + "?title=" + enc(title) + "&body=" + enc(capped);
+        String prefix = NEW_ISSUE_URL + "?title=" + enc(title) + "&body=";
+        int bodyBudget = MAX_URL_CHARS - prefix.length();
+        if (enc(raw).length() <= bodyBudget) {
+            return prefix + enc(raw);
+        }
+        // Encoded body still over budget (dense markup expanded past the char cap): shrink the RAW
+        // body until its encoded form plus the (encoded) note fits, then re-encode. Truncating the
+        // encoded string directly could split a "%XX" escape and corrupt the URL.
+        String fitted = fitToEncodedLength(raw, bodyBudget - enc(TRUNCATION_NOTE).length()) + TRUNCATION_NOTE;
+        return prefix + enc(fitted);
+    }
+
+    /** Longest prefix of {@code raw} whose URL-encoded length is {@code <= budget} (binary search;
+     *  encoded length is non-decreasing in prefix length). */
+    private static String fitToEncodedLength(String raw, int budget) {
+        if (budget <= 0) {
+            return "";
+        }
+        int lo = 0, hi = raw.length();
+        while (lo < hi) {
+            int mid = (lo + hi + 1) >>> 1;
+            if (enc(raw.substring(0, mid)).length() <= budget) {
+                lo = mid;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        return raw.substring(0, lo);
     }
 
     /** Pure: assemble the issue body from the environment + the failure context. */

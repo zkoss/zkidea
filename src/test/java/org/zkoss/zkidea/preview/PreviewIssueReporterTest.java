@@ -44,6 +44,22 @@ class PreviewIssueReporterTest {
     }
 
     @Test
+    void issueUrl_capsOnEncodedLength_soDenseMarkupCantBlowPastUrlLimits() {
+        // Real ZUL markup: every '<' '>' '"' '=' space and newline percent-encodes to 3+ chars, so a
+        // cap measured on RAW length let the ENCODED url balloon ~3x past GitHub's 414 limit / browser
+        // limits (M2). The existing "x".repeat filler never exercised this (zero-encoding). Assert the
+        // guarantee on the length that actually reaches the browser: the encoded url itself.
+        String denseMarkup = "<label value=\"@load(vm.x)\" onClick=\"@command('go')\"/>\n".repeat(2000);
+
+        String url = PreviewIssueReporter.issueUrl("[Layout Preview] Cannot display preview", denseMarkup);
+
+        assertTrue(url.length() <= PreviewIssueReporter.MAX_URL_CHARS,
+                () -> "the ENCODED url must stay within MAX_URL_CHARS, was " + url.length());
+        assertTrue(url.contains("truncated"),
+                () -> "an over-long body must be marked truncated: " + url);
+    }
+
+    @Test
     void body_carriesContextAndEnvironment_withoutAnEmptyStepsSection() {
         String body = PreviewIssueReporter.body("phase: PARSE\nmessage: bad tag", "Plugin: 0.8.0\nIDE: IU-243");
 
