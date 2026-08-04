@@ -53,7 +53,7 @@ final class ManagedPreviewServer {
                     }
                 } else if (outputType == ProcessOutputTypes.STDERR) {
                     synchronized (stderrTail) {
-                        stderrTail.append(event.getText());
+                        appendBounded(stderrTail, event.getText(), STDERR_TAIL_LIMIT);
                     }
                 }
             }
@@ -106,8 +106,21 @@ final class ManagedPreviewServer {
 
     private String tail() {
         synchronized (stderrTail) {
-            String s = stderrTail.toString();
-            return s.length() > STDERR_TAIL_LIMIT ? s.substring(s.length() - STDERR_TAIL_LIMIT) : s;
+            // Already bounded on append (see appendBounded), so this is just a read.
+            return stderrTail.toString();
+        }
+    }
+
+    /**
+     * Appends {@code chunk} to {@code buf}, keeping only the last {@code limit} characters (L2:
+     * bounds memory on every append, so a long-lived helper JVM's steady stderr chatter can't
+     * accumulate for the process's whole life -- the cap used to be applied only lazily at read
+     * time). Package-visible so it can be unit-tested directly, without spawning a process.
+     */
+    static void appendBounded(StringBuilder buf, String chunk, int limit) {
+        buf.append(chunk);
+        if (buf.length() > limit) {
+            buf.delete(0, buf.length() - limit);
         }
     }
 }
