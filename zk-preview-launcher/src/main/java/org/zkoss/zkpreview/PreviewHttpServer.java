@@ -9,6 +9,10 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,7 +27,16 @@ import java.util.regex.Pattern;
  */
 public final class PreviewHttpServer {
 
+    // A hung render (pathological zscript loop, include/apply cycle) must not freeze every preview
+    // tab sharing this JVM (M5). A small fixed daemon pool lets independent requests -- a second
+    // tab's render, or a page's burst of /zkau/web resource fetches -- proceed while one is stuck,
+    // instead of com.sun.net.httpserver's default serial dispatch on a single thread. Bounded so a
+    // runaway can't spawn unlimited threads; safe for concurrency because each render now uses its
+    // own session/request/response (see the engines' newSession(), review item L1).
+    private static final int HANDLER_THREADS = 8;
+
     private final HttpServer httpServer;
+    private final ExecutorService executor;
     private final RenderEngine engine;
     private final String reportEnv;
     private final Path webappDir;
@@ -38,6 +51,8 @@ public final class PreviewHttpServer {
         this.webappDir = webappDir;
         this.httpServer = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
         this.httpServer.createContext("/", this::handle);
+        this.executor = Executors.newFixedThreadPool(HANDLER_THREADS, daemonThreadFactory());
+        this.httpServer.setExecutor(executor);
     }
 
     public void start() {
@@ -46,6 +61,16 @@ public final class PreviewHttpServer {
 
     public void stop() {
         httpServer.stop(0);
+        executor.shutdownNow();
+    }
+
+    private static ThreadFactory daemonThreadFactory() {
+        AtomicInteger seq = new AtomicInteger();
+        return r -> {
+            Thread t = new Thread(r, "zk-preview-http-" + seq.incrementAndGet());
+            t.setDaemon(true);
+            return t;
+        };
     }
 
     public int getPort() {
