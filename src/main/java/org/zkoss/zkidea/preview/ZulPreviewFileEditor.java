@@ -186,13 +186,40 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
                                           boolean userGesture, boolean isRedirect) {
                 String url = request.getURL();
                 if (userGesture && url != null && (url.startsWith("http://") || url.startsWith("https://"))
-                        && !url.startsWith("http://127.0.0.1:") && !url.startsWith("http://localhost")) {
+                        && !isLoopbackPreviewUrl(url)) {
                     BrowserUtil.browse(url);
                     return true; // cancel in-pane navigation
                 }
                 return false;
             }
         }, browser.getCefBrowser());
+    }
+
+    /**
+     * Whether {@code url} points at the in-pane preview server (loopback) and so should load inside
+     * the JCEF pane rather than being handed to the system browser. The host match requires an
+     * authority boundary ({@code :}, {@code /}, or end-of-string) after the loopback host so a
+     * look-alike such as {@code http://localhost.evil.example} is treated as external, not trusted
+     * in-pane (review M3). {@code 127.0.0.1} is only ever used with an explicit port, so its {@code :}
+     * is the boundary.
+     */
+    static boolean isLoopbackPreviewUrl(String url) {
+        if (url == null) {
+            return false;
+        }
+        return url.startsWith("http://127.0.0.1:")
+                || isLoopbackHost(url, "http://localhost");
+    }
+
+    private static boolean isLoopbackHost(String url, String prefix) {
+        if (!url.startsWith(prefix)) {
+            return false;
+        }
+        if (url.length() == prefix.length()) {
+            return true;
+        }
+        char next = url.charAt(prefix.length());
+        return next == ':' || next == '/';
     }
 
     /**
