@@ -184,6 +184,28 @@ class RenderFidelityTest {
                 "no user class may be loaded to synthesize the tree model: " + tracker.getAttempts());
     }
 
+    @ParameterizedTest(name = "(j) binding-styled.zul [{0}]")
+    @MethodSource("variants")
+    void fixtureJ_styledBoundLabelIsStillDimmed(Variants.Named variant) throws Exception {
+        ForbiddenLoadTracker tracker = new ForbiddenLoadTracker(CANARY_PREFIX);
+        RenderResult r = render(variant, "binding-styled.zul", tracker);
+        assertTrue(r.isSuccess(), () -> "expected SUCCESS, got: " + describeFailure(r));
+        String html = r.getHtml();
+        assertTrue(html.contains("vm.greeting"),
+                () -> "M-1: the @load value should render as placeholder text: " + html);
+        // C2 (S/C review): dimming must be APPLIED even though the label already carries an inline
+        // style (the buggy version skipped dimming whenever a style was present), and it must be
+        // APPENDED so the author's own style survives -- both the dim colour (#9aa0a6) and the
+        // author's background (#ff0000) must appear. Markers are hyphen-free (lesson #14).
+        assertTrue(html.contains("9aa0a6"),
+                () -> "C2: placeholder dim colour must be applied to a styled bound component: " + html);
+        assertTrue(html.contains("ff0000"),
+                () -> "C2: the author's own inline style must be preserved, not clobbered: " + html);
+        assertFalse(html.contains("LOADED"), "real bound value must not leak: " + html);
+        assertTrue(tracker.getAttempts().isEmpty(),
+                "no user class may be loaded: " + tracker.getAttempts());
+    }
+
     private static int count(String haystack, String needle) {
         int n = 0;
         for (int i = haystack.indexOf(needle); i >= 0; i = haystack.indexOf(needle, i + needle.length())) {

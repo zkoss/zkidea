@@ -12,8 +12,10 @@ import org.zkoss.zk.ui.util.GenericComposer;
  * subtree is fully composed -- the same point at which the real MVVM binder would set
  * models -- which is exactly when {@link PlaceholderInjector#injectModels} must run so a
  * model-bound data component's explicit {@code <rows>}/{@code <listhead>} already exists
- * (injecting earlier makes ZK auto-create a duplicate and fail). Text placeholders are
- * handled separately by the {@code PlaceholderInjector} UiLifeCycle listener.
+ * (injecting earlier makes ZK auto-create a duplicate and fail). Text placeholders are set by
+ * the {@code PlaceholderInjector} UiLifeCycle listener as components attach, but their dim
+ * styling is applied here -- post-composition -- because a style set at attach time does not
+ * survive to the serialized page (see {@link PlaceholderInjector#dimPlaceholders}).
  */
 public class PreviewComposer extends GenericComposer {
     private static final long serialVersionUID = 1L;
@@ -22,5 +24,6 @@ public class PreviewComposer extends GenericComposer {
     public void doAfterCompose(Component comp) throws Exception {
         super.doAfterCompose(comp);
         PlaceholderInjector.injectModels(comp);
+        PlaceholderInjector.dimPlaceholders(comp);
     }
 }

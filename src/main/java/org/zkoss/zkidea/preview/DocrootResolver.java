@@ -11,10 +11,11 @@ import java.util.List;
  *
  * <p>Rule, walked from the {@code .zul} file's parent directory upward:
  * <ol>
- *   <li>The first ancestor directory that either contains a {@code WEB-INF}
- *       subdirectory, or is itself named {@code webapp} (case-insensitive), is the
- *       docroot. This matches the standard Maven/Gradle webapp (WAR) layout
- *       ({@code src/main/webapp/WEB-INF/...}).</li>
+ *   <li>The first ancestor directory -- searched only within {@code boundaryRoots}, so an
+ *       unrelated ancestor named {@code webapp} above the module cannot hijack it -- that either
+ *       contains a {@code WEB-INF} subdirectory, or is itself named {@code webapp}
+ *       (case-insensitive), is the docroot. This matches the standard Maven/Gradle webapp (WAR)
+ *       layout ({@code src/main/webapp/WEB-INF/...}).</li>
  *   <li>Otherwise, the first ancestor that is a ZK <em>classpath web root</em> -- a
  *       directory named {@code web} directly under one of {@code resourceRoots}
  *       ({@code src/main/resources/web}) -- is the docroot. This is the Spring-Boot-jar
@@ -41,7 +42,8 @@ public final class DocrootResolver {
         if (parent == null) {
             return zulFile;
         }
-        for (Path candidate = parent; candidate != null; candidate = candidate.getParent()) {
+        for (Path candidate = parent; candidate != null && withinBoundary(candidate, boundaryRoots);
+                candidate = candidate.getParent()) {
             if (hasWebInf(candidate) || isNamedWebapp(candidate)) {
                 return candidate;
             }
@@ -76,6 +78,24 @@ public final class DocrootResolver {
      * mistaken for it. {@code web} is a fixed ZK convention (ClassWebResource {@code /web}), so
      * the name match is exact, not case-insensitive.
      */
+    /**
+     * A candidate ancestor is in-bounds for the WEB-INF/{@code webapp} scan iff no boundary roots
+     * were supplied (unbounded -- back-compat for the 2-arg overload / callers that pass none) or it
+     * lies within one. Stops the scan escaping the module and mistaking an unrelated ancestor named
+     * {@code webapp} (e.g. a {@code ~/webapp/...} checkout folder) for the docroot.
+     */
+    private static boolean withinBoundary(Path dir, List<Path> boundaryRoots) {
+        if (boundaryRoots.isEmpty()) {
+            return true;
+        }
+        for (Path root : boundaryRoots) {
+            if (dir.startsWith(root)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean isClasspathWebRoot(Path dir, List<Path> resourceRoots) {
         Path name = dir.getFileName();
         if (name == null || !"web".equals(name.toString())) {

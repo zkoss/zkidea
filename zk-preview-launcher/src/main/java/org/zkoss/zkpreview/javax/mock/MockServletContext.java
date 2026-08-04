@@ -39,7 +39,7 @@ public class MockServletContext implements ServletContext {
             if (overlay != null) return overlay;
         }
         File f = resourceFile(path);
-        return f.exists() ? f.toURI().toURL() : null;
+        return f != null && f.exists() ? f.toURI().toURL() : null;
     }
 
     @Override
@@ -49,7 +49,7 @@ public class MockServletContext implements ServletContext {
             if (overlay != null) return overlay;
         }
         File f = resourceFile(path);
-        if (!f.exists()) return null;
+        if (f == null || !f.exists()) return null;
         try {
             return new FileInputStream(f);
         } catch (FileNotFoundException e) {
@@ -59,7 +59,8 @@ public class MockServletContext implements ServletContext {
 
     @Override
     public String getRealPath(String path) {
-        return resourceFile(path).getAbsolutePath();
+        File f = resourceFile(path);
+        return f == null ? null : f.getAbsolutePath();
     }
 
     @Override
@@ -342,7 +343,15 @@ public class MockServletContext implements ServletContext {
 
     private File resourceFile(String path) {
         String relative = path.startsWith("/") ? path.substring(1) : path;
-        return webappDir.resolve(relative).toFile();
+        Path root = webappDir.normalize();
+        Path resolved = root.resolve(relative).normalize();
+        // Containment guard (mirrors PreviewHttpServer.readZulSource): a request that escapes the
+        // docroot via ../ must not resolve to a file outside it. Returning null is fine -- the
+        // servlet spec permits a null translation and every caller here treats null as "not found".
+        if (!resolved.startsWith(root)) {
+            return null;
+        }
+        return resolved.toFile();
     }
 
     private static boolean isZkXml(String path) {

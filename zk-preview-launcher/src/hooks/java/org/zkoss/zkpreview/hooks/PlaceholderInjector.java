@@ -57,6 +57,11 @@ public class PlaceholderInjector implements UiLifeCycle {
      * subtrees (nested viewModels) don't double-inject. */
     private static final String SYNTH_MODEL_FLAG = "zkpreview.syntheticModel";
 
+    /** Marks a component we gave a text placeholder, so the post-composition {@link #dimPlaceholders}
+     * sweep can style it AFTER ZK has applied any static {@code style} attribute -- a style set during
+     * {@link #afterComponentAttached} is overwritten (or dropped) before the page is serialized. */
+    private static final String PLACEHOLDER_FLAG = "zkpreview.placeholder";
+
     private static boolean isolationEnabled() {
         return !"false".equalsIgnoreCase(System.getProperty(ISOLATION_PROPERTY));
     }
@@ -81,7 +86,9 @@ public class PlaceholderInjector implements UiLifeCycle {
             }
             String expr = bindingExpression(ctrl, prop, DISPLAY_BINDINGS);
             if (expr != null && applyPlaceholder(comp, prop, expr)) {
-                dim(comp);
+                // Dimming is applied post-composition (dimPlaceholders), not here: a style set at
+                // attach time does not survive to the serialized page. Just mark the component.
+                comp.setAttribute(PLACEHOLDER_FLAG, Boolean.TRUE);
             }
         }
     }
@@ -227,13 +234,40 @@ public class PlaceholderInjector implements UiLifeCycle {
         return modelCls.getConstructor(treeNodeIface).newInstance(root);
     }
 
+    /**
+     * Post-composition dim sweep, invoked from {@link PreviewComposer#doAfterCompose} after
+     * {@link #injectModels}. Applies the placeholder dim style to every component we gave a text
+     * placeholder. Done here rather than in {@link #afterComponentAttached} because a style set at
+     * attach time is overwritten when ZK later assigns the component's own static {@code style}
+     * attribute (and is otherwise dropped before serialization); by this point all static properties
+     * -- and any model-template rows created by {@link #injectModels} -- exist, so the dim sticks.
+     */
+    public static void dimPlaceholders(Component root) {
+        if (root == null || !isolationEnabled()) {
+            return;
+        }
+        dimTree(root);
+    }
+
+    private static void dimTree(Component comp) {
+        if (comp.getAttribute(PLACEHOLDER_FLAG) != null) {
+            dim(comp);
+            comp.removeAttribute(PLACEHOLDER_FLAG); // dim once, even if composer subtrees overlap
+        }
+        for (Component child : comp.getChildren()) {
+            dimTree(child);
+        }
+    }
+
     private static void dim(Component comp) {
         if (comp instanceof HtmlBasedComponent) {
             try {
                 HtmlBasedComponent hc = (HtmlBasedComponent) comp;
-                if (hc.getStyle() == null || hc.getStyle().isEmpty()) {
-                    hc.setStyle(DIM_STYLE);
-                }
+                String existing = hc.getStyle();
+                // Append, don't skip: a component that already carries an author style must still be
+                // dimmed (else a styled bound value renders as undimmed literal text). The dim rules
+                // go last so they win the cascade for the placeholder look.
+                hc.setStyle(existing == null || existing.isEmpty() ? DIM_STYLE : existing + ";" + DIM_STYLE);
             } catch (RuntimeException ignore) {
                 // best-effort only
             }

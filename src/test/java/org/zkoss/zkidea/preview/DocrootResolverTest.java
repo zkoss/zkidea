@@ -141,6 +141,24 @@ class DocrootResolverTest {
     }
 
     @Test
+    void doesNotHijackDocrootToAWebappAncestorAboveTheModuleRoot() throws IOException {
+        // Regression (S/C review C1): a Spring-Boot-jar page checked out under a parent folder
+        // literally named "webapp" (e.g. ~/webapp/my-app/...) must NOT let that unrelated ancestor
+        // win the WEB-INF/webapp scan -- the scan is bounded to the module's content roots, so
+        // resolution correctly reaches the classpath web root instead of the stray "webapp" above.
+        Path moduleRoot = tempDir.resolve("webapp/my-app");
+        Path resourceRoot = moduleRoot.resolve("src/main/resources");
+        Path webRoot = resourceRoot.resolve("web");
+        Path zul = webRoot.resolve("index.zul");
+        Files.createDirectories(webRoot);
+        Files.createFile(zul);
+
+        Path docroot = DocrootResolver.resolve(zul, List.of(moduleRoot), List.of(resourceRoot));
+
+        assertEquals(webRoot, docroot);
+    }
+
+    @Test
     void prefersNearestWebInfAncestorOverAFurtherOne() throws IOException {
         // A nested webapp (e.g. an embedded sample) should win over an outer one.
         Path outerWebapp = tempDir.resolve("outer/webapp");
