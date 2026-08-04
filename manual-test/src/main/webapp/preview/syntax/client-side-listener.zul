@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Special ZUML syntax: the CLIENT namespace (w:). A w:onClick handler is pure
+  client-side JavaScript emitted into the page - it runs in the browser with no
+  server round-trip, so it works in the preview even though there is no live
+  desktop. Adapted from the P3 corpus client/client-* cases.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul"
+    xmlns:w="http://www.zkoss.org/2005/zk/client">
+    <window title="Client-side listener (w:)" border="normal" width="520px">
+        <vlayout>
+            <button label="Click me" w:onClick="this.setLabel('label changed on the client')"/>
+            <label style="color:gray;font-size:11px"
+                   value="Expected in preview: click the button and its label changes to 'label changed on the client' - purely client-side JS, no server needed."/>
+        </vlayout>
+    </window>
+</zk>

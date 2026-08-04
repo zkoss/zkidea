@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?component name="pricetag" extends="label"?>
+<!--
+  Special ZUML syntax: the <?component?> DIRECTIVE defines a new component
+  inline (here a "pricetag" that extends the built-in label), which is then
+  used as an element below. Adapted from the P3 corpus case pi/pi-component.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Directive: component" border="normal" width="520px">
+        <vlayout>
+            <pricetag value="Component defined by directive"/>
+            <label style="color:gray;font-size:11px"
+                   value="Expected in preview: the line above renders even though 'pricetag' is not a built-in tag - it was declared by the component directive."/>
+        </vlayout>
+    </window>
+</zk>

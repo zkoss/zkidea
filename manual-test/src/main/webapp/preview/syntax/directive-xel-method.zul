@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xel-method prefix="m" name="max"
+    class="java.lang.Math"
+    signature="int max(int, int)"?>
+<!--
+  Special ZUML syntax: the <?xel-method?> DIRECTIVE turns a single public-static
+  method into an EL function (here java.lang.Math#max as m:max). A lighter-weight
+  alternative to a full taglib when you only need one function.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Directive: xel-method" border="normal" width="520px">
+        <vlayout>
+            <label value="Math.max(3, 42) evaluated by an EL function = ${m:max(3, 42)}"/>
+            <label style="color:gray;font-size:11px"
+                   value="Expected in preview: the line above ends with 42 - the number was computed by the m:max EL function declared in the directive."/>
+        </vlayout>
+    </window>
+</zk>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 variables composite list" border="normal">
+        <variables mylist="VARONE, VARTWO" composite="list"/>
+        <label value="${mylist[0]}"/>
+    </window>
+</zk>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 mvvm init command" border="normal"
+            viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.CanaryViewModel')">
+        <label value="@load(vm.greeting)"/>
+        <button label="Go" onClick="@command('doIt')"/>
+    </window>
+</zk>

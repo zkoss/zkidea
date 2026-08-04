@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 el arithmetic" border="normal">
+        <label value="EL${6*7}END"/>
+    </window>
+</zk>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 smoke hidden" border="normal">
+        <label value="SMOKEHIDDEN" if="false"/>
+        <label value="always here"/>
+    </window>
+</zk>

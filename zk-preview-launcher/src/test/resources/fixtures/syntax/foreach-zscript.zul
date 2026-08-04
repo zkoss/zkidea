@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 forEach over zscript collection" border="normal">
+        <zscript><![CDATA[
+            String[] items = new String[]{"FEA", "FEB"};
+        ]]></zscript>
+        <label forEach="${items}" value="ITER${each}"/>
+    </window>
+</zk>

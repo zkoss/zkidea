@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <div id="dm">
+        <custom-attributes mymap="k1=CAMAPVAL, k2=other" composite="map"/>
+        <label value="${dm.getAttribute('mymap')['k1']}"/>
+    </div>
+</zk>

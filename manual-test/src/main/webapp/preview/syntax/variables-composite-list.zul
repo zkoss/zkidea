@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Special ZUML syntax: <variables> with composite="list". It declares a page
+  variable whose value is a LIST built from a comma-separated string, readable from
+  EL by index. Adapted from the P3 corpus case variables/var-composite-list.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="variables composite list" border="normal" width="520px">
+        <vlayout>
+            <variables planets="Mercury, Venus, Earth" composite="list"/>
+            <label value="planets[0] = ${planets[0]}"/>
+            <label value="planets[2] = ${planets[2]}"/>
+            <label style="color:gray;font-size:11px"
+                   value="Expected in preview: line 1 shows Mercury and line 2 shows Earth - the comma string became a list and EL read it by index."/>
+        </vlayout>
+    </window>
+</zk>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Special ZUML syntax: forEach with a plain COMMA-SEPARATED LIST. ZK iterates the
+  literal items with no Java, ViewModel or model object - one label per item, with
+  ${each} bound to the current value. Adapted from the P3 corpus case
+  foreach/foreach-commalist.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="forEach comma list" border="normal" width="520px">
+        <vlayout>
+            <label forEach="Mercury, Venus, Earth" value="Planet: ${each}"/>
+            <label style="color:gray;font-size:11px"
+                   value="Expected in preview: exactly three lines - Mercury, Venus, Earth - produced by iterating the comma list (no Java involved)."/>
+        </vlayout>
+    </window>
+</zk>

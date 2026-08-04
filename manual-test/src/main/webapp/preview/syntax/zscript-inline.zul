@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Special ZUML syntax: inline <zscript>. Java (BeanShell) runs at compose time and
+  builds components programmatically - the label below exists only because the
+  script executed. Adapted from the P3 corpus case zscript/zscript-inline.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window id="w" title="Inline zscript" border="normal" width="520px">
+        <zscript><![CDATA[
+            new org.zkoss.zul.Label("This label was created by zscript at compose time").setParent(w);
+        ]]></zscript>
+        <label style="color:gray;font-size:11px"
+               value="Expected in preview: a line reading 'This label was created by zscript ...' appears above this note, produced by the inline script."/>
+    </window>
+</zk>

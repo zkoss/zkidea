@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 elem nested" border="normal">
+        <vbox>
+            <hbox>
+                <label value="ELEMNESTED"/>
+            </hbox>
+        </vbox>
+    </window>
+</zk>

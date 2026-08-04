@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <div id="d">
+        <custom-attributes myattr="CAVALUE"/>
+        <label value="${d.getAttribute('myattr')}"/>
+    </div>
+</zk>

@@ -3,9 +3,11 @@
 > Source: [tasks.md](tasks.md) (the four open issues). Builds on the shipped v1 in [PLAN.md](PLAN.md).
 > Related: [../error-reporting/PLAN.md](../error-reporting/PLAN.md).
 
-- **Version**: v3
+- **Version**: v4
 - **Status**: P1 DONE (headless + manual verified); P2 DONE (headless) incl. a `~./` classpath-resource
-  fix (runIde re-test pending); P3–P4 NOT STARTED
+  fix (runIde re-test pending); **P3 DONE (headless)** — see
+  [PLAN-P3-syntax-corpus.md](PLAN-P3-syntax-corpus.md) + [SYNTAX-MATRIX.md](SYNTAX-MATRIX.md) (48 cases ×
+  2 variants, 0 gaps; Playwright live-DOM sample); P4 NOT STARTED
 - **Scope**: robustness (P1), render-path coverage (P2, P3), new environment support (P4)
 
 ---

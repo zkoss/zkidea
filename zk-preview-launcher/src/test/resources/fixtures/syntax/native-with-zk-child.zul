@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul"
+    xmlns:n="http://www.zkoss.org/2005/zk/native">
+    <!-- fieldset has no ZUL-component equivalent, so a broken native namespace would hard-fail
+         on the unknown element rather than silently falling back to a ZK widget. -->
+    <n:fieldset>
+        <button label="NATIVECHILD"/>
+    </n:fieldset>
+</zk>

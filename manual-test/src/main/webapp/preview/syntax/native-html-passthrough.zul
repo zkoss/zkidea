@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Special ZUML syntax: the NATIVE namespace. Elements in the n: namespace are NOT
+  ZK components - they are emitted to the browser as raw HTML (here a real <table>).
+  Adapted from the P3 corpus case native/native-table.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul"
+    xmlns:n="http://www.zkoss.org/2005/zk/native">
+    <window title="Native HTML passthrough" border="normal" width="520px">
+        <vlayout>
+            <n:table border="1" cellpadding="4">
+                <n:tr>
+                    <n:th>Element</n:th>
+                    <n:th>Rendered as</n:th>
+                </n:tr>
+                <n:tr>
+                    <n:td>native table cell</n:td>
+                    <n:td>raw HTML, not a ZK widget</n:td>
+                </n:tr>
+            </n:table>
+            <label style="color:gray;font-size:11px"
+                   value="Expected in preview: a plain bordered HTML table (browser default styling), because n: elements pass straight through as HTML."/>
+        </vlayout>
+    </window>
+</zk>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <zk forEach="P, Q">
+        <label value="ZK${each}"/>
+    </zk>
+</zk>

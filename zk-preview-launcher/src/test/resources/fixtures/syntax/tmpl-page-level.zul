@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <template name="t1">
+        <label value="TMPLINERT"/>
+    </template>
+    <label value="alwayshere"/>
+</zk>
