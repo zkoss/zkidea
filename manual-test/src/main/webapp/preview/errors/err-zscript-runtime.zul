@@ -1,0 +1,11 @@
+<zk>
+    <window title="zscript runtime error">
+        <!-- zscript executes and throws at runtime (NOT a missing class) -> a
+             compose-time failure whose message is the thrown exception, exercising
+             a different message shape than the missing-class case. -->
+        <zscript>
+            throw new IllegalStateException("simulated failure from zscript");
+        </zscript>
+        <label value="never reached"/>
+    </window>
+</zk>

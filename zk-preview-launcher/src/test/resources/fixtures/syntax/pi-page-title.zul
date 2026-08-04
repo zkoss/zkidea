@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?page title="PITITLE"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 pi page title" border="normal">
+        <label value="pagetitlehost"/>
+    </window>
+</zk>

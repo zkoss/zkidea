@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.zkoss</groupId>
+    <artifactId>plugin-test-springboot</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <!-- jar packaging: this is the whole point — no src/main/webapp, no WEB-INF. -->
+    <packaging>jar</packaging>
+    <name>ZK Idea Plugin Manual Test — Spring Boot jar</name>
+    <description>
+        Manual test project for the ZKIdea plugin's ZUL Layout Preview in a Spring Boot
+        JAR-packaging project. The ZUL pages live on the classpath under
+        src/main/resources/web/ (ZK's ClassWebResource path), NOT under src/main/webapp.
+        Verifies DocrootResolver's Spring-Boot-jar rule: such a page must preview at its
+        production URL (/index.zul), served from the classpath web root as docroot.
+    </description>
+
+    <properties>
+        <!-- Same jakarta ZK as manual-test, so the plugin resolves the same ZK 10 jars. -->
+        <zk.version>10.1.0-jakarta</zk.version>
+        <spring.boot.version>3.2.7</spring.boot.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- ZK (jakarta). These are what the plugin detects to enable the preview and
+             hands to the launcher; identical coordinates to manual-test. -->
+        <dependency>
+            <groupId>org.zkoss.zk</groupId>
+            <artifactId>zkmax</artifactId>
+            <version>${zk.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-jdk14</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.zkoss.zk</groupId>
+            <artifactId>zuti</artifactId>
+            <version>${zk.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.zkoss.zk</groupId>
+            <artifactId>zhtml</artifactId>
+            <version>${zk.version}</version>
+        </dependency>
+
+        <!-- Makes this a genuine Spring Boot application. NOTE: the Layout Preview does
+             NOT start this app — it renders the ZUL headlessly through the plugin's
+             launcher (ZK jars + resource roots + resolved docroot), so no servlet
+             wiring is needed here for the preview to work. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+            <version>${spring.boot.version}</version>
+        </dependency>
+    </dependencies>
+
+    <repositories>
+        <repository>
+            <id>ZK CE</id>
+            <name>ZK CE Repository</name>
+            <url>https://mavensync.zkoss.org/maven2</url>
+        </repository>
+        <repository>
+            <id>ZK EE Evaluation</id>
+            <url>https://mavensync.zkoss.org/zk/ee-eval</url>
+        </repository>
+        <repository>
+            <id>ZK EE</id>
+            <url>https://maven.zkoss.org/repo/zk/ee</url>
+        </repository>
+    </repositories>
+</project>

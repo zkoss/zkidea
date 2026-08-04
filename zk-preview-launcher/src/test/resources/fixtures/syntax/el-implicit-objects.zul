@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  P3 characterization: every EL implicit object listed in the ZUML Reference
+  (zuml_ref/implicit_objects__predefinedvariables_.md). Each line prints a unique
+  token immediately followed by ${x != null} so the rendered value is
+  "ioXxxtrue" / "ioXxxfalse" (proven el-empty pattern; no space, no hyphen).
+  each / forEachStatus are exercised inside a forEach; event/arg carry the
+  contexts the reference says they need (listener / include), absent here.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <!-- live component / runtime objects -->
+    <label value="ioSelf${self != null}"/>
+    <label value="ioPage${page != null}"/>
+    <label value="ioDesktop${desktop != null}"/>
+    <label value="ioExec${execution != null}"/>
+    <label value="ioSession${session != null}"/>
+    <label value="ioPageCtx${pageContext != null}"/>
+    <label value="ioSpaceOwner${spaceOwner != null}"/>
+
+    <!-- scope maps -->
+    <label value="ioAppScope${applicationScope != null}"/>
+    <label value="ioSessScope${sessionScope != null}"/>
+    <label value="ioDeskScope${desktopScope != null}"/>
+    <label value="ioReqScope${requestScope != null}"/>
+    <label value="ioPageScope${pageScope != null}"/>
+    <label value="ioCompScope${componentScope != null}"/>
+    <label value="ioSpaceScope${spaceScope != null}"/>
+
+    <!-- request-derived maps -->
+    <label value="ioParam${param != null}"/>
+    <label value="ioParamVals${paramValues != null}"/>
+    <label value="ioCookie${cookie != null}"/>
+    <label value="ioHeader${header != null}"/>
+    <label value="ioHeaderVals${headerValues != null}"/>
+
+    <!-- i18n labels + browser info -->
+    <label value="ioLabels${labels != null}"/>
+    <label value="ioZk${zk != null}"/>
+
+    <!-- context-dependent: reference says event=listener-only, arg=include-only -->
+    <label value="ioEvent${event != null}"/>
+    <label value="ioArg${arg != null}"/>
+
+    <!-- iteration context: each + forEachStatus over a comma list -->
+    <label forEach="P, Q" value="ioEach${each}ioIdx${forEachStatus.index}"/>
+
+    <!-- bonus live-value probes (characterization only; may be runtime-specific) -->
+    <label value="vExecCtxPath=[${execution.contextPath}]"/>
+    <label value="vDesktopId=[${desktop.id}]"/>
+    <label value="vPageId=[${page.id}]"/>
+    <label value="vZkSafari=[${zk.safari}]"/>
+    <label value="vParamSize=[${param.size()}]"/>
+</zk>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="styled placeholder" border="normal"
+            viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.CanaryViewModel')">
+        <label value="@load(vm.greeting)" style="background:#ff0000"/>
+    </window>
+</zk>

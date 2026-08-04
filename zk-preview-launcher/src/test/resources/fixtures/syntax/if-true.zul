@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 if true" border="normal">
+        <label value="IFTRUE" if="true"/>
+        <label value="alwayshere"/>
+    </window>
+</zk>

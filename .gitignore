@@ -6,3 +6,4 @@ build
 .sandbox
 target
 *.iml
+bin

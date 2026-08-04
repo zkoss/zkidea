@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Preview Fixture E" border="normal" width="600px" height="400px">
+        <borderlayout>
+            <north size="20%">
+                <label value="North"/>
+            </north>
+            <center>
+                <tabbox>
+                    <tabs>
+                        <tab label="Tab 1"/>
+                        <tab label="Tab 2"/>
+                    </tabs>
+                    <tabpanels>
+                        <tabpanel>
+                            <grid>
+                                <columns>
+                                    <column label="Name"/>
+                                </columns>
+                                <rows>
+                                    <row>
+                                        <label value="Row1"/>
+                                    </row>
+                                </rows>
+                            </grid>
+                        </tabpanel>
+                        <tabpanel>
+                            <tree>
+                                <treecols>
+                                    <treecol label="Node"/>
+                                </treecols>
+                                <treechildren>
+                                    <treeitem>
+                                        <treerow>
+                                            <treecell label="Root"/>
+                                        </treerow>
+                                    </treeitem>
+                                </treechildren>
+                            </tree>
+                        </tabpanel>
+                    </tabpanels>
+                </tabbox>
+            </center>
+            <south size="15%">
+                <label value="South"/>
+            </south>
+        </borderlayout>
+    </window>
+</zk>

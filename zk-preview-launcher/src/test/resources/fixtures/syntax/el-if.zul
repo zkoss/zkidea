@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 el in if attribute" border="normal">
+        <label value="ELIFSHOWN" if="${2 gt 1}"/>
+    </window>
+</zk>

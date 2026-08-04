@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <zk if="false">
+        <label value="ZKHIDDEN"/>
+    </zk>
+    <label value="alwayshere"/>
+</zk>

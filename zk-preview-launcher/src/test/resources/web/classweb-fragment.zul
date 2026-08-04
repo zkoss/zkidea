@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A classpath web resource: reachable as ~./classweb-fragment.zul (ZK ClassWebResource,
+     mapped to /web/ on the classpath) rather than via the servlet-context docroot. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <label value="CLASSWEB FRAGMENT CONTENT"/>
+</zk>

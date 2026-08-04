@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window id="w2" title="P3 zscript guarded" border="normal">
+        <zscript if="false"><![CDATA[
+            new org.zkoss.zul.Label("ZSGUARDED").setParent(w2);
+        ]]></zscript>
+        <label value="alwayshere"/>
+    </window>
+</zk>

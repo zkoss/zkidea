@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- L1: MVVM listbox + template, listhead, selection, checkmark, multiple, paging, emptyMessage -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <listbox width="640px" mold="paging" pageSize="5" checkmark="true" multiple="true"
+             emptyMessage="No products"
+             viewModel="@id('vm') @init('com.example.plugin.test.preview.PreviewCasesVM')"
+             model="@load(vm.products)" selectedItem="@bind(vm.selected)">
+        <listhead sizable="true">
+            <listheader label="Name" sort="auto(name)"/>
+            <listheader label="Category" sort="auto(category)"/>
+            <listheader label="Price" align="right"/>
+        </listhead>
+        <template name="model" var="item">
+            <listitem>
+                <listcell label="@load(item.name)"/>
+                <listcell label="@load(item.category)"/>
+                <listcell label="@load(item.price)"/>
+            </listitem>
+        </template>
+    </listbox>
+</zk>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Manual demo for the ZUL-preview placeholder feature. With isolation on (the default):
+    - @load/@bind/@save on text properties render the bound expression as dimmed text;
+    - a model binding renders N synthetic placeholder rows through the component's own
+      <template name="model">, and each cell is filled with its @load(each.*) expression.
+  The ViewModel class is NEVER loaded (isolation) — the FQCN is just annotation text.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="@load(vm.pageTitle)" width="540px" border="normal"
+            viewModel="@id('vm') @init('com.example.plugin.test.MyViewModel')">
+        <vlayout>
+            <label value="@load(vm.greeting)"/>          <!-- text placeholder: vm.greeting -->
+            <hlayout>
+                <label value="User name:"/>              <!-- literal, not dimmed -->
+                <textbox value="@bind(vm.userName)"/>    <!-- text placeholder: vm.userName -->
+            </hlayout>
+            <label value="plain static text"/>           <!-- literal, not dimmed -->
+
+            <!-- model placeholder: 3 synthetic rows via the template; each cell shows
+                 its @load(each.*) expression -->
+            <grid model="@load(vm.orders)">
+                <columns>
+                    <column label="Product"/>
+                    <column label="Qty"/>
+                    <column label="Price"/>
+                </columns>
+                <template name="model">
+                    <row>
+                        <label value="@load(each.product)"/>
+                        <label value="@load(each.qty)"/>
+                        <label value="@load(each.price)"/>
+                    </row>
+                </template>
+            </grid>
+
+            <!-- model placeholder, no template: falls back to ZK's default per-item rendering -->
+            <listbox model="@load(vm.tags)"/>
+        </vlayout>
+    </window>
+</zk>

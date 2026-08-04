@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 mvvm bind" border="normal"
+            viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.CanaryViewModel')">
+        <textbox value="@bind(vm.name)"/>
+        <label value="static sibling"/>
+    </window>
+</zk>

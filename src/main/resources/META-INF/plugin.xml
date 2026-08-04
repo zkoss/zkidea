@@ -11,6 +11,14 @@
       Features:
       <ul>
           <li>
+              <b>Layout Preview</b>
+              <ul>
+                  <li>A side-by-side layout preview for <code>.zul</code> files — see how a page lays out while you edit, refreshed on save</li>
+                  <li>Rendered through your project's own ZK jars in an isolated helper process; your own code is never loaded (ViewModels, Composers, and converters do not run), so bound values appear as placeholders rather than real data</li>
+                  <li>A first-paint layout view, not a live application preview</li>
+              </ul>
+          </li>
+          <li>
               <b>ZUL File Support</b>
               <ul>
                   <li>ZUL code completion for ZK components, attributes, and events</li>
@@ -284,6 +292,8 @@
                implementationClass="org.zkoss.zkidea.lang.ZkXmlValidationAnnotator" />
           <defaultLiveTemplatesProvider
                implementation="org.zkoss.zkidea.liveTemplates.ZkLiveTemplatesProvider" />
+          <fileEditorProvider implementation="org.zkoss.zkidea.preview.ZulPreviewFileEditorProvider" />
+          <projectService serviceImplementation="org.zkoss.zkidea.preview.ZulPreviewServerService" />
      </extensions>
 
      <extensions defaultExtensionNs="com.intellij">

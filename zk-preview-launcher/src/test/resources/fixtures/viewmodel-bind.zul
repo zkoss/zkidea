@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Preview Fixture B" border="normal"
+            viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.CanaryViewModel')">
+        <label value="@load(vm.greeting)"/>
+        <label value="static sibling"/>
+        <button label="Go" onClick="@command('doIt')"/>
+    </window>
+</zk>

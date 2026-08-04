@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 attribute multiline" border="normal">
+        <label>
+            <attribute name="value">LINEONE
+LINETWO</attribute>
+        </label>
+    </window>
+</zk>

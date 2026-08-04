@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul"
+    xmlns:zk="http://www.zkoss.org/2005/zk">
+    <window title="P3 ns zk" border="normal">
+        <!-- Negative proof: if the zk namespace prefix did NOT resolve to the ZK `if` attribute,
+             this label would render (NSZKHIDDEN present) and the test would fail. -->
+        <label value="NSZKHIDDEN" zk:if="false"/>
+        <label value="alwayshere"/>
+    </window>
+</zk>

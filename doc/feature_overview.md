@@ -197,6 +197,144 @@ Defined in `plugin.xml` as an action group `ZK_Feedback_Group` added to `HelpMen
 
 ---
 
+## 10. Layout Preview (since 0.8.0, in development)
+
+> **Naming (M-2).** User-facing copy calls this feature **"Layout Preview"**, never
+> "live preview"/"live app preview" — it renders how a page *lays out*, not a running
+> application. See `doc/zul_preview_product_positioning.md` §2.
+
+### What it does
+Adds a side-by-side **Layout Preview** to the ZUL editor (Markdown-editor style): the
+left pane is the normal text editor, the right pane renders the actual HTML ZK's own
+engine would produce, refreshed on save. Rendering never loads the project's own compiled
+classes (ViewModels, Composers, converters, ...) — it is a **first-paint-only** layout
+view: bound values render as dimmed placeholders (the binding expression text) rather than
+their real values.
+Rendering happens in a short-lived helper JVM, spawned and owned by the plugin, that
+drives the project's own ZK jars directly (not a bundled copy) via a small standalone
+"rendering core" module (`zk-preview-launcher`) that has zero IntelliJ dependencies and
+is independently runnable as a CLI. Design background, approaches considered, and the
+full acceptance-criteria matrix live in `tasks/zul-preview/PLAN.md` and `RESEARCH.md`.
+
+### Key classes — plugin side (`preview` package, `src/main/java/org/zkoss/zkidea/preview/`)
+
+| Class | Role |
+|-------|------|
+| `ZulPreviewFileEditorProvider` | `FileEditorProvider`. `accept()` matches any file whose extension is `.zul` (cheap, PSI-free — never fires for `zk.xml`/`lang-addon.xml`, which share the same built-in XML `FileType`). `createEditor()` wraps IntelliJ's normal `PsiAwareTextEditorProvider` text editor and a `ZulPreviewFileEditor` in a `TextEditorWithPreview` split. `getPolicy()` returns `HIDE_DEFAULT_EDITOR` so the split replaces the plain XML editor for `.zul` files. |
+| `ZulPreviewFileEditor` | The preview half of the split. Gated on `JBCefApp.isSupported()`: if JCEF is unavailable, shows an explanatory Swing panel instead of a browser and does nothing else (R5). Otherwise asks `ZulPreviewServerService` to prepare a preview target, then points a `JBCefBrowser` at `http://localhost:<port><requestPath>`. A `MergingUpdateQueue`-debounced `BulkFileListener` reloads the browser on VFS content-change events (i.e. after save — unsaved in-editor changes do not refresh in v1). All child resources (browser, listener, refresh queue) are parented to `this` via `Disposer.register`, so `Disposer.dispose(this)` (fired when the editor tab closes) tears them down automatically. On a successful render it pins the M-3 hint banner (see `LayoutPreviewHint`) above the browser. |
+| `ZulPreviewServerService` | Project-level `Disposable` service that owns the helper JVMs. `preparePreview()` resolves the previewed file's module classpath and docroot off the EDT (`ReadAction.nonBlocking`), then looks up or starts a `ManagedPreviewServer` keyed by `docroot + "#" + classpathSignature` — **one helper JVM per distinct (docroot, classpath) pair**, shared across every open preview tab that resolves to the same pair, kept alive for the project session. `dispose()` kills every server this service started (no orphan JVMs left on project close). |
+| `ManagedPreviewServer` | Owns one spawned `zk-preview-launcher` process via IntelliJ's `KillableProcessHandler`. Parses the `PREVIEW_PORT=<n>` line the launcher prints on stdout once its HTTP server is up; `destroy()` kills the OS process. Has no dependency on `Project`/platform APIs so its start/kill contract can be unit-tested with a lightweight stand-in process. |
+| `DocrootResolver` | Pure logic: walks a `.zul` file's ancestor directories for the first one containing `WEB-INF/` or named `webapp` (standard Maven/Gradle webapp layout) to use as the `--webapp` argument; falls back to the nearest module content root, then the file's own parent. |
+| `ZkClasspathFilter` | Pure logic, two filters over a module's resolved runtime classpath: `filterZkJars`/`isZkJar` recognize ZK (and ZK addon, e.g. `zkcharts-`/`keikai-`) artifact-name prefixes — used **only** as the "does this module have any ZK at all" gate (R7); `filterLibraryJars` keeps every non-directory, existing-regular-file classpath entry regardless of name (ZK's own transitive deps like `slf4j-api` aren't ZK-prefixed) and is what actually gets handed to the launcher's `--classpath`. Also computes a stable SHA-256 `signature()` over a jar set (path+size+mtime) so `ZulPreviewServerService` can tell whether an existing helper JVM can be reused. |
+| `PreviewResult` | Outcome of `preparePreview()`: `READY` (port + request path), `NO_ZK_JARS` (R7 — module has no ZK dependency), or `ERROR` (helper JVM failed to start; carries the root-cause message). |
+| `LayoutPreviewHint` | M-3 in-pane hint copy + dismissal state. Holds the canonical banner text ("binding values are placeholders — your ViewModel doesn't run here") and an application-wide dismissed flag (`PropertiesComponent`), so `ZulPreviewFileEditor` shows a dismissible `EditorNotificationPanel` above the render until the user clicks "Got it" once. |
+
+### Key classes — rendering core (`zk-preview-launcher` module)
+
+The core is a **separate Gradle subproject** (`zk-preview-launcher/`), deliberately
+free of any `com.intellij.*` import, so it is independently callable:
+```
+java -jar zk-preview-launcher.jar --classpath <os-separated jars> --webapp <docroot> --port <n>
+```
+It prints `PREVIEW_PORT=<n>` to stdout once its HTTP server is bound (port `0` picks an
+ephemeral port), then blocks until killed. `ZulPreviewServerService` spawns exactly this
+CLI as a subprocess; `build.gradle`'s `prepareSandbox`/`buildPlugin` tasks bundle the
+built jar into the plugin distribution at `<plugin>/lib/zk-preview-launcher.jar`.
+
+| Class | Path (relative to `zk-preview-launcher/src/`) | Role |
+|-------|------|------|
+| `Main` | `main/java/.../Main.java` | CLI entry point: parses `--classpath`/`--webapp`/--port`, builds a `RenderEngine`, starts a `PreviewHttpServer`, prints the port line. |
+| `PreviewHttpServer` | `main/java/.../PreviewHttpServer.java` | A plain JDK `com.sun.net.httpserver.HttpServer` (no servlet container, no Jetty) bridging plain HTTP to the mock servlet environment: `GET *.zul` → page render (on failure, a formatted HTML error page via `ErrorPageRenderer`, **not** raw JSON — L-10), `GET /zkau/web/*` → extendlet-processed resource (JS/CSS), `POST /zkau` → a benign stubbed AU response (first paint never issues a real AU round-trip). |
+| `ErrorPageRenderer` | `main/java/.../ErrorPageRenderer.java` | Turns a `RenderError` into a self-contained, theme-aware, HTML-escaped error page shown in the preview pane when a `.zul` fails to render (L-10): phase + message + `file:line`, a collapsed "Show full stack trace" `<details>`, and a prefilled "Report on GitHub" link (error + `--report-*` env + the failing `.zul` source, all budgeted/URL-encoded). The structured `RenderError`/`toJson()` contract is unchanged — this only replaces the browser-facing bytes. |
+| `RenderEngineFactory` / `RenderEngine` | `main/java/.../RenderEngineFactory.java`, `RenderEngine.java` | Picks the servlet-API variant (via `VariantDetector`) and constructs the matching `JavaxRenderEngine` or `JakartaRenderEngine`. |
+| `VariantDetector` | `main/java/.../VariantDetector.java` | Detects javax vs. jakarta by scanning the resolved `DHtmlLayoutServlet.class` bytecode for which servlet package it references (no reflection/loading needed) — tries the canonically-named `zk-<version>.jar` first so an unrelated same-path class elsewhere on a wide classpath can't win by list position. |
+| `JavaxRenderEngine` / `JakartaRenderEngine` | `main/java/.../javax/`, `.../jakarta/` | Drive `DHtmlLayoutServlet`/`DHtmlUpdateServlet` directly via reflection against hand-written mock servlet objects (`mock/MockServletContext`, `MockHttpServletRequest/Response`, `MockHttpSession`, `MockServletConfig`) — one full mock-servlet-API implementation per variant, since the packages (`javax.servlet.*` vs. `jakarta.servlet.*`) don't collide. |
+| `ScopedZkClassLoader` / `IsolatedRuntime` | `main/java/.../ScopedZkClassLoader.java`, `IsolatedRuntime.java` | Builds the classloader a render runs under: the caller-supplied ZK jars plus the isolation-hook classes, child-first for `org.zkoss.*`, parented on the launcher's own classloader (required so reflectively-invoked mock servlet objects share the exact same `Class` identity as the loaded ZK code). |
+| `ErrorMapper` / `RenderError` / `RenderResult` / `RenderPhase` | `main/java/.../ErrorMapper.java`, etc. | Turns a render-time exception into the structured JSON failure contract (AC-6) — see "Isolation & structured failures" below. |
+
+### How it works
+1. `plugin.xml` registers `ZulPreviewFileEditorProvider` as a `fileEditorProvider`.
+2. Opening a `.zul` file creates a `TextEditorWithPreview` (text editor + `ZulPreviewFileEditor`).
+3. `ZulPreviewFileEditor` asks the project's `ZulPreviewServerService` to resolve the
+   file's module classpath/docroot and ensure a helper JVM is running for that
+   `(docroot, classpath-signature)` pair, spawning `zk-preview-launcher.jar` via
+   `GeneralCommandLine`/`KillableProcessHandler` if none exists yet.
+4. Once the helper JVM reports its port, the preview pane's `JBCefBrowser` loads
+   `http://localhost:<port>/<path-to-zul>` directly — the embedded browser renders
+   whatever the launcher's `PreviewHttpServer` returns (real HTML on success, a
+   structured JSON body on failure, since the browser has no special-cased error UI in v1).
+5. Saving the file triggers a VFS content-change event, debounced then coalesced into
+   a browser reload of the same URL.
+6. Closing the tab disposes the editor's own resources (browser, listeners); the shared
+   helper JVM keeps running for the rest of the project session and is only killed when
+   the project itself closes (`ZulPreviewServerService.dispose()`).
+
+### Isolation & structured failures
+The core's isolation guarantee — **the previewed project's own ViewModel/Composer/
+converter/validator classes are never loaded, not even to fail loudly** — rests on two
+things, not on a restricted classpath (an early design considered a ZK-jars-only
+classpath allowlist; it was abandoned because ZK's own transitive deps, e.g.
+`slf4j-api`, aren't ZK-prefixed and would starve the launcher's own bootstrap — see
+`ZkClasspathFilter`'s javadoc and `tasks/zul-preview/PLAN.md`'s D1):
+
+1. `ScopedZkClassLoader` — the isolation-hook classes and the caller-supplied ZK jars
+   are the *only* jars on the classloader that renders the page; a user project's own
+   compiled output directories are never included (`ZulPreviewServerService.resolveTarget`
+   filters directories out and excludes the project SDK).
+2. `PreviewUiFactory` (`zk-preview-launcher/src/hooks/java/org/zkoss/zkpreview/hooks/PreviewUiFactory.java`),
+   registered via `zk.xml`'s `<ui-factory-class>` and compiled in a dedicated `hooks`
+   Gradle sourceSet against an old ZK version for maximum binary compatibility:
+   - `newComposer(...)` always returns a no-op `PreviewComposer` instead of resolving
+     the real composer/ViewModel class name — this single override blocks both
+     `apply="user.X"` and the auto-applied MVVM `BindComposer` path, since ZK resolves
+     both through the same `UiFactory` call. Bound values consequently render
+     empty/placeholder by design, not because of a bug.
+   - `getPageDefinition(...)` additionally recognizes an unresolved binding-annotation
+     shape (`@name(...)`) leaking through as a literal page path — e.g.
+     `<apply templateURI="@load(vm.x)">` when the annotation is malformed enough that
+     ZK's own compiler didn't recognize it as annotation syntax — and substitutes a
+     synthesized empty page instead of delegating to a real file lookup, matching real
+     ZK's "the apply contributes nothing" outcome instead of throwing "Page not found".
+
+When rendering does fail (parse errors, missing zscript classes, invalid component
+hierarchies, ...), `ErrorMapper.map(zulPath, throwable)` turns the exception chain into
+a `RenderError { phase, message, zulFile, line, column }`, serialized by
+`RenderResult.toJson()` as the HTTP 500 body:
+```json
+{"status":"FAILURE","error":{"phase":"COMPOSE","message":"...","zulFile":"/x.zul","line":7,"column":null}}
+```
+`phase` is one of `PARSE`, `COMPOSE`, `UNKNOWN` (`CLASSPATH`/`RESOURCE` are reserved
+enum values not currently assigned by any code path). `COMPOSE` covers both missing-class
+failures (a `ClassNotFoundException` in the cause chain, or BeanShell/zscript's own
+"Class: X not found in namespace" message) and, as of this phase, any bare
+`org.zkoss.zk.ui.UiException`/subclass reaching the mapper with neither signal — i.e. a
+failure raised while ZK builds the component tree from an already-successfully-parsed
+document (e.g. "Unsupported parent for row" from placing a `<row>` outside a `<rows>`/
+`<grid>` ancestor). `line`/`column` are best-effort: populated only when the failing
+layer's own exception message reports a position (guaranteed for BeanShell/zscript
+failures; structurally absent for plain `UiException`s like the hierarchy case above —
+there is nothing in that exception chain to recover a line from). The full JSON schema
+and field-by-field semantics are documented as the stage-2 ("Fail-Render reporting")
+integration contract in `tasks/zul-preview/stage2-hook.md`; v1 ships no consumer of it.
+
+### v1 limitations (honest, by design)
+- **First paint only**: no AU (asynchronous update) round-trip is driven — the launcher
+  stubs `POST /zkau` with a benign empty response. Client-side interactions that require
+  a server round-trip (e.g. a button's `onClick` reaching a real Java handler) are not
+  simulated.
+- **No user-class fidelity**: ViewModels/Composers/converters/validators are never
+  loaded, so MVVM-bound values always render empty/placeholder rather than their real
+  runtime values — this is intentional (the isolation guarantee), not a fidelity bug to
+  fix later.
+- **JCEF required for the embedded browser render**: if `JBCefApp.isSupported()` is
+  false (e.g. some remote-dev/headless/alternative-JDK IDE runtimes), the preview pane
+  shows an explanatory message instead of a live render; there is no non-JCEF fallback
+  renderer in v1.
+- **No ZK jars on the classpath**: if the previewed file's module has no ZK dependency
+  at all, the preview pane explains this (R7) rather than attempting a render.
+
+---
+
 ## Shared Utilities
 
 | Class | Path | Role |

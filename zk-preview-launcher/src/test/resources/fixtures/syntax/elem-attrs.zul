@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 elem attrs" border="normal">
+        <button label="ELEMATTRS" disabled="true" width="120px"/>
+    </window>
+</zk>

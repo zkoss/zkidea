@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- G6: frozen columns -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <grid width="400px"
+          viewModel="@id('vm') @init('com.example.plugin.test.preview.PreviewCasesVM')"
+          model="@load(vm.products)">
+        <frozen columns="1"/>
+        <columns>
+            <column label="Name" width="150px"/>
+            <column label="Category" width="150px"/>
+            <column label="Price" width="150px" align="right"/>
+            <column label="Qty" width="150px" align="right"/>
+        </columns>
+        <template name="model" var="item">
+            <row>
+                <label value="@load(item.name)"/>
+                <label value="@load(item.category)"/>
+                <label value="@load(item.price)"/>
+                <label value="@load(item.qty)"/>
+            </row>
+        </template>
+    </grid>
+</zk>

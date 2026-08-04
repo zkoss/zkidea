@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- L2: static listitem list with a preselected item -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <listbox width="240px" rows="5">
+        <listhead><listheader label="Menu"/></listhead>
+        <listitem selectable="true"><listcell label="Dashboard"/></listitem>
+        <listitem selected="true"><listcell label="Orders"/></listitem>
+        <listitem><listcell label="Customers"/></listitem>
+        <listitem><listcell label="Reports"/></listitem>
+    </listbox>
+</zk>

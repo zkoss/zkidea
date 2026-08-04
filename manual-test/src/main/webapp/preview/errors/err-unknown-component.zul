@@ -1,0 +1,7 @@
+<zk>
+    <window title="unknown component">
+        <!-- 'labell' is a typo: no such ZK component is defined in the language.
+             ZK cannot resolve the tag to a component definition -> render error. -->
+        <labell value="typo in the component name"/>
+    </window>
+</zk>

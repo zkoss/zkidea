@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul"
+    xmlns:n="http://www.zkoss.org/2005/zk/native">
+    <div>
+        <n:table>
+            <n:tr>
+                <n:td>NATIVECELL</n:td>
+            </n:tr>
+        </n:table>
+    </div>
+</zk>

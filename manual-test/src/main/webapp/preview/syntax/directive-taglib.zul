@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?taglib uri="http://www.zkoss.org/dsp/web/core" prefix="c"?>
+<!--
+  Special ZUML syntax: the <?taglib?> DIRECTIVE (Tag Library) loads the built-in
+  core TLD so its static methods become EL functions (here c:cat and c:toUpperCase).
+  No Java or ViewModel needed - the functions run at render time.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Directive: taglib (Tag Library)" border="normal" width="560px">
+        <vlayout>
+            <label value="${c:cat('core function ', 'joined these two strings')}"/>
+            <label value="${c:toUpperCase('core taglib functions work in preview')}"/>
+            <label style="color:gray;font-size:11px"
+                   value="Expected in preview: line 1 shows the two strings concatenated; line 2 shows the same text uppercased - both produced by core TLD EL functions."/>
+        </vlayout>
+    </window>
+</zk>

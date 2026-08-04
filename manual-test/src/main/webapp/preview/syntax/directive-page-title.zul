@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?page title="ZUML Directive - page title set by the preview"?>
+<!--
+  Special ZUML syntax: the <?page?> DIRECTIVE (processing instruction).
+  Adapted from the P3 corpus case pi/pi-page-title.
+  The directive must appear BEFORE the root <zk> element.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Directive: page-title" border="normal" width="520px">
+        <vlayout>
+            <label value="This document's title is set by a page title directive above the root element."/>
+            <label style="color:gray;font-size:11px"
+                   value="Expected in preview: the page renders; the document/tab title reads 'ZUML Directive ...'. This label always renders."/>
+        </vlayout>
+    </window>
+</zk>

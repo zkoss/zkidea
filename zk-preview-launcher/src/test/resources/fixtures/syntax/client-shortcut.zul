@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul" xmlns:w="client">
+    <window title="P3 client shortcut" border="normal">
+        <button label="clientbtn" w:onClick="alert('CLIENTSHORTCUTMARK')"/>
+    </window>
+</zk>

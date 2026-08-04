@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Page lives in /sub/; includes a PARENT-relative page (../) at the fixtures root.
+     Proves relative src resolution, not just absolute "/". -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Include (relative src)" border="normal">
+        <include src="../include-static-fragment.zul"/>
+        <label value="include host marker"/>
+    </window>
+</zk>

@@ -1,0 +1,8 @@
+<zk>
+    <!-- Mid-edit malformed markup: <vbox> is closed by </hbox>. The XML parser
+         rejects the document before ZK composes anything -> PARSE-phase error.
+         This is the single most common state while editing a ZUL. -->
+    <vbox>
+        <label value="mismatched open/close tags"/>
+    </hbox>
+</zk>

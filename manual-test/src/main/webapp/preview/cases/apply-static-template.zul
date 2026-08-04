@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Applied by apply-static.zul. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <label value="APPLIED TEMPLATE CONTENT"/>
+    <button label="applied button"/>
+</zk>

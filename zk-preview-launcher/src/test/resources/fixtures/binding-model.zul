@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <grid width="500px"
+          viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.CanaryViewModel')"
+          model="@load(vm.rows)">
+        <columns>
+            <column label="Name"/>
+            <column label="Price"/>
+        </columns>
+        <template name="model">
+            <row>
+                <label value="@load(each.name)"/>
+                <label value="@load(each.price)"/>
+            </row>
+        </template>
+    </grid>
+</zk>

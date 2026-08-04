@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- G2: static form-layout grid, no model -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <grid width="380px">
+        <columns>
+            <column align="right" hflex="min"/>
+            <column/>
+        </columns>
+        <rows>
+            <row><label value="Order #:"/><label value="SO-10231"/></row>
+            <row><label value="Customer:"/><label value="Acme Corp"/></row>
+            <row><label value="Status:"/><label value="Shipped"/></row>
+            <row><label value="Total:"/><label value="$1,240.00"/></row>
+        </rows>
+    </grid>
+</zk>

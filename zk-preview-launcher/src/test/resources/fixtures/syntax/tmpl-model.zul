@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 template model" border="normal"
+            viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.CanaryViewModel')">
+        <listbox model="@load(vm.rows)">
+            <template name="model">
+                <listitem>
+                    <listcell label="@load(each.name)"/>
+                </listitem>
+            </template>
+        </listbox>
+    </window>
+</zk>

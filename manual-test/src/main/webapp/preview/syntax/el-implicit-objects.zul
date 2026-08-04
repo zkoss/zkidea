@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Every EL implicit object from the ZUML Reference (Implicit Objects / Predefined Variables).
+  Each line prints the object name then whether it resolved (${obj != null}). Unlike an MVVM
+  @load (a placeholder because the ViewModel never runs), implicit objects are produced by ZK's
+  real page-evaluation runtime, so they resolve to LIVE objects in the preview. The one exception
+  is 'event', which the reference says exists only inside an event listener - there is none at
+  render time, so it is correctly null.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="EL implicit objects" border="normal" width="620px">
+        <vlayout spacing="2px">
+            <label style="font-weight:bold" value="Runtime / component objects (expect: resolved=true)"/>
+            <label value="self          resolved = ${self != null}"/>
+            <label value="page          resolved = ${page != null}"/>
+            <label value="desktop       resolved = ${desktop != null}   (live id: ${desktop.id})"/>
+            <label value="execution     resolved = ${execution != null}"/>
+            <label value="session       resolved = ${session != null}"/>
+            <label value="pageContext   resolved = ${pageContext != null}"/>
+            <label value="spaceOwner    resolved = ${spaceOwner != null}"/>
+
+            <label style="font-weight:bold" value="Scope maps (expect: resolved=true)"/>
+            <label value="applicationScope = ${applicationScope != null}, sessionScope = ${sessionScope != null}, desktopScope = ${desktopScope != null}"/>
+            <label value="requestScope = ${requestScope != null}, pageScope = ${pageScope != null}, componentScope = ${componentScope != null}, spaceScope = ${spaceScope != null}"/>
+
+            <label style="font-weight:bold" value="Request-derived maps (expect: resolved=true; empty in preview)"/>
+            <label value="param = ${param != null} (size ${param.size()}), paramValues = ${paramValues != null}, cookie = ${cookie != null}, header = ${header != null}, headerValues = ${headerValues != null}"/>
+
+            <label style="font-weight:bold" value="i18n + browser + include arg (expect: resolved=true)"/>
+            <label value="labels = ${labels != null}, zk = ${zk != null}, arg = ${arg != null}"/>
+
+            <label style="font-weight:bold" value="Iteration context via forEach (each + forEachStatus)"/>
+            <label forEach="Mercury, Venus" value="each = ${each}, forEachStatus.index = ${forEachStatus.index}"/>
+
+            <label style="font-weight:bold;color:#b26a00" value="The one exception: event (listener-only)"/>
+            <label value="event resolved = ${event != null}  (correctly false: no event is dispatched at render time)"/>
+
+            <label style="color:gray;font-size:11px"
+                   value="Expected in preview: every line above reads 'true' EXCEPT the last (event = false). 'desktop' also shows a real generated id starting with z_ , proving the objects are live (not stubbed). A real server would additionally fill param/header/zk from the actual HTTP request and browser."/>
+        </vlayout>
+    </window>
+</zk>

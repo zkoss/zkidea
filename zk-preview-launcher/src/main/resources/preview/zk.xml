@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Bundled inside the launcher jar and served to ZK in place of any WEB-INF/zk.xml
+  under the user's own docroot (see MockServletContext): registers the isolation
+  hooks (RESEARCH.md U6) so a render never resolves a user ViewModel/composer class.
+  Toggle off by launching with -Dzkpreview.isolation=false (canary mode, AC-4(iii)).
+-->
+<zk>
+    <system-config>
+        <disable-event-thread>true</disable-event-thread>
+        <ui-factory-class>org.zkoss.zkpreview.hooks.PreviewUiFactory</ui-factory-class>
+    </system-config>
+    <listener>
+        <listener-class>org.zkoss.zkpreview.hooks.PlaceholderInjector</listener-class>
+    </listener>
+</zk>

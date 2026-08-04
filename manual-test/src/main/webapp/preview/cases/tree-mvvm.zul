@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- T1: MVVM tree + model + template. NOTE the DefaultTreeModel idiom: the template var
+     is the DefaultTreeNode, so the payload is reached via node.data.* (not node.*). -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <tree width="520px"
+          viewModel="@id('vm') @init('com.example.plugin.test.preview.PreviewCasesVM')"
+          model="@load(vm.treeModel)">
+        <treecols>
+            <treecol label="Name"/>
+            <treecol label="Category"/>
+            <treecol label="Qty" align="right"/>
+        </treecols>
+        <template name="model" var="node">
+            <treeitem open="true">
+                <treerow>
+                    <treecell label="@load(node.data.name)"/>
+                    <treecell label="@load(node.data.category)"/>
+                    <treecell label="@load(node.data.qty)"/>
+                </treerow>
+            </treeitem>
+        </template>
+    </tree>
+</zk>

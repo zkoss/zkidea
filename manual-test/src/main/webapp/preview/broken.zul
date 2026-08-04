@@ -1,0 +1,10 @@
+<zk>
+    <window title="broken">
+        <!-- Deliberately references a class that does not exist anywhere on the
+             classpath, so rendering fails (AC-6 structured failure); used by
+             tasks/zul-preview/manual-qa/AC-5.md step 5 ("open a broken zul"). -->
+        <zscript>
+            org.example.definitely.NoSuchClassAtAll x = new org.example.definitely.NoSuchClassAtAll();
+        </zscript>
+    </window>
+</zk>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul" xmlns:z="zul">
+    <window title="P3 annotation namespace" border="normal">
+        <textbox z:value="@thisIsValueNotAnnot()"/>
+    </window>
+</zk>

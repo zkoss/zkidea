@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Page lives in /sub/; applies a PARENT-relative template (../) that sits at the
+     fixtures root. Proves relative templateURI resolution, not just absolute "/". -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Apply (relative templateURI)" border="normal">
+        <apply templateURI="../apply-static-template.zul"/>
+        <label value="apply host marker"/>
+    </window>
+</zk>

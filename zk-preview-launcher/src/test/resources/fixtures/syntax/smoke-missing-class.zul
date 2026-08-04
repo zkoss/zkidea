@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="P3 smoke missing class" border="normal">
+        <zscript><![CDATA[
+            com.example.NoSuchClassXyz target = new com.example.NoSuchClassXyz();
+        ]]></zscript>
+        <label value="static sibling"/>
+    </window>
+</zk>

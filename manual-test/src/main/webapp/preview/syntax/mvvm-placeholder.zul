@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Signature preview behavior: MVVM binding PLACEHOLDER. The ViewModel is NOT executed
+  in the preview, so @load(vm.name) renders as its literal expression text 'vm.name'
+  instead of an evaluated value. Adapted from the P3 corpus mvvm cases; here it binds
+  a real manual-test ViewModel (com.example.plugin.test.MyViewModel).
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="MVVM binding placeholder" border="normal" width="560px"
+            viewModel="@id('vm') @init('com.example.plugin.test.MyViewModel')">
+        <vlayout>
+            <label value="@load(vm.name)"/>
+            <label value="a plain static sibling (always renders)"/>
+            <label style="color:gray;font-size:11px"
+                   value="Expected in preview: the first line shows the literal text 'vm.name' - the ViewModel is not run. (In a real server, that line would show the evaluated name.)"/>
+        </vlayout>
+    </window>
+</zk>

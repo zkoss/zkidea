@@ -61,39 +61,39 @@
       Place cursor after @load( inside the label below.
       Completion list must contain "member".
     -->
-    <grid model="@load(vm.list)">
-      <template name="model" var="member">
-        <row>
-          <!-- T08: cursor here, invoke Ctrl+Space → expect "member" and "vm" -->
-          <label value="@load("/>
-        </row>
-      </template>
-    </grid>
+<!--    <grid model="@load(vm.list)">-->
+<!--      <template name="model" var="member">-->
+<!--        <row>-->
+<!--          &lt;!&ndash; T08: cursor here, invoke Ctrl+Space → expect "member" and "vm" &ndash;&gt;-->
+<!--          <label value="@load("/>-->
+<!--        </row>-->
+<!--      </template>-->
+<!--    </grid>-->
 
     <!-- ── T09: Nested templates — both "row" and "item" offered ─────────────── -->
     <grid model="@load(vm.list)">
-      <template name="model" var="item">
-        <row>
-          <grid model="@load(item.someList)">
-            <template name="model" var="row">
-              <row>
-                <!-- T09: cursor here → expect "row", "item", and "vm" in completion list -->
-                <label value="@load("/>
-              </row>
-            </template>
-          </grid>
-        </row>
-      </template>
+<!--      <template name="model" var="item">-->
+<!--        <row>-->
+<!--          <grid model="@load(item.someList)">-->
+<!--            <template name="model" var="row">-->
+<!--              <row>-->
+<!--                &lt;!&ndash; T09: cursor here → expect "row", "item", and "vm" in completion list &ndash;&gt;-->
+<!--                <label value="@load("/>-->
+<!--              </row>-->
+<!--            </template>-->
+<!--          </grid>-->
+<!--        </row>-->
+<!--      </template>-->
     </grid>
 
     <!-- ── T10: <template> with no var attr — default "each" is suggested ─────── -->
     <grid model="@load(vm.list)">
-      <template name="model">
-        <row>
-          <!-- T10: cursor here → "each" and "vm" in completion list -->
-          <label value="@load("/>
-        </row>
-      </template>
+<!--      <template name="model">-->
+<!--        <row>-->
+<!--          &lt;!&ndash; T10: cursor here → "each" and "vm" in completion list &ndash;&gt;-->
+<!--          <label value="@load("/>-->
+<!--        </row>-->
+<!--      </template>-->
     </grid>
 
     <!-- ── T11: <apply> with user-defined attr "ctx" and system attr "templateURI" -->

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Preview Apply Static" border="normal">
+        <!-- Static literal templateURI: the applied template's content must actually
+             render inside the window (P2 render-assert, not just "no crash"). -->
+        <apply templateURI="/apply-static-template.zul"/>
+        <label value="apply host marker"/>
+    </window>
+</zk>
