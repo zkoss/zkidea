@@ -25,7 +25,6 @@ public class JavaxRenderEngine implements RenderEngine {
 
     private final ScopedZkClassLoader zkLoader;
     private final MockServletContext servletContext;
-    private final MockHttpSession session;
     private final Object layoutServlet;
     private final Method layoutServiceMethod;
     private final Object updateServlet;
@@ -35,7 +34,6 @@ public class JavaxRenderEngine implements RenderEngine {
         this.zkLoader = IsolatedRuntime.buildZkClassLoader(zkJars, JavaxRenderEngine.class.getClassLoader(),
                 forbiddenLoadTracker);
         this.servletContext = new MockServletContext(webappDir);
-        this.session = new MockHttpSession(servletContext);
 
         ClassLoader prev = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(zkLoader);
@@ -69,7 +67,7 @@ public class JavaxRenderEngine implements RenderEngine {
         ClassLoader prev = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(zkLoader);
         try {
-            MockHttpServletRequest req = new MockHttpServletRequest(session, zulPath);
+            MockHttpServletRequest req = new MockHttpServletRequest(newSession(), zulPath);
             MockHttpServletResponse resp = new MockHttpServletResponse();
             layoutServiceMethod.invoke(layoutServlet, req, resp);
             return RenderResult.success(resp.getContent());
@@ -87,7 +85,7 @@ public class JavaxRenderEngine implements RenderEngine {
         ClassLoader prev = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(zkLoader);
         try {
-            MockHttpServletRequest req = new MockHttpServletRequest(session, "/zkau", pathInfo, "GET");
+            MockHttpServletRequest req = new MockHttpServletRequest(newSession(), "/zkau", pathInfo, "GET");
             MockHttpServletResponse resp = new MockHttpServletResponse();
             updateServiceMethod.invoke(updateServlet, req, resp);
             int status = resp.getStatus();
@@ -98,6 +96,16 @@ public class JavaxRenderEngine implements RenderEngine {
         } finally {
             Thread.currentThread().setContextClassLoader(prev);
         }
+    }
+
+    /**
+     * A servlet session for a single render/resource call. L1: each call gets its OWN session
+     * so ZK desktops can't accumulate in one long-lived session for the helper JVM's whole life
+     * (and so separate preview tabs don't share one session, as they wouldn't on a real server).
+     * Package-visible so a test can observe that a fresh one is created per call.
+     */
+    MockHttpSession newSession() {
+        return new MockHttpSession(servletContext);
     }
 
     @Override
