@@ -39,6 +39,36 @@ public final class ZkClasspathFilter {
         return false;
     }
 
+    /** Whether a module's classpath actually carries usable ZK jars (U3). */
+    public enum ZkPresence {
+        /** No {@code zk-*}/{@code zul-*}/... named entry at all -- the module has no ZK dependency. */
+        NONE,
+        /** A ZK jar is declared but no such file exists on disk -- a wiped repo cache / dangling path. */
+        DECLARED_BUT_MISSING,
+        /** At least one declared ZK jar exists on disk -- good to hand to the launcher. */
+        PRESENT
+    }
+
+    /**
+     * Classifies a module's ZK dependency state (U3). {@link #filterZkJars} matches by <em>filename</em>
+     * only (the presence gate), while {@link #filterLibraryJars} requires an existing file: a declared
+     * ZK jar whose file was wiped (dangling local-repo path) is "declared" but not usable. Distinguishing
+     * the two lets the UI say "re-import/re-sync" instead of the wrong "add a ZK dependency" for a
+     * dependency the user already declared.
+     */
+    public static ZkPresence detectZkPresence(List<String> classpathEntries) {
+        List<File> zkNamed = filterZkJars(classpathEntries);
+        if (zkNamed.isEmpty()) {
+            return ZkPresence.NONE;
+        }
+        for (File zk : zkNamed) {
+            if (zk.isFile()) {
+                return ZkPresence.PRESENT;
+            }
+        }
+        return ZkPresence.DECLARED_BUT_MISSING;
+    }
+
     public static List<File> filterZkJars(List<String> classpathEntries) {
         List<File> result = new ArrayList<>();
         for (String entry : classpathEntries) {

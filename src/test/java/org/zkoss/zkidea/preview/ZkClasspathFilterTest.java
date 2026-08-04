@@ -177,6 +177,32 @@ class ZkClasspathFilterTest {
         assertNotEquals(withOnlyA, withBoth);
     }
 
+    @Test
+    void detectZkPresenceReportsNoneWhenNoZkNamedEntryIsDeclared() {
+        // Only non-ZK entries -> the module simply has no ZK dependency.
+        assertEquals(ZkClasspathFilter.ZkPresence.NONE,
+                ZkClasspathFilter.detectZkPresence(List.of(
+                        "/repo/guava-31.1-jre.jar", "/repo/slf4j-api-1.7.25.jar")));
+    }
+
+    @Test
+    void detectZkPresenceReportsPresentWhenAZkJarExistsOnDisk() throws IOException {
+        File zk = newJar("zk-10.1.0-jakarta.jar");
+        assertEquals(ZkClasspathFilter.ZkPresence.PRESENT,
+                ZkClasspathFilter.detectZkPresence(List.of(zk.getAbsolutePath())));
+    }
+
+    @Test
+    void detectZkPresenceReportsDeclaredButMissingWhenTheZkJarIsNotOnDisk() {
+        // U3: ZK is declared (a zk-*.jar name is on the classpath) but the file is gone -- a wiped
+        // local repo cache / dangling path. This must be distinguished from "no ZK dependency": the
+        // user has ZK, they just need to re-import/re-sync, not "add a ZK dependency".
+        String danglingZk = tempDir.resolve("zk-10.1.0-jakarta.jar").toString(); // never created
+        String existingNonZk = tempDir.resolve("guava-31.1-jre.jar").toString();
+        assertEquals(ZkClasspathFilter.ZkPresence.DECLARED_BUT_MISSING,
+                ZkClasspathFilter.detectZkPresence(List.of(danglingZk, existingNonZk)));
+    }
+
     private File newJar(String name) throws IOException {
         Path path = tempDir.resolve(name);
         Files.writeString(path, "stub");

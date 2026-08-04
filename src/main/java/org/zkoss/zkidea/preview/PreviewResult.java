@@ -7,7 +7,7 @@ package org.zkoss.zkidea.preview;
  */
 final class PreviewResult {
 
-    enum Status { READY, NO_ZK_JARS, ERROR }
+    enum Status { READY, NO_ZK_JARS, STALE_CLASSPATH, ERROR }
 
     private final Status status;
     private final int port;
@@ -29,6 +29,18 @@ final class PreviewResult {
         return new PreviewResult(Status.NO_ZK_JARS, -1, null,
                 "No ZK framework jars (zk, zul, ...) were found on this file's module classpath. "
                         + "Add a ZK dependency to the module to enable the Layout Preview.");
+    }
+
+    /**
+     * ZK is declared on the module but its jars aren't on disk (U3): a wiped/unresolved local repo
+     * cache. Distinct from {@link #noZkJars()} -- the fix is re-import/re-sync, not "add a dependency".
+     */
+    static PreviewResult staleClasspath() {
+        return new PreviewResult(Status.STALE_CLASSPATH, -1, null,
+                "ZK jars are declared on this module but were not found on disk — the local "
+                        + "dependency cache looks unresolved or stale. Re-import / re-sync the project "
+                        + "(reload the Maven/Gradle project) so the ZK jars resolve, then reopen the "
+                        + "Layout Preview.");
     }
 
     static PreviewResult error(String message) {

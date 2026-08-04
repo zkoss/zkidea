@@ -6,7 +6,6 @@ import com.intellij.ide.plugins.IdeaPluginDescriptor;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.extensions.PluginId;
@@ -33,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -72,21 +72,36 @@ public final class ZulPreviewServerService implements Disposable {
      * the outcome on the EDT via {@code onReady}.
      */
     public void preparePreview(@NotNull VirtualFile zulFile, @NotNull Consumer<PreviewResult> onReady) {
+        // Resolve the target AND ensure its helper JVM entirely off the EDT (U1): constructing the
+        // process (KillableProcessHandler's fork/exec) is synchronous and must not freeze the IDE on
+        // the feature's most common path -- opening the first .zul in a module. onTargetResolved runs
+        // on the background executor and marshals onReady back to the EDT (the caller drives Swing/JCEF).
         ReadAction.nonBlocking(() -> resolveTarget(zulFile))
                 .expireWith(this)
-                .finishOnUiThread(ModalityState.any(), target -> onTargetResolved(target, onReady))
-                .submit(AppExecutorUtil.getAppExecutorService());
+                .submit(AppExecutorUtil.getAppExecutorService())
+                .onSuccess(target -> onTargetResolved(target, onReady));
     }
 
     private void onTargetResolved(PreviewTarget target, Consumer<PreviewResult> onReady) {
-        if (target.libraryJars.isEmpty()) {
-            onReady.accept(PreviewResult.noZkJars());
-            return;
+        // Runs on the background executor (U1). Every early return marshals onReady to the EDT.
+        switch (target.presence) {
+            case NONE:
+                deliverResult(PreviewResult.noZkJars(), onReady);
+                return;
+            case DECLARED_BUT_MISSING:
+                deliverResult(PreviewResult.staleClasspath(), onReady);
+                return;
+            default:
+                break;
         }
         String key = target.docroot + "#" + target.classpathSignature;
         ManagedPreviewServer server = serversByKey.compute(key, (k, existing) ->
                 (existing != null && existing.isAlive()) ? existing : startServer(target));
         deliver(server, target.requestPath, onReady);
+    }
+
+    private void deliverResult(PreviewResult result, Consumer<PreviewResult> onReady) {
+        ApplicationManager.getApplication().invokeLater(() -> onReady.accept(result));
     }
 
     private void deliver(ManagedPreviewServer server, String requestPath, Consumer<PreviewResult> onReady) {
@@ -101,7 +116,11 @@ public final class ZulPreviewServerService implements Disposable {
     }
 
     private ManagedPreviewServer startServer(PreviewTarget target) {
-        GeneralCommandLine commandLine = new GeneralCommandLine()
+        // Build the command line INSIDE the guarded supplier: resolveLauncherJar() throws when the
+        // plugin descriptor is missing, and resolveJavaExecutable()/PreviewIssueReporter also touch
+        // platform lookups. Any throw here must become a failed server (surfaced as an error+Report
+        // card), never an escape that leaves the pane stuck on "loading" forever (U2).
+        return startGuarded(() -> new GeneralCommandLine()
                 .withExePath(resolveJavaExecutable())
                 .withParameters("-jar", resolveLauncherJar().toString(),
                         "--classpath", joinClasspath(target.launcherClasspath),
@@ -110,12 +129,23 @@ public final class ZulPreviewServerService implements Disposable {
                         // Identify this plugin/IDE in the error page's "Report on GitHub"
                         // link (the launcher can't know them); OS/JDK it fills in itself.
                         "--report-plugin", "ZKIdea " + PreviewIssueReporter.pluginVersion(),
-                        "--report-ide", PreviewIssueReporter.ideDescription());
+                        "--report-ide", PreviewIssueReporter.ideDescription()));
+    }
+
+    /**
+     * Builds and starts a helper server, converting ANY failure -- a throw from {@code
+     * commandLineSupplier} (e.g. {@link #resolveLauncherJar()} when the plugin descriptor is null) or
+     * an {@link ExecutionException} from process creation -- into a "failed" server whose {@code
+     * portFuture} completes exceptionally. This guarantees {@link #deliver} always reaches {@code
+     * onReady} with an error/Report outcome instead of the escape that used to leave the pane stuck on
+     * "loading" (U2). Package-visible and platform-free so it can be unit-tested with any supplier.
+     */
+    static ManagedPreviewServer startGuarded(Supplier<GeneralCommandLine> commandLineSupplier) {
         try {
-            ManagedPreviewServer server = new ManagedPreviewServer(commandLine);
+            ManagedPreviewServer server = new ManagedPreviewServer(commandLineSupplier.get());
             server.start();
             return server;
-        } catch (ExecutionException e) {
+        } catch (ExecutionException | RuntimeException e) {
             return ManagedPreviewServer.failed(e);
         }
     }
@@ -137,11 +167,13 @@ public final class ZulPreviewServerService implements Disposable {
                 : OrderEnumerator.orderEntries(project).runtimeOnly().withoutSdk()
                         .classes().getPathsList().getPathList();
 
-        // Presence check only (R7 "no ZK jars" gate) -- the actual handoff classpath
-        // below is deliberately wider (see filterLibraryJars' javadoc / PLAN.md D1):
-        // ZK's own runtime deps (e.g. slf4j-api) are not ZK-prefixed, so a ZK-only
-        // allowlist starves the launcher's bootstrap.
-        boolean hasZkJars = !ZkClasspathFilter.filterZkJars(classpathEntries).isEmpty();
+        // ZK presence gate (R7), now three-way (U3): NONE ("add a ZK dependency"),
+        // DECLARED_BUT_MISSING (declared but not on disk -> "re-import/re-sync"), or PRESENT.
+        // Only PRESENT proceeds to a launcher. The actual handoff classpath below is deliberately
+        // wider than just ZK jars (see filterLibraryJars' javadoc / PLAN.md D1): ZK's own runtime
+        // deps (e.g. slf4j-api) are not ZK-prefixed, so a ZK-only allowlist starves the bootstrap.
+        ZkClasspathFilter.ZkPresence presence = ZkClasspathFilter.detectZkPresence(classpathEntries);
+        boolean hasZkJars = presence == ZkClasspathFilter.ZkPresence.PRESENT;
         List<File> libraryJars = hasZkJars
                 ? ZkClasspathFilter.filterLibraryJars(classpathEntries)
                 : List.of();
@@ -182,7 +214,7 @@ public final class ZulPreviewServerService implements Disposable {
         List<Path> resourceRootDirs = resourceRootPaths.stream().map(Paths::get).collect(Collectors.toList());
         Path docroot = DocrootResolver.resolve(zulPath, contentRoots, resourceRootDirs);
         String relative = docroot.relativize(zulPath).toString().replace(File.separatorChar, '/');
-        return new PreviewTarget(docroot, libraryJars, launcherClasspath, signature, "/" + relative);
+        return new PreviewTarget(presence, docroot, launcherClasspath, signature, "/" + relative);
     }
 
     private String resolveJavaExecutable() {
@@ -228,18 +260,18 @@ public final class ZulPreviewServerService implements Disposable {
 
     /** Immutable resolution result for one preview request. */
     private static final class PreviewTarget {
+        /** Whether the module has usable ZK jars -- drives the R7/U3 gate in {@link #onTargetResolved}. */
+        final ZkClasspathFilter.ZkPresence presence;
         final Path docroot;
-        /** Runtime library jars only (never directories); empty iff no ZK jars were found -- the "has ZK?" gate. */
-        final List<File> libraryJars;
-        /** What the launcher actually gets on {@code --classpath}: {@link #libraryJars} plus resource-root dirs. */
+        /** What the launcher gets on {@code --classpath}: the runtime library jars plus resource-root dirs. */
         final List<File> launcherClasspath;
         final String classpathSignature;
         final String requestPath;
 
-        PreviewTarget(Path docroot, List<File> libraryJars, List<File> launcherClasspath,
+        PreviewTarget(ZkClasspathFilter.ZkPresence presence, Path docroot, List<File> launcherClasspath,
                       String classpathSignature, String requestPath) {
+            this.presence = presence;
             this.docroot = docroot;
-            this.libraryJars = libraryJars;
             this.launcherClasspath = launcherClasspath;
             this.classpathSignature = classpathSignature;
             this.requestPath = requestPath;
