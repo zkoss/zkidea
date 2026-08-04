@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Applies a ~./ ClassWebResource page whose name exists ONLY in a resource directory
+     passed explicitly on the render classpath (not in the docroot, not in src/test/resources).
+     Proves the fix's mechanism: a user's ~./ page resolves iff its resource root is on the
+     launcher classpath. See ClasspathResourceResolutionTest. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Apply (~./ classpath-only resource)" border="normal">
+        <apply templateURI="~./cp-only-fragment.zul"/>
+        <label value="apply host marker"/>
+    </window>
+</zk>

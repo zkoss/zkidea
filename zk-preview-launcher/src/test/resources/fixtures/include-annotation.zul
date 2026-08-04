@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Preview Include Annotation" border="normal"
+            viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.CanaryViewModel')">
+        <!-- Annotation-valued src: under the preview's no-op composer the binder never
+             runs, so src is never set -> the include contributes nothing, and the rest
+             of the page must still render (mirrors apply-templateuri-annotation). -->
+        <include src="@load(vm.includeSrc)"/>
+        <label value="include marker label"/>
+    </window>
+</zk>

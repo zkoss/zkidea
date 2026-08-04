@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- P2 display spot-check: a static <include> must show the included page's content
+     inside the window, host page still rendering. Headless coverage: IncludeTest. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Include (static src)" border="normal" width="360px">
+        <include src="/preview/cases/include-static-fragment.zul"/>
+        <label value="include host marker"/>
+    </window>
+</zk>

@@ -79,6 +79,31 @@ public final class ZkClasspathFilter {
     }
 
     /**
+     * Returns every entry that is an existing directory -- the module's resource roots
+     * (e.g. {@code src/main/resources}), where a user's own {@code ~./} pages live
+     * ({@code web/*.zul}, served by ZK's {@code ClassWebResource} from the classpath at
+     * {@code /web/}). These ARE handed to the launcher, unlike the module <em>output</em>
+     * directory (which {@link #filterLibraryJars} still excludes, AC-4(i)): a resource root
+     * contains resources, not compiled user classes, so class-isolation -- guaranteed by the
+     * launcher's {@code UiFactory} hook, not by classpath narrowness -- is unaffected, while
+     * ZK's {@code ClassWebResource} can now resolve a user's {@code ~./} pages exactly as a
+     * real servlet container does (where {@code WEB-INF/classes/web/} is on the classpath).
+     *
+     * <p>Mirror image of {@link #filterLibraryJars} (which keeps files and drops directories):
+     * this keeps directories and drops files / non-existent paths.
+     */
+    public static List<File> filterResourceRoots(List<String> resourceRootPaths) {
+        List<File> result = new ArrayList<>();
+        for (String entry : resourceRootPaths) {
+            File file = new File(entry);
+            if (file.isDirectory()) {
+                result.add(file);
+            }
+        }
+        return result;
+    }
+
+    /**
      * Stable signature over a jar set: it changes iff the set of paths, sizes, or
      * modification times changes -- i.e. iff the actually-resolved classpath changed.
      */

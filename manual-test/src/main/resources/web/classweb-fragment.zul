@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Classpath web resource (src/main/resources/web/ -> WEB-INF/classes/web/), reachable
+     as ~./classweb-fragment.zul via ZK's ClassWebResource. Used by the ~./ spot-checks. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <label value="CLASSWEB FRAGMENT CONTENT"/>
+</zk>

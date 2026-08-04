@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- P2 (~./ classpath): includes a page from the classpath /web/, not the docroot.
+     Sourced from manual-test/src/main/resources/web/classweb-fragment.zul. After the
+     resource-root fix (ZulPreviewServerService now hands the module's resource roots to
+     the launcher classpath), this is EXPECTED to render "CLASSWEB FRAGMENT CONTENT".
+     See MANUAL-apply-include.md. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Include (~./ classpath src)" border="normal" width="360px">
+        <include src="~./classweb-fragment.zul"/>
+        <label value="include host marker"/>
+    </window>
+</zk>

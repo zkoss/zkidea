@@ -48,4 +48,6 @@ third-party JDK and confirm the card names the JetBrains Runtime / "Choose Boot 
 
 ## Status
 - Headless: `JcefAvailabilityTest` (7 cases) green; full plugin suite green (316).
-- Manual (runIde): __PENDING__ — record pass/fail + IDE build here after running the steps.
+- Manual (runIde): **PASS** — verified by user 2026-08-03, registry-disabled variant
+  (screenshot above, `doc/jcef-unavailable.png`). The fallback card shows the diagnosis + a working
+  "Open preview in external browser" hand-off, not the old dead-end message.

@@ -22,10 +22,12 @@ import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.jps.model.java.JavaResourceRootType;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -102,7 +104,7 @@ public final class ZulPreviewServerService implements Disposable {
         GeneralCommandLine commandLine = new GeneralCommandLine()
                 .withExePath(resolveJavaExecutable())
                 .withParameters("-jar", resolveLauncherJar().toString(),
-                        "--classpath", joinClasspath(target.libraryJars),
+                        "--classpath", joinClasspath(target.launcherClasspath),
                         "--webapp", target.docroot.toString(),
                         "--port", "0",
                         // Identify this plugin/IDE in the error page's "Report on GitHub"
@@ -143,7 +145,26 @@ public final class ZulPreviewServerService implements Disposable {
         List<File> libraryJars = hasZkJars
                 ? ZkClasspathFilter.filterLibraryJars(classpathEntries)
                 : List.of();
-        String signature = ZkClasspathFilter.signature(libraryJars);
+
+        // Resource roots (e.g. src/main/resources): where a user's own ~./ ClassWebResource
+        // pages (web/*.zul) live. ZK resolves ~./x from the classpath at /web/x, so these
+        // directories must be on the launcher's classpath for a user's ~./ page to render --
+        // it works in a real container because WEB-INF/classes/web/ is on the classpath there.
+        // This is NOT the module *output* dir (AC-4(i)/filterLibraryJars still exclude that):
+        // a resource root holds resources, not compiled user classes, so isolation (the
+        // UiFactory hook) is unaffected. Only meaningful when the module has ZK at all.
+        List<File> resourceRoots = (module != null && hasZkJars)
+                ? ZkClasspathFilter.filterResourceRoots(
+                        ModuleRootManager.getInstance(module)
+                                .getSourceRoots(JavaResourceRootType.RESOURCE).stream()
+                                .map(VirtualFile::getPath)
+                                .collect(Collectors.toList()))
+                : List.of();
+
+        // Jars first so ZK's own bundled web/ resources win over any user name collision.
+        List<File> launcherClasspath = new ArrayList<>(libraryJars);
+        launcherClasspath.addAll(resourceRoots);
+        String signature = ZkClasspathFilter.signature(launcherClasspath);
 
         List<Path> contentRoots = module == null ? List.of()
                 : Arrays.stream(ModuleRootManager.getInstance(module).getContentRoots())
@@ -153,7 +174,7 @@ public final class ZulPreviewServerService implements Disposable {
         Path zulPath = Paths.get(zulFile.getPath());
         Path docroot = DocrootResolver.resolve(zulPath, contentRoots);
         String relative = docroot.relativize(zulPath).toString().replace(File.separatorChar, '/');
-        return new PreviewTarget(docroot, libraryJars, signature, "/" + relative);
+        return new PreviewTarget(docroot, libraryJars, launcherClasspath, signature, "/" + relative);
     }
 
     private String resolveJavaExecutable() {
@@ -200,14 +221,18 @@ public final class ZulPreviewServerService implements Disposable {
     /** Immutable resolution result for one preview request. */
     private static final class PreviewTarget {
         final Path docroot;
-        /** All runtime library jars to hand to the launcher (never directories); empty iff no ZK jars were found. */
+        /** Runtime library jars only (never directories); empty iff no ZK jars were found -- the "has ZK?" gate. */
         final List<File> libraryJars;
+        /** What the launcher actually gets on {@code --classpath}: {@link #libraryJars} plus resource-root dirs. */
+        final List<File> launcherClasspath;
         final String classpathSignature;
         final String requestPath;
 
-        PreviewTarget(Path docroot, List<File> libraryJars, String classpathSignature, String requestPath) {
+        PreviewTarget(Path docroot, List<File> libraryJars, List<File> launcherClasspath,
+                      String classpathSignature, String requestPath) {
             this.docroot = docroot;
             this.libraryJars = libraryJars;
+            this.launcherClasspath = launcherClasspath;
             this.classpathSignature = classpathSignature;
             this.requestPath = requestPath;
         }

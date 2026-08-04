@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Applies a template via ZK's ~./ classpath-resource notation (resolves from the
+     classpath /web/, NOT the docroot). Distinct resolution path from absolute/relative. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Apply (~./ classpath templateURI)" border="normal">
+        <apply templateURI="~./classweb-fragment.zul"/>
+        <label value="apply host marker"/>
+    </window>
+</zk>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Preview Include Static" border="normal">
+        <!-- Static literal src: the included page's content must render, and the host
+             page itself must still render (P2 include coverage, from zero). -->
+        <include src="/include-static-fragment.zul"/>
+        <label value="include host marker"/>
+    </window>
+</zk>

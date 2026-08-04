@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- P2 display spot-check (relative path): this page lives in preview/cases/sub/, and
+     includes a PARENT-relative page (../) that sits in preview/cases/. The included
+     "INCLUDED FRAGMENT CONTENT" must render. Headless: PathResolutionTest. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Include (relative ../ src)" border="normal" width="360px">
+        <include src="../include-static-fragment.zul"/>
+        <label value="include host marker"/>
+    </window>
+</zk>

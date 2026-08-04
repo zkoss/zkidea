@@ -39,6 +39,26 @@ class ApplyTemplateUriTest {
         assertTrue(html.contains("apply marker label"), html);
     }
 
+    /**
+     * P2: a <em>static, literal</em> templateURI must actually apply the template -- its
+     * content has to appear in the rendered HTML, not merely "not crash". The annotation
+     * case above proves an unresolved binding contributes nothing; this proves a resolved
+     * literal contributes its real content.
+     */
+    @ParameterizedTest(name = "apply-static.zul renders applied content [{0}]")
+    @MethodSource("variants")
+    void staticTemplateUri_appliesTemplateContentIntoTheHost(Variants.Named variant) throws Exception {
+        RenderResult r = render(variant, "apply-static.zul");
+        assertTrue(r.isSuccess(), () -> "expected SUCCESS, got: " + describeFailure(r));
+        String html = r.getHtml();
+        assertTrue(html.contains("apply host marker"), () -> "host page must render: " + html);
+        // The applied template's own content must be present -- both its text and its widget.
+        assertTrue(html.contains("APPLIED TEMPLATE CONTENT"),
+                () -> "applied template's label text must render: " + html);
+        assertTrue(html.contains("zul.wgt.Button"),
+                () -> "applied template's button widget must render: " + html);
+    }
+
     @ParameterizedTest(name = "(g-neg) apply-templateuri-missing.zul [{0}]")
     @MethodSource("variants")
     void fixtureGNeg_genuinelyMissingLiteralPathStillFails(Variants.Named variant) throws Exception {

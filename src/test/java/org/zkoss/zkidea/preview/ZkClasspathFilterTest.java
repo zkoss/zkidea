@@ -104,6 +104,24 @@ class ZkClasspathFilterTest {
     }
 
     @Test
+    void filterResourceRootsKeepsExistingDirectoriesAndDropsFilesAndMissing() throws IOException {
+        // A resource root (e.g. src/main/resources) is a directory -> kept, so the launcher
+        // can resolve a user's ~./ pages. A jar is a file -> dropped (that's filterLibraryJars'
+        // job). A non-existent path -> dropped defensively. Complement of
+        // filterLibraryJarsExcludesDirectories.
+        File resourceRoot = tempDir.resolve("resources").toFile();
+        assertTrue(resourceRoot.mkdirs(), "test precondition: create a resource-root dir");
+        File jar = newJar("zk-10.1.0-jakarta.jar");
+        String missing = tempDir.resolve("does-not-exist").toString();
+
+        List<File> roots = ZkClasspathFilter.filterResourceRoots(
+                List.of(resourceRoot.getAbsolutePath(), jar.getAbsolutePath(), missing));
+
+        assertEquals(1, roots.size());
+        assertEquals(resourceRoot.getAbsolutePath(), roots.get(0).getAbsolutePath());
+    }
+
+    @Test
     void filterLibraryJarsExcludesSdkPseudoEntriesAndNonexistentPaths() throws IOException {
         File zk = newJar("zk-10.1.0-jakarta.jar");
         // D4 (tasks/zul-preview/PLAN.md E3 round 3): a live launcher process spawned by

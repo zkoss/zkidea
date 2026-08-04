@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- P2 display spot-check (relative path): this page lives in preview/cases/sub/, and
+     applies a PARENT-relative template (../) that sits in preview/cases/. The applied
+     "APPLIED TEMPLATE CONTENT" label + button must render. Headless: PathResolutionTest. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Apply (relative ../ templateURI)" border="normal" width="360px">
+        <apply templateURI="../apply-static-template.zul"/>
+        <label value="apply host marker"/>
+    </window>
+</zk>

@@ -3,8 +3,9 @@
 > Source: [tasks.md](tasks.md) (the four open issues). Builds on the shipped v1 in [PLAN.md](PLAN.md).
 > Related: [../error-reporting/PLAN.md](../error-reporting/PLAN.md).
 
-- **Version**: v1
-- **Status**: P1 headless-DONE (manual runIde pending); P2–P4 NOT STARTED
+- **Version**: v3
+- **Status**: P1 DONE (headless + manual verified); P2 DONE (headless) incl. a `~./` classpath-resource
+  fix (runIde re-test pending); P3–P4 NOT STARTED
 - **Scope**: robustness (P1), render-path coverage (P2, P3), new environment support (P4)
 
 ---
@@ -81,7 +82,8 @@ From [tasks.md](tasks.md), four issues, regrouped by type:
 - `ZulPreviewFileEditor`: constructor no longer early-returns on `!isSupported()` (stores the
   diagnosis); `startPreview()` READY branch shows `CARD_EXTERNAL` (diagnosis text + "Open preview in
   external browser" → `BrowserUtil.browse` + GitHub report) when JCEF is unavailable.
-- Full plugin suite green (316). Manual runIde: [MANUAL-jcef-fallback.md](MANUAL-jcef-fallback.md) — __PENDING__.
+- Full plugin suite green (316). Manual runIde: [MANUAL-jcef-fallback.md](MANUAL-jcef-fallback.md) — verified by
+  user 2026-08-03 (registry-disabled variant; screenshot `doc/jcef-unavailable.png`).
 
 ### P2 — apply / include coverage
 
@@ -95,6 +97,44 @@ From [tasks.md](tasks.md), four issues, regrouped by type:
 **Deliverables.** launcher fixtures + tests; matching manual-test fixtures under [manual-test/src/main/webapp/preview/](../../manual-test/src/main/webapp/preview/); optional launcher dispatcher fix.
 
 **Acceptance.** apply + all include cases green on both variants; missing-src yields the structured error page, not a raw stack.
+
+**Status — DONE (headless), no launcher fix needed.**
+- **apply**: new `apply-static.zul` + `apply-static-template.zul`; new render-assert in
+  `ApplyTemplateUriTest` (`staticTemplateUri_appliesTemplateContentIntoTheHost`) proving the applied
+  template's *content* (its label text + its button widget) appears in the rendered HTML — not just
+  "no crash". The pre-existing annotation/missing cases are unchanged.
+- **include**: new `IncludeTest` (javax + jakarta) over three fixtures — `include-static.zul`
+  (+ `include-static-fragment.zul`), `include-annotation.zul`, `include-missing.zul`. All green.
+- **Key finding — the predicted `RequestDispatcher.include` fix was NOT needed.** Both mock
+  `getRequestDispatcher(...)` still return `null`, yet a static `.zul` include renders its content.
+  ZK resolves a `.zul` `<include>` via **instant include** (loads the page definition and builds the
+  child components inline within the same execution — file-based, exactly like `<apply>`), so it
+  never routes a `.zul` through `RequestDispatcher.include()`. Missing-src include produces a
+  structured failure naming the path (same as apply-missing). RequestDispatcher would only matter for
+  non-ZK includes (JSP/servlet), which are out of scope for the ZUL preview.
+- manual-test display spot-checks added under `preview/cases/`: `apply-static.zul`,
+  `include-static.zul` (+ their targets). Full launcher + plugin suite green.
+- **Path-form coverage** (`PathResolutionTest`, javax + jakarta): both `<apply>` and `<include>`
+  resolve their target across all three ZK path forms, each a different mechanism —
+  **absolute** `/foo.zul` (docroot), **relative** `../foo.zul` (resolved vs the including page's
+  URI, page under `/sub/` → target at root), and **`~./foo.zul`** (ZK `ClassWebResource`,
+  classpath `/web/`, not the docroot). The `~./` fixture lives at `src/test/resources/web/`
+  (outside the docroot `fixtures/`), so its content appearing proves genuine classpath resolution.
+  All 8 green — no launcher fix needed.
+  - *Production finding (`~./`) — bug FOUND and FIXED.* The user hit `Page not found:
+    ~./classweb-fragment.zul` in runIde (jakarta/ZK 10) while the same page renders under Jetty —
+    proving the path is correct and the launcher classpath was the cause. Root cause: the launcher
+    classpath was **jars-only** (`ZkClasspathFilter.filterLibraryJars` keeps only `file.isFile()`),
+    so a user's own `~./` resource — which lives in a resource **directory** — was never passed.
+    **Fix:** `resolveTarget` now also hands the module's **resource roots** (`filterResourceRoots` →
+    `getSourceRoots(RESOURCE)`, directories) to the launcher classpath — but **not** the module
+    *output* dir (AC-4(i) still excludes that; a resource root holds no compiled user classes, so
+    the `UiFactory`-hook isolation is unaffected). Headless proof: `ClasspathResourceResolutionTest`
+    (javax + jakarta) — `~./` resolves iff its resource root is on the render classpath — and
+    `ZkClasspathFilterTest.filterResourceRoots…`. runIde end-to-end confirmation: cases 5/6 in
+    [MANUAL-apply-include.md](MANUAL-apply-include.md) (__PENDING__ user re-test).
+    - Incidental: ZK 10 (jakarta) JS-escapes `-` as `\-` in rendered widget values — test markers
+      asserted against rendered HTML must be hyphen-free (lesson #14).
 
 ### P3 — ZUL syntax corpus (ZUML reference)
 
@@ -143,3 +183,5 @@ P2 and P3 share the launcher-test harness; P1 and P4 touch the plugin side and c
 |---|---|---|
 | v0 | 2026-07-31 | Initial draft from tasks.md (P1–P4), grounded against current code |
 | v1 | 2026-07-31 | P1 implemented (headless): `JcefAvailability` + 7 tests; editor external-browser fallback; MANUAL-jcef-fallback.md. Manual runIde pending |
+| v2 | 2026-08-03 | P1 manual verified (user). P2 DONE (headless): apply render-assert + `IncludeTest` (static/annotation/missing) on javax+jakarta; finding — `<include>` needs no `RequestDispatcher` fix (ZK instant-include for `.zul`); manual-test spot-checks added |
+| v3 | 2026-08-04 | P2 path-form coverage (`PathResolutionTest`) + `~./` classpath-resource **bug fix**: user hit `Page not found` on a user-project `~./` page (works under Jetty); `resolveTarget` now passes module resource roots to the launcher classpath (`filterResourceRoots`, not output dir); `ClasspathResourceResolutionTest` locks the mechanism. runIde re-test pending |

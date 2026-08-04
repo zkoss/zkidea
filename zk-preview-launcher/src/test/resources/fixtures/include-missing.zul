@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Preview Include Missing" border="normal">
+        <!-- Genuinely nonexistent literal src: must fail gracefully with a structured
+             error naming the path, not a raw stack (mirrors apply-templateuri-missing). -->
+        <include src="/no/such/include.zul"/>
+        <label value="include marker label"/>
+    </window>
+</zk>
