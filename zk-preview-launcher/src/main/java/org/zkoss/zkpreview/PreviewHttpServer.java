@@ -9,6 +9,8 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * JDK built-in HTTP server bridging plain HTTP to the mock servlet environment.
@@ -74,7 +76,8 @@ public final class PreviewHttpServer {
             if ("GET".equalsIgnoreCase(method) && path.endsWith(".zul")) {
                 RenderResult r = engine.renderZul(path);
                 if (r.isSuccess()) {
-                    send(exchange, 200, "text/html;charset=UTF-8", r.getHtml().getBytes(StandardCharsets.UTF_8));
+                    send(exchange, 200, "text/html;charset=UTF-8",
+                            withCanvasBackground(r.getHtml()).getBytes(StandardCharsets.UTF_8));
                 } else {
                     // L-10 (tasks/stage2-error-pane/PLAN.md): serve a formatted HTML error
                     // page so the browser shows a readable error, not the raw JSON it used
@@ -110,6 +113,33 @@ public final class PreviewHttpServer {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /** Matches the document {@code <head>} opening tag (with or without attributes); {@code \b}
+     * keeps it from matching a {@code <header>} body element. */
+    private static final Pattern HEAD_OPEN = Pattern.compile("<head\\b[^>]*>", Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Gives the served page a white "canvas" default, matching how a normal browser paints an
+     * unstyled page. ZK's layout output sets no {@code html}/{@code body} background (verified
+     * against {@code zk.wcs}: the top-level {@code html}/{@code body} selectors carry none), so in
+     * a real browser the page shows the white UA canvas -- but {@code JBCefBrowser} initializes its
+     * base paint to the IDE theme color (dark under Darcula), which then shows through and makes the
+     * preview look black. Injecting {@code html{background:#fff}} as the FIRST child of {@code <head>}
+     * reproduces the browser's UA default: because it precedes every page/theme stylesheet (and any
+     * inline style) in the cascade, an explicit background a real page sets still wins, so the
+     * preview stays faithful. Fail-open: returns the HTML unchanged if it has no {@code <head>}.
+     *
+     * <p>Applied here at the serving boundary (not in the render engines) so {@link RenderEngine}
+     * output stays byte-identical to what the real ZK servlet produces.
+     */
+    static String withCanvasBackground(String html) {
+        Matcher m = HEAD_OPEN.matcher(html);
+        if (!m.find()) {
+            return html;
+        }
+        int at = m.end();
+        return html.substring(0, at) + "<style>html{background:#fff}</style>" + html.substring(at);
     }
 
     private static void send(HttpExchange exchange, int status, String contentType, byte[] body) throws IOException {
