@@ -94,14 +94,50 @@ public abstract class AbstractRenderEngine implements RenderEngine {
             MockHttpServletRequestCore req = createRequest("/zkau", pathInfo, "GET");
             MockHttpServletResponseCore resp = createResponse();
             updateServiceMethod.invoke(updateServlet, req, resp);
-            int status = resp.getStatus();
-            if (status >= 400) return ResourceResult.notFound();
-            return ResourceResult.of(status, resp.getContentType(), resp.getContentBytes());
+            return resourceOutcome(pathInfo, resp.getStatus(), resp.getContentType(), resp.getContentBytes());
         } catch (Exception e) {
-            return ResourceResult.notFound();
+            return resourceFailure(pathInfo, e);
         } finally {
             Thread.currentThread().setContextClassLoader(prev);
         }
+    }
+
+    /**
+     * Classifies a completed {@code /zkau/web/*} fetch, reporting a &ge;400 on stderr before
+     * collapsing it to a 404 (review R2-CRIT2). The collapse itself is intentional and unchanged --
+     * a failed asset must not paint a ZK error body into a {@code <script>}/{@code <link>} slot --
+     * but it used to be indistinguishable from a typo'd path, which made "my preview renders
+     * unstyled" undebuggable: no log, no stderr, no distinguishing status, and (because the page
+     * itself rendered fine) no error card and so no Report link either.
+     *
+     * <p>Package-visible and platform-free so both branches are unit-testable without a ZK jar.
+     */
+    static ResourceResult resourceOutcome(String pathInfo, int status, String contentType, byte[] body) {
+        if (status >= 400) {
+            System.err.println("[zk-preview] resource " + pathInfo + " -> HTTP " + status
+                    + " (serving 404); body: " + snippet(body));
+            return ResourceResult.notFound();
+        }
+        return ResourceResult.of(status, contentType, body);
+    }
+
+    /** Reports a thrown {@code /zkau/web/*} fetch on stderr before collapsing it to a 404 (R2-CRIT2). */
+    static ResourceResult resourceFailure(String pathInfo, Throwable cause) {
+        // Unwrap like renderZul does: the reflective Method.invoke wrapper hides the ZK
+        // exception that actually explains the failure.
+        Throwable real = (cause instanceof InvocationTargetException && cause.getCause() != null)
+                ? cause.getCause() : cause;
+        System.err.println("[zk-preview] resource " + pathInfo + " failed (serving 404): " + real);
+        real.printStackTrace(System.err);
+        return ResourceResult.notFound();
+    }
+
+    /** First line of a failed asset's body, bounded -- enough to recognise a ZK error page. */
+    private static String snippet(byte[] body) {
+        if (body == null || body.length == 0) return "<empty>";
+        String text = new String(body, 0, Math.min(body.length, 200), StandardCharsets.UTF_8);
+        int nl = text.indexOf('\n');
+        return (nl >= 0 ? text.substring(0, nl) : text).trim();
     }
 
     @Override
