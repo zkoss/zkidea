@@ -15,8 +15,22 @@ import java.net.URLClassLoader;
  * of its forbidden prefixes is recorded and rejected outright -- used by the
  * AC-4 isolation tests as defense-in-depth on top of "the class is genuinely
  * unreachable from this loader's classpath".
+ *
+ * <p><b>Thread safety (review R2-CRIT1).</b> One instance is shared by every request
+ * thread of a preview server, and ZK loads component/util classes lazily on those
+ * threads, so the child-first branch below must hold {@code getClassLoadingLock(name)}
+ * exactly like the JDK's own {@code ClassLoader.loadClass} does -- otherwise two
+ * threads both first to touch a class both reach {@code defineClass} and the loser
+ * gets {@code LinkageError: attempted duplicate class definition}. Registering as
+ * parallel-capable keeps that lock per class name rather than per loader, so the
+ * burst of concurrent {@code /zkau/web/*} fetches a single page produces still loads
+ * distinct classes in parallel.
  */
 public final class ScopedZkClassLoader extends URLClassLoader {
+
+    static {
+        registerAsParallelCapable();
+    }
 
     private final ForbiddenLoadTracker forbiddenLoadTracker;
 
@@ -32,17 +46,19 @@ public final class ScopedZkClassLoader extends URLClassLoader {
             throw new ClassNotFoundException(name + " is on the forbidden-load list (isolation test)");
         }
         if (name.startsWith("org.zkoss.")) {
-            Class<?> c = findLoadedClass(name);
-            if (c == null) {
-                try {
-                    c = findClass(name);
-                } catch (ClassNotFoundException ignored) {
-                    // Fall through to standard parent-first delegation below.
+            synchronized (getClassLoadingLock(name)) {
+                Class<?> c = findLoadedClass(name);
+                if (c == null) {
+                    try {
+                        c = findClass(name);
+                    } catch (ClassNotFoundException ignored) {
+                        // Fall through to standard parent-first delegation below.
+                    }
                 }
-            }
-            if (c != null) {
-                if (resolve) resolveClass(c);
-                return c;
+                if (c != null) {
+                    if (resolve) resolveClass(c);
+                    return c;
+                }
             }
         }
         return super.loadClass(name, resolve);
