@@ -138,9 +138,34 @@ A parse error, a missing `<zscript>` class, or an invalid component hierarchy pr
 - the failure **phase** (parse / compose) and message,
 - the failing **`file:line`** where ZK can report it,
 - a collapsible **full stack trace**,
-- a prefilled **"Report on GitHub"** link carrying the error, your environment, and the
-  failing `.zul` source. For a report too large for a URL, the plugin hands the body off
-  via the **clipboard** so nothing is truncated.
+- a prefilled **"Report on GitHub"** link carrying the error, the failing `.zul` source,
+  and your **render target** (below). For a report too large for a URL, the plugin hands
+  the body off via the **clipboard** so nothing is truncated.
+
+### What the report says about your setup
+
+Because a render failure is almost always about *how the page was set up to render*, the
+report describes that target, not just who was running:
+
+```
+Plugin:  ZKIdea 1.0.0
+IDE:     IntelliJ IDEA 2024.3 (IU-243.1)
+OS:      Mac OS X 15.7.3
+JDK:     17.0.4.1
+Build:   Maven                       ← Maven / Gradle / none (a hand-configured module)
+Layout:  WAR webapp                  ← which docroot rule matched (see the table above)
+Servlet: jakarta                     ← the variant detected from your own ZK jars
+ZK jars: zkmax-10.1.0-jakarta.jar, zkex-10.1.0-jakarta.jar, zk-10.1.0-jakarta.jar, …
+         [30 classpath entries]
+```
+
+The last three lines are what make a report actionable: the ZK jar list shows the version,
+CE vs EE, and any dependency that failed to resolve (a missing `zkex` is visible as an
+*absence*), while the layout explains include/`~./`/"page not found" failures. Only ZK jar
+**file names** are listed — never full paths, and never your other dependencies.
+
+`Servlet` appears only when the render helper actually started; the "cannot display
+preview" cards report everything else.
 
 ---
 
