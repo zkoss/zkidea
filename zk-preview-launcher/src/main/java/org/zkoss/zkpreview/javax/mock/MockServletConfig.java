@@ -3,40 +3,26 @@ package org.zkoss.zkpreview.javax.mock;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 
-import java.util.Collections;
-import java.util.Enumeration;
+import org.zkoss.zkpreview.mockcore.MockServletConfigCore;
+
 import java.util.Map;
 
-/** {@link ServletConfig} carrying the init params a ZK servlet needs. */
-public class MockServletConfig implements ServletConfig {
+/**
+ * Jakarta {@link ServletConfig} adapter over {@link MockServletConfigCore} (review M1, Bridge
+ * pattern): the servlet name and init params are inherited from the core; this class supplies only
+ * the servlet-typed {@code getServletContext()}.
+ */
+public class MockServletConfig extends MockServletConfigCore implements ServletConfig {
 
-    private final String servletName;
     private final MockServletContext servletContext;
-    private final Map<String, String> initParams;
 
     public MockServletConfig(String servletName, MockServletContext servletContext, Map<String, String> initParams) {
-        this.servletName = servletName;
+        super(servletName, initParams);
         this.servletContext = servletContext;
-        this.initParams = Map.copyOf(initParams);
-    }
-
-    @Override
-    public String getServletName() {
-        return servletName;
     }
 
     @Override
     public ServletContext getServletContext() {
         return servletContext;
-    }
-
-    @Override
-    public String getInitParameter(String name) {
-        return initParams.get(name);
-    }
-
-    @Override
-    public Enumeration<String> getInitParameterNames() {
-        return Collections.enumeration(initParams.keySet());
     }
 }

@@ -1,175 +1,41 @@
 package org.zkoss.zkpreview.jakarta.mock;
 
-import jakarta.servlet.*;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterRegistration;
+import jakarta.servlet.MultipartConfigElement;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.Servlet;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletRegistration;
+import jakarta.servlet.ServletSecurityElement;
+import jakarta.servlet.SessionCookieConfig;
+import jakarta.servlet.SessionTrackingMode;
 import jakarta.servlet.descriptor.JspConfigDescriptor;
 
-import java.io.*;
-import java.net.MalformedURLException;
-import java.net.URL;
+import org.zkoss.zkpreview.mockcore.MockServletContextCore;
+
 import java.nio.file.Path;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * Minimal {@link ServletContext} resolving resources from a real {@code webappDir}
- * (the user's own directory containing the ZUL files). {@code /WEB-INF/zk.xml} is
- * always served from a resource bundled inside this launcher's own jar
- * ({@code /preview/zk.xml}), regardless of whether the user's directory has its own
- * WEB-INF -- this is how the isolation-hook registration (ui-factory-class) and
- * other preview-only config reach ZK without requiring the user's project to
- * contain any WEB-INF at all (requirement: overlay the launcher's config over the
- * user's docroot in the mock resource lookup).
+ * Jakarta {@link ServletContext} adapter over {@link MockServletContextCore} (review M1, Bridge
+ * pattern): the servlet-agnostic behaviour -- resource resolution with the docroot-containment guard,
+ * the {@code /WEB-INF/zk.xml} overlay, attributes -- is inherited from the core; this class supplies
+ * only the servlet-typed stubs the interface requires.
  */
-public class MockServletContext implements ServletContext {
-
-    private static final String ZK_XML_PATH = "/WEB-INF/zk.xml";
-    private static final String ZK_XML_OVERLAY_RESOURCE = "/preview/zk.xml";
-
-    private final Path webappDir;
-    private final Map<String, Object> attributes = new ConcurrentHashMap<>();
+public class MockServletContext extends MockServletContextCore implements ServletContext {
 
     public MockServletContext(Path webappDir) {
-        this.webappDir = webappDir;
-    }
-
-    @Override
-    public URL getResource(String path) throws MalformedURLException {
-        if (isZkXml(path)) {
-            URL overlay = MockServletContext.class.getResource(ZK_XML_OVERLAY_RESOURCE);
-            if (overlay != null) return overlay;
-        }
-        File f = resourceFile(path);
-        return f != null && f.exists() ? f.toURI().toURL() : null;
-    }
-
-    @Override
-    public InputStream getResourceAsStream(String path) {
-        if (isZkXml(path)) {
-            InputStream overlay = MockServletContext.class.getResourceAsStream(ZK_XML_OVERLAY_RESOURCE);
-            if (overlay != null) return overlay;
-        }
-        File f = resourceFile(path);
-        if (f == null || !f.exists()) return null;
-        try {
-            return new FileInputStream(f);
-        } catch (FileNotFoundException e) {
-            return null;
-        }
-    }
-
-    @Override
-    public String getRealPath(String path) {
-        File f = resourceFile(path);
-        return f == null ? null : f.getAbsolutePath();
-    }
-
-    @Override
-    public Set<String> getResourcePaths(String path) {
-        return null; // ZK treats null as empty -- non-fatal
-    }
-
-    @Override
-    public Object getAttribute(String name) {
-        return attributes.get(name);
-    }
-
-    @Override
-    public Enumeration<String> getAttributeNames() {
-        return Collections.enumeration(attributes.keySet());
-    }
-
-    @Override
-    public void setAttribute(String name, Object object) {
-        attributes.put(name, object);
-    }
-
-    @Override
-    public void removeAttribute(String name) {
-        attributes.remove(name);
-    }
-
-    @Override
-    public String getInitParameter(String name) {
-        return null;
-    }
-
-    @Override
-    public Enumeration<String> getInitParameterNames() {
-        return Collections.emptyEnumeration();
-    }
-
-    @Override
-    public boolean setInitParameter(String name, String value) {
-        return false;
-    }
-
-    @Override
-    public String getContextPath() {
-        return "";
-    }
-
-    @Override
-    public String getServerInfo() {
-        return "ZkPreviewMockServer/1.0";
-    }
-
-    @Override
-    public int getMajorVersion() {
-        return 5;
-    }
-
-    @Override
-    public int getMinorVersion() {
-        return 0;
-    }
-
-    @Override
-    public int getEffectiveMajorVersion() {
-        return 5;
-    }
-
-    @Override
-    public int getEffectiveMinorVersion() {
-        return 0;
-    }
-
-    @Override
-    public String getMimeType(String file) {
-        return null;
+        super(webappDir);
     }
 
     @Override
     public ServletContext getContext(String uripath) {
         return null;
-    }
-
-    @Override
-    public String getServletContextName() {
-        return "ZkPreviewMockContext";
-    }
-
-    @Override
-    public void log(String msg) {
-        System.out.println("[MockCtx] " + msg);
-    }
-
-    @Override
-    public void log(String message, Throwable throwable) {
-        System.out.println("[MockCtx] " + message);
-        throwable.printStackTrace(System.out);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public void log(Exception exception, String msg) {
-        System.out.println("[MockCtx] " + msg);
-        exception.printStackTrace(System.out);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public Enumeration<String> getServletNames() {
-        return Collections.emptyEnumeration();
     }
 
     @Override
@@ -182,11 +48,6 @@ public class MockServletContext implements ServletContext {
     @SuppressWarnings("deprecation")
     public Servlet getServlet(String name) {
         return null;
-    }
-
-    @Override
-    public ClassLoader getClassLoader() {
-        return Thread.currentThread().getContextClassLoader();
     }
 
     @Override
@@ -274,61 +135,8 @@ public class MockServletContext implements ServletContext {
     }
 
     @Override
-    public void addListener(String className) {
-    }
-
-    @Override
-    public <T extends EventListener> void addListener(T t) {
-    }
-
-    @Override
-    public void addListener(Class<? extends EventListener> listenerClass) {
-    }
-
-    @Override
-    public <T extends EventListener> T createListener(Class<T> clazz) {
-        return null;
-    }
-
-    @Override
     public JspConfigDescriptor getJspConfigDescriptor() {
         return null;
-    }
-
-    @Override
-    public void declareRoles(String... roleNames) {
-    }
-
-    @Override
-    public String getVirtualServerName() {
-        return "localhost";
-    }
-
-    @Override
-    public int getSessionTimeout() {
-        return 30;
-    }
-
-    @Override
-    public void setSessionTimeout(int sessionTimeout) {
-    }
-
-    @Override
-    public String getRequestCharacterEncoding() {
-        return null;
-    }
-
-    @Override
-    public void setRequestCharacterEncoding(String encoding) {
-    }
-
-    @Override
-    public String getResponseCharacterEncoding() {
-        return null;
-    }
-
-    @Override
-    public void setResponseCharacterEncoding(String encoding) {
     }
 
     @Override
@@ -339,23 +147,6 @@ public class MockServletContext implements ServletContext {
     @Override
     public RequestDispatcher getNamedDispatcher(String name) {
         return null;
-    }
-
-    private File resourceFile(String path) {
-        String relative = path.startsWith("/") ? path.substring(1) : path;
-        Path root = webappDir.normalize();
-        Path resolved = root.resolve(relative).normalize();
-        // Containment guard (mirrors PreviewHttpServer.readZulSource): a request that escapes the
-        // docroot via ../ must not resolve to a file outside it. Returning null is fine -- the
-        // servlet spec permits a null translation and every caller here treats null as "not found".
-        if (!resolved.startsWith(root)) {
-            return null;
-        }
-        return resolved.toFile();
-    }
-
-    private static boolean isZkXml(String path) {
-        return ZK_XML_PATH.equals(path) || (path != null && path.equals(ZK_XML_PATH.substring(1)));
     }
 
     private static class NoOpServletRegistration implements ServletRegistration.Dynamic {
