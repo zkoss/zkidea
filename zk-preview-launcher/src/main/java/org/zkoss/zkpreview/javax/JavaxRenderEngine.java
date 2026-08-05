@@ -4,98 +4,81 @@ import javax.servlet.ServletConfig;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
-import org.zkoss.zkpreview.*;
-import org.zkoss.zkpreview.javax.mock.*;
+
+import org.zkoss.zkpreview.AbstractRenderEngine;
+import org.zkoss.zkpreview.ForbiddenLoadTracker;
+import org.zkoss.zkpreview.javax.mock.MockHttpServletRequest;
+import org.zkoss.zkpreview.javax.mock.MockHttpServletResponse;
+import org.zkoss.zkpreview.javax.mock.MockHttpSession;
+import org.zkoss.zkpreview.javax.mock.MockServletConfig;
+import org.zkoss.zkpreview.javax.mock.MockServletContext;
+import org.zkoss.zkpreview.mockcore.MockHttpServletRequestCore;
+import org.zkoss.zkpreview.mockcore.MockHttpServletResponseCore;
+import org.zkoss.zkpreview.mockcore.MockServletContextCore;
 
 import java.io.File;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Drives {@code DHtmlLayoutServlet} (page render) and {@code DHtmlUpdateServlet}
- * (resource serving under {@code /zkau/web/*}) against a javax.servlet-flavoured
- * ZK classpath, entirely via mock servlet objects and reflection (extends the
- * proven approach in the uncommitted spike at {@code src/integrationTest/.../ZkMockRenderer.java}).
+ * javax.servlet realisation of {@link AbstractRenderEngine} (review M1, Template Method): the base
+ * owns the whole render/resource/bootstrap logic; this subclass only constructs javax-flavoured
+ * mocks and hands back the javax {@code Servlet*} class literals reflection needs. Kept as a
+ * distinct class so {@code RenderEngineFactory} and {@code IsolationTest} can identify the servlet
+ * flavour by type. Each per-namespace method is the exact twin of its sibling engine in the other
+ * servlet namespace (identical modulo the {@code javax}/{@code javax} token).
  */
-public class JavaxRenderEngine implements RenderEngine {
-
-    private final ScopedZkClassLoader zkLoader;
-    private final MockServletContext servletContext;
-    private final Object layoutServlet;
-    private final Method layoutServiceMethod;
-    private final Object updateServlet;
-    private final Method updateServiceMethod;
+public class JavaxRenderEngine extends AbstractRenderEngine {
 
     public JavaxRenderEngine(List<File> zkJars, Path webappDir, ForbiddenLoadTracker forbiddenLoadTracker) {
-        this.zkLoader = IsolatedRuntime.buildZkClassLoader(zkJars, JavaxRenderEngine.class.getClassLoader(),
-                forbiddenLoadTracker);
-        this.servletContext = new MockServletContext(webappDir);
-
-        ClassLoader prev = Thread.currentThread().getContextClassLoader();
-        Thread.currentThread().setContextClassLoader(zkLoader);
-        try {
-            Class<?> listenerCls = zkLoader.loadClass("org.zkoss.zk.ui.http.HttpSessionListener");
-            Object listener = listenerCls.getConstructor().newInstance();
-            listenerCls.getMethod("contextInitialized", ServletContextEvent.class)
-                    .invoke(listener, new ServletContextEvent(servletContext));
-
-            Class<?> layoutCls = zkLoader.loadClass("org.zkoss.zk.ui.http.DHtmlLayoutServlet");
-            layoutServlet = layoutCls.getConstructor().newInstance();
-            MockServletConfig layoutConfig = new MockServletConfig("zkLoader", servletContext,
-                    Map.of("update-uri", "/zkau", "compress", "false"));
-            layoutCls.getMethod("init", ServletConfig.class).invoke(layoutServlet, layoutConfig);
-            layoutServiceMethod = layoutCls.getMethod("service", ServletRequest.class, ServletResponse.class);
-
-            Class<?> updateCls = zkLoader.loadClass("org.zkoss.zk.au.http.DHtmlUpdateServlet");
-            updateServlet = updateCls.getConstructor().newInstance();
-            MockServletConfig updateConfig = new MockServletConfig("auEngine", servletContext, Map.of());
-            updateCls.getMethod("init", ServletConfig.class).invoke(updateServlet, updateConfig);
-            updateServiceMethod = updateCls.getMethod("service", ServletRequest.class, ServletResponse.class);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Failed to bootstrap the ZK mock webapp", e);
-        } finally {
-            Thread.currentThread().setContextClassLoader(prev);
-        }
+        super(zkJars, webappDir, forbiddenLoadTracker);
     }
 
     @Override
-    public RenderResult renderZul(String zulPath) {
-        ClassLoader prev = Thread.currentThread().getContextClassLoader();
-        Thread.currentThread().setContextClassLoader(zkLoader);
-        try {
-            MockHttpServletRequest req = new MockHttpServletRequest(newSession(), zulPath);
-            MockHttpServletResponse resp = new MockHttpServletResponse();
-            layoutServiceMethod.invoke(layoutServlet, req, resp);
-            return RenderResult.success(resp.getContent());
-        } catch (InvocationTargetException e) {
-            return RenderResult.failure(ErrorMapper.map(zulPath, e.getCause() != null ? e.getCause() : e));
-        } catch (Exception e) {
-            return RenderResult.failure(ErrorMapper.map(zulPath, e));
-        } finally {
-            Thread.currentThread().setContextClassLoader(prev);
-        }
+    protected MockServletContextCore createServletContext(Path webappDir) {
+        return new MockServletContext(webappDir);
     }
 
     @Override
-    public ResourceResult resource(String pathInfo) {
-        ClassLoader prev = Thread.currentThread().getContextClassLoader();
-        Thread.currentThread().setContextClassLoader(zkLoader);
-        try {
-            MockHttpServletRequest req = new MockHttpServletRequest(newSession(), "/zkau", pathInfo, "GET");
-            MockHttpServletResponse resp = new MockHttpServletResponse();
-            updateServiceMethod.invoke(updateServlet, req, resp);
-            int status = resp.getStatus();
-            if (status >= 400) return ResourceResult.notFound();
-            return ResourceResult.of(status, resp.getContentType(), resp.getContentBytes());
-        } catch (Exception e) {
-            return ResourceResult.notFound();
-        } finally {
-            Thread.currentThread().setContextClassLoader(prev);
-        }
+    protected Class<?> servletContextEventClass() {
+        return ServletContextEvent.class;
+    }
+
+    @Override
+    protected Object newServletContextEvent(MockServletContextCore ctx) {
+        return new ServletContextEvent((MockServletContext) ctx);
+    }
+
+    @Override
+    protected Class<?> servletConfigClass() {
+        return ServletConfig.class;
+    }
+
+    @Override
+    protected Object createServletConfig(String servletName, MockServletContextCore ctx,
+            Map<String, String> initParams) {
+        return new MockServletConfig(servletName, (MockServletContext) ctx, initParams);
+    }
+
+    @Override
+    protected Class<?> servletRequestClass() {
+        return ServletRequest.class;
+    }
+
+    @Override
+    protected Class<?> servletResponseClass() {
+        return ServletResponse.class;
+    }
+
+    @Override
+    protected MockHttpServletRequestCore createRequest(String servletPath, String pathInfo, String method) {
+        return new MockHttpServletRequest(newSession(), servletPath, pathInfo, method);
+    }
+
+    @Override
+    protected MockHttpServletResponseCore createResponse() {
+        return new MockHttpServletResponse();
     }
 
     /**
@@ -105,23 +88,6 @@ public class JavaxRenderEngine implements RenderEngine {
      * Package-visible so a test can observe that a fresh one is created per call.
      */
     MockHttpSession newSession() {
-        return new MockHttpSession(servletContext);
-    }
-
-    @Override
-    public byte[] auStub() {
-        // Valid empty AU response envelope. The preview is a one-shot render with no
-        // live desktop, so any interaction (expand a tree node, sort a grid, page a
-        // listbox) fires an AU POST we cannot fulfil. The ZK client JSON.parse()es the
-        // response (zAu.pushReqCmds), so it must be a JSON object with an empty "rs"
-        // command list -- the client then runs zero commands (an inert no-op) instead
-        // of showing "Expected JSON format ... Unexpected token '<'". rid:0 is falsy on
-        // the client, so the empty command set is applied without a sequence check.
-        return "{\"rid\":0,\"rs\":[]}".getBytes(StandardCharsets.UTF_8);
-    }
-
-    @Override
-    public void close() throws java.io.IOException {
-        zkLoader.close();
+        return new MockHttpSession((MockServletContext) servletContext);
     }
 }

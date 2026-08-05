@@ -140,8 +140,16 @@ class IsolationTest {
     }
 
     private static ScopedZkClassLoader zkLoaderOf(RenderEngine engine) throws Exception {
-        java.lang.reflect.Field f = engine.getClass().getDeclaredField("zkLoader");
-        f.setAccessible(true);
-        return (ScopedZkClassLoader) f.get(engine);
+        // The field lives on AbstractRenderEngine (shared base), so walk up from the concrete engine.
+        for (Class<?> c = engine.getClass(); c != null; c = c.getSuperclass()) {
+            try {
+                java.lang.reflect.Field f = c.getDeclaredField("zkLoader");
+                f.setAccessible(true);
+                return (ScopedZkClassLoader) f.get(engine);
+            } catch (NoSuchFieldException ignored) {
+                // try the superclass
+            }
+        }
+        throw new NoSuchFieldException("zkLoader not found on " + engine.getClass() + " or its superclasses");
     }
 }
