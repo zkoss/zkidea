@@ -21,6 +21,7 @@ import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.concurrency.Promise;
 import org.jetbrains.jps.model.java.JavaResourceRootType;
 
 import java.io.File;
@@ -76,10 +77,31 @@ public final class ZulPreviewServerService implements Disposable {
         // process (KillableProcessHandler's fork/exec) is synchronous and must not freeze the IDE on
         // the feature's most common path -- opening the first .zul in a module. onTargetResolved runs
         // on the background executor and marshals onReady back to the EDT (the caller drives Swing/JCEF).
-        ReadAction.nonBlocking(() -> resolveTarget(zulFile))
-                .expireWith(this)
-                .submit(AppExecutorUtil.getAppExecutorService())
-                .onSuccess(target -> onTargetResolved(target, onReady));
+        wireResolveOutcome(
+                ReadAction.nonBlocking(() -> resolveTarget(zulFile))
+                        .expireWith(this)
+                        .submit(AppExecutorUtil.getAppExecutorService()),
+                target -> onTargetResolved(target, onReady),
+                ex -> deliverResult(PreviewResult.error(rootMessage(ex)), onReady));
+    }
+
+    /**
+     * Wires BOTH outcomes of the target-resolution promise (review R2-CRIT3). Only {@code onSuccess}
+     * used to be attached, so a throw from {@link #resolveTarget} rejected the promise silently,
+     * {@code onReady} never fired, and the pane stayed on "Starting ZK preview server…" forever with
+     * no message, no Report link and no retry -- the same U2 "stuck loading" dead end {@link
+     * #startGuarded} closes one step later. Package-visible and platform-free (it touches only the
+     * promise and the two supplied consumers) so the wiring is unit-testable without an {@code
+     * Application}, exactly like the {@code startGuarded} seam.
+     *
+     * <p>Cancellation needs no special case here: the promise is expired with this project-level
+     * service, so it can only be cancelled at project close, by which point the editor is disposed
+     * and its {@code onReady} callback is already a no-op.
+     */
+    static <T> void wireResolveOutcome(@NotNull Promise<T> resolution,
+                                       @NotNull Consumer<? super T> onResolved,
+                                       @NotNull Consumer<? super Throwable> onFailed) {
+        resolution.onSuccess(onResolved::accept).onError(onFailed::accept);
     }
 
     private void onTargetResolved(PreviewTarget target, Consumer<PreviewResult> onReady) {
@@ -242,7 +264,8 @@ public final class ZulPreviewServerService implements Disposable {
         return jars.stream().map(File::getAbsolutePath).collect(Collectors.joining(File.pathSeparator));
     }
 
-    private static String rootMessage(Throwable t) {
+    /** Package-visible for {@code ResolveFailureDeliveryTest} (R2-CRIT3): the error card must name the root cause. */
+    static String rootMessage(Throwable t) {
         Throwable cause = t;
         while (cause.getCause() != null) {
             cause = cause.getCause();
