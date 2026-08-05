@@ -9,6 +9,8 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Unit tests for {@link DocrootResolver}'s docroot-resolution rule (E3 deliverable 6:
@@ -156,6 +158,76 @@ class DocrootResolverTest {
         Path docroot = DocrootResolver.resolve(zul, List.of(moduleRoot), List.of(resourceRoot));
 
         assertEquals(webRoot, docroot);
+    }
+
+    // --- Which rule fired (tasks/preview-report-environment-analysis.md §3b). resolve() returns
+    //     only a Path, discarding the branch it took -- but that branch is what explains most
+    //     "page not found" / broken-include reports, so it must be reportable.
+
+    @Test
+    void reportsWarWebappLayout() throws IOException {
+        Path webapp = tempDir.resolve("src/main/webapp");
+        Files.createDirectories(webapp.resolve("WEB-INF"));
+        Path zul = webapp.resolve("index.zul");
+        Files.createFile(zul);
+
+        DocrootResolver.Resolution resolution = DocrootResolver.resolveWithLayout(zul, List.of(tempDir), List.of());
+
+        assertEquals(webapp, resolution.getDocroot());
+        assertEquals(DocrootResolver.Layout.WAR_WEBAPP, resolution.getLayout());
+    }
+
+    @Test
+    void reportsSpringBootClasspathLayout() throws IOException {
+        Path resourceRoot = tempDir.resolve("src/main/resources");
+        Path webRoot = resourceRoot.resolve("web");
+        Path zul = webRoot.resolve("index.zul");
+        Files.createDirectories(webRoot);
+        Files.createFile(zul);
+
+        DocrootResolver.Resolution resolution =
+                DocrootResolver.resolveWithLayout(zul, List.of(tempDir), List.of(resourceRoot));
+
+        assertEquals(webRoot, resolution.getDocroot());
+        assertEquals(DocrootResolver.Layout.SPRING_BOOT_CLASSPATH, resolution.getLayout());
+    }
+
+    @Test
+    void reportsContentRootFallbackLayout() throws IOException {
+        Path contentRoot = tempDir.resolve("src/main/resources");
+        Path zul = contentRoot.resolve("pages/foo.zul");
+        Files.createDirectories(zul.getParent());
+        Files.createFile(zul);
+
+        DocrootResolver.Resolution resolution =
+                DocrootResolver.resolveWithLayout(zul, List.of(contentRoot), List.of());
+
+        assertEquals(contentRoot, resolution.getDocroot());
+        assertEquals(DocrootResolver.Layout.CONTENT_ROOT, resolution.getLayout());
+    }
+
+    @Test
+    void reportsFileParentFallbackLayout() throws IOException {
+        Path dir = tempDir.resolve("loose");
+        Path zul = dir.resolve("orphan.zul");
+        Files.createDirectories(dir);
+        Files.createFile(zul);
+        Path unrelatedBoundary = tempDir.resolve("other-module");
+        Files.createDirectories(unrelatedBoundary);
+
+        DocrootResolver.Resolution resolution =
+                DocrootResolver.resolveWithLayout(zul, List.of(unrelatedBoundary), List.of());
+
+        assertEquals(dir, resolution.getDocroot());
+        assertEquals(DocrootResolver.Layout.FILE_PARENT, resolution.getLayout());
+    }
+
+    @Test
+    void everyLayoutHasAHumanReadableLabelForTheReport() {
+        for (DocrootResolver.Layout layout : DocrootResolver.Layout.values()) {
+            assertNotNull(layout.getLabel(), () -> layout + " needs a report label");
+            assertFalse(layout.getLabel().isBlank(), () -> layout + " needs a non-blank report label");
+        }
     }
 
     @Test

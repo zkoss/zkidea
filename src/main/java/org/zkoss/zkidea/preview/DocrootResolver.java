@@ -30,6 +30,49 @@ import java.util.List;
  */
 public final class DocrootResolver {
 
+    /**
+     * Which of the rules above produced a docroot. Reported in a preview failure's GitHub issue
+     * (tasks/preview-report-environment-analysis.md §3b): the branch taken explains most
+     * "page not found" / broken-{@code <include>} / {@code ~./}-not-resolving reports, and a
+     * fallback branch is itself a strong hint that the project layout wasn't recognised.
+     */
+    public enum Layout {
+        WAR_WEBAPP("WAR webapp"),
+        SPRING_BOOT_CLASSPATH("Spring Boot classpath web"),
+        CONTENT_ROOT("content-root fallback"),
+        FILE_PARENT("file-parent fallback");
+
+        private final String label;
+
+        Layout(String label) {
+            this.label = label;
+        }
+
+        /** Human-readable form for a bug report. */
+        public String getLabel() {
+            return label;
+        }
+    }
+
+    /** A resolved docroot together with the rule that produced it. */
+    public static final class Resolution {
+        private final Path docroot;
+        private final Layout layout;
+
+        Resolution(Path docroot, Layout layout) {
+            this.docroot = docroot;
+            this.layout = layout;
+        }
+
+        public Path getDocroot() {
+            return docroot;
+        }
+
+        public Layout getLayout() {
+            return layout;
+        }
+    }
+
     private DocrootResolver() {
     }
 
@@ -38,27 +81,36 @@ public final class DocrootResolver {
     }
 
     public static Path resolve(Path zulFile, List<Path> boundaryRoots, List<Path> resourceRoots) {
+        return resolveWithLayout(zulFile, boundaryRoots, resourceRoots).getDocroot();
+    }
+
+    /**
+     * As {@link #resolve}, but also reports <em>which</em> rule matched. The layout is captured
+     * here rather than re-derived from the returned path so it can never drift from the branch
+     * actually taken.
+     */
+    public static Resolution resolveWithLayout(Path zulFile, List<Path> boundaryRoots, List<Path> resourceRoots) {
         Path parent = zulFile.getParent();
         if (parent == null) {
-            return zulFile;
+            return new Resolution(zulFile, Layout.FILE_PARENT);
         }
         for (Path candidate = parent; candidate != null && withinBoundary(candidate, boundaryRoots);
                 candidate = candidate.getParent()) {
             if (hasWebInf(candidate) || isNamedWebapp(candidate)) {
-                return candidate;
+                return new Resolution(candidate, Layout.WAR_WEBAPP);
             }
         }
         for (Path candidate = parent; candidate != null; candidate = candidate.getParent()) {
             if (isClasspathWebRoot(candidate, resourceRoots)) {
-                return candidate;
+                return new Resolution(candidate, Layout.SPRING_BOOT_CLASSPATH);
             }
         }
         for (Path root : boundaryRoots) {
             if (parent.startsWith(root)) {
-                return root;
+                return new Resolution(root, Layout.CONTENT_ROOT);
             }
         }
-        return parent;
+        return new Resolution(parent, Layout.FILE_PARENT);
     }
 
     private static boolean hasWebInf(Path dir) {
