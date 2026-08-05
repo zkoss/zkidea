@@ -100,4 +100,70 @@ class PreviewIssueReporterTest {
 
         assertTrue(body.contains("truncated"), () -> "an over-long source must be truncated: " + body);
     }
+
+    // --- The environment block. Reports used to carry only Plugin/IDE/OS/JDK, so nothing about
+    //     *how the page was set up to render* reached the issue -- the two hardest documented
+    //     failure modes (an unresolved zkex, a ~./ page not found) were undiagnosable from the
+    //     report alone. See tasks/preview-report-environment-analysis.md.
+    //
+    //     ORDER AND LABELS ARE A CONTRACT shared with the launcher's own assembler
+    //     (Main.reportEnv / ReportEnvTest): the same failure must read identically whichever
+    //     report path produced it.
+
+    @Test
+    void renderEnvironment_carriesTheRenderTargetNotJustThePluginAndIde() {
+        String env = PreviewIssueReporter.renderEnvironment("ZKIdea 1.0.0", "IntelliJ IDEA 2024.3 (IU-243.1)",
+                "Mac OS X 14.6", "17.0.11", "Gradle", "Spring Boot classpath web", "jakarta",
+                "zk-10.0.0.jar, zul-10.0.0.jar [24 classpath entries]");
+
+        assertTrue(env.contains("Plugin: ZKIdea 1.0.0"), env);
+        assertTrue(env.contains("IDE: IntelliJ IDEA 2024.3 (IU-243.1)"), env);
+        assertTrue(env.contains("OS: Mac OS X 14.6"), env);
+        assertTrue(env.contains("JDK: 17.0.11"), env);
+        // The four new facts -- the reason this method exists.
+        assertTrue(env.contains("Build: Gradle"), env);
+        assertTrue(env.contains("Layout: Spring Boot classpath web"), env);
+        assertTrue(env.contains("Servlet: jakarta"), env);
+        assertTrue(env.contains("ZK jars: zk-10.0.0.jar, zul-10.0.0.jar [24 classpath entries]"), env);
+    }
+
+    @Test
+    void renderEnvironment_ordersLabelsIdenticallyToTheLauncherReport() {
+        String env = PreviewIssueReporter.renderEnvironment("p", "i", "o", "j", "b", "l", "s", "z");
+
+        int[] positions = {
+                env.indexOf("Plugin:"), env.indexOf("IDE:"), env.indexOf("OS:"), env.indexOf("JDK:"),
+                env.indexOf("Build:"), env.indexOf("Layout:"), env.indexOf("Servlet:"), env.indexOf("ZK jars:")
+        };
+        for (int i = 1; i < positions.length; i++) {
+            int prev = positions[i - 1];
+            int cur = positions[i];
+            assertTrue(prev >= 0 && cur > prev,
+                    () -> "labels must appear in the canonical order shared with the launcher: " + env);
+        }
+    }
+
+    @Test
+    void renderEnvironment_omitsFactsItCouldNotDetermine() {
+        // The plugin-side "cannot display preview" cards fire before any launcher runs, so there is
+        // no servlet variant to report; a resolve failure may leave build/layout unknown too. An
+        // absent fact must vanish, not show up as an empty or "null" line.
+        String env = PreviewIssueReporter.renderEnvironment("ZKIdea 1.0.0", "IU-243", "Linux 6.1", "21",
+                null, "", "   ", null);
+
+        assertFalse(env.contains("Build:"), () -> "an unknown fact must be omitted entirely: " + env);
+        assertFalse(env.contains("Layout:"), env);
+        assertFalse(env.contains("Servlet:"), env);
+        assertFalse(env.contains("ZK jars:"), env);
+        assertFalse(env.contains("null"), () -> "a missing value must never print as 'null': " + env);
+        assertTrue(env.contains("Plugin: ZKIdea 1.0.0"), env);
+    }
+
+    @Test
+    void renderEnvironment_putsEachFactOnItsOwnLine() {
+        // GitHub renders single newlines as line breaks, so one fact per line stays readable.
+        String env = PreviewIssueReporter.renderEnvironment("p", "i", "o", "j", "b", "l", "s", "z");
+
+        assertEquals(8, env.split("\n").length, () -> "one line per fact, no blank padding: " + env);
+    }
 }

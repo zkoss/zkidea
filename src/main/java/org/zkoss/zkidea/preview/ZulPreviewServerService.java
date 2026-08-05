@@ -106,12 +106,16 @@ public final class ZulPreviewServerService implements Disposable {
 
     private void onTargetResolved(PreviewTarget target, Consumer<PreviewResult> onReady) {
         // Runs on the background executor (U1). Every early return marshals onReady to the EDT.
+        // Every outcome carries the render-target environment: the "no ZK"/"stale classpath" cards
+        // offer a GitHub report too, and the build tool + resolved jar list are exactly what makes
+        // those reports actionable.
+        String environment = target.reportEnvironment();
         switch (target.presence) {
             case NONE:
-                deliverResult(PreviewResult.noZkJars(), onReady);
+                deliverResult(PreviewResult.noZkJars().withEnvironment(environment), onReady);
                 return;
             case DECLARED_BUT_MISSING:
-                deliverResult(PreviewResult.staleClasspath(), onReady);
+                deliverResult(PreviewResult.staleClasspath().withEnvironment(environment), onReady);
                 return;
             default:
                 break;
@@ -119,20 +123,21 @@ public final class ZulPreviewServerService implements Disposable {
         String key = target.docroot + "#" + target.classpathSignature;
         ManagedPreviewServer server = serversByKey.compute(key, (k, existing) ->
                 (existing != null && existing.isAlive()) ? existing : startServer(target));
-        deliver(server, target.requestPath, onReady);
+        deliver(server, target.requestPath, environment, onReady);
     }
 
     private void deliverResult(PreviewResult result, Consumer<PreviewResult> onReady) {
         ApplicationManager.getApplication().invokeLater(() -> onReady.accept(result));
     }
 
-    private void deliver(ManagedPreviewServer server, String requestPath, Consumer<PreviewResult> onReady) {
+    private void deliver(ManagedPreviewServer server, String requestPath, String environment,
+                         Consumer<PreviewResult> onReady) {
         server.portFuture().whenComplete((port, ex) -> ApplicationManager.getApplication().invokeLater(() -> {
             if (ex != null) {
                 LOG.warn("ZUL preview server failed to start", ex);
-                onReady.accept(PreviewResult.error(rootMessage(ex)));
+                onReady.accept(PreviewResult.error(rootMessage(ex)).withEnvironment(environment));
             } else {
-                onReady.accept(PreviewResult.ready(port, requestPath));
+                onReady.accept(PreviewResult.ready(port, requestPath).withEnvironment(environment));
             }
         }));
     }
@@ -142,16 +147,37 @@ public final class ZulPreviewServerService implements Disposable {
         // plugin descriptor is missing, and resolveJavaExecutable()/PreviewIssueReporter also touch
         // platform lookups. Any throw here must become a failed server (surfaced as an error+Report
         // card), never an escape that leaves the pane stuck on "loading" forever (U2).
-        return startGuarded(() -> new GeneralCommandLine()
-                .withExePath(resolveJavaExecutable())
-                .withParameters("-jar", resolveLauncherJar().toString(),
-                        "--classpath", joinClasspath(target.launcherClasspath),
-                        "--webapp", target.docroot.toString(),
-                        "--port", "0",
-                        // Identify this plugin/IDE in the error page's "Report on GitHub"
-                        // link (the launcher can't know them); OS/JDK it fills in itself.
-                        "--report-plugin", "ZKIdea " + PreviewIssueReporter.pluginVersion(),
-                        "--report-ide", PreviewIssueReporter.ideDescription()));
+        return startGuarded(() -> {
+            List<String> parameters = new ArrayList<>(List.of("-jar", resolveLauncherJar().toString(),
+                    "--classpath", joinClasspath(target.launcherClasspath),
+                    "--webapp", target.docroot.toString(),
+                    "--port", "0"));
+            parameters.addAll(reportArguments("ZKIdea " + PreviewIssueReporter.pluginVersion(),
+                    PreviewIssueReporter.ideDescription(),
+                    target.buildSystem, target.layout, target.zkJarSummary));
+            return new GeneralCommandLine()
+                    .withExePath(resolveJavaExecutable())
+                    .withParameters(parameters);
+        });
+    }
+
+    /**
+     * The facts the render-error page's "Report on GitHub" link needs but the launcher cannot know:
+     * our identity, plus the render target exactly as IntelliJ resolved it. OS/JDK and the detected
+     * servlet variant the launcher fills in itself.
+     *
+     * <p>Package-visible and platform-free so {@code ReportArgumentsTest} can lock the flag names:
+     * they are matched by string key in {@code org.zkoss.zkpreview.Main#reportEnv}, across a module
+     * boundary with no shared constant, and a silent rename would drop facts from every report.
+     */
+    static List<String> reportArguments(String plugin, String ide, String buildSystem, String layout,
+                                        String zkJarSummary) {
+        return List.of(
+                "--report-plugin", plugin,
+                "--report-ide", ide,
+                "--report-build", buildSystem,
+                "--report-layout", layout,
+                "--report-zkjars", zkJarSummary);
     }
 
     /**
@@ -188,6 +214,12 @@ public final class ZulPreviewServerService implements Disposable {
                         .classes().getPathsList().getPathList()
                 : OrderEnumerator.orderEntries(project).runtimeOnly().withoutSdk()
                         .classes().getPathsList().getPathList();
+
+        // What actually resolved, summarised for a GitHub failure report. Computed over the RAW
+        // entries (not the filtered launcher classpath below) so a declared-but-missing ZK jar
+        // still shows up -- that is exactly the DECLARED_BUT_MISSING case a reporter needs to see.
+        String zkJarSummary = ZkClasspathFilter.classpathSummary(classpathEntries);
+        String buildSystem = BuildSystemDetector.detect(module);
 
         // ZK presence gate (R7), now three-way (U3): NONE ("add a ZK dependency"),
         // DECLARED_BUT_MISSING (declared but not on disk -> "re-import/re-sync"), or PRESENT.
@@ -234,9 +266,12 @@ public final class ZulPreviewServerService implements Disposable {
 
         Path zulPath = Paths.get(zulFile.getPath());
         List<Path> resourceRootDirs = resourceRootPaths.stream().map(Paths::get).collect(Collectors.toList());
-        Path docroot = DocrootResolver.resolve(zulPath, contentRoots, resourceRootDirs);
+        DocrootResolver.Resolution resolution =
+                DocrootResolver.resolveWithLayout(zulPath, contentRoots, resourceRootDirs);
+        Path docroot = resolution.getDocroot();
         String relative = docroot.relativize(zulPath).toString().replace(File.separatorChar, '/');
-        return new PreviewTarget(presence, docroot, launcherClasspath, signature, "/" + relative);
+        return new PreviewTarget(presence, docroot, launcherClasspath, signature, "/" + relative,
+                buildSystem, resolution.getLayout().getLabel(), zkJarSummary);
     }
 
     private String resolveJavaExecutable() {
@@ -290,14 +325,27 @@ public final class ZulPreviewServerService implements Disposable {
         final List<File> launcherClasspath;
         final String classpathSignature;
         final String requestPath;
+        /** The three render-target facts a GitHub failure report needs, resolved once here. */
+        final String buildSystem;
+        final String layout;
+        final String zkJarSummary;
 
         PreviewTarget(ZkClasspathFilter.ZkPresence presence, Path docroot, List<File> launcherClasspath,
-                      String classpathSignature, String requestPath) {
+                      String classpathSignature, String requestPath,
+                      String buildSystem, String layout, String zkJarSummary) {
             this.presence = presence;
             this.docroot = docroot;
             this.launcherClasspath = launcherClasspath;
             this.classpathSignature = classpathSignature;
             this.requestPath = requestPath;
+            this.buildSystem = buildSystem;
+            this.layout = layout;
+            this.zkJarSummary = zkJarSummary;
+        }
+
+        /** This target's facts as the report's environment block (see {@link PreviewIssueReporter}). */
+        String reportEnvironment() {
+            return PreviewIssueReporter.environment(buildSystem, layout, zkJarSummary);
         }
     }
 }

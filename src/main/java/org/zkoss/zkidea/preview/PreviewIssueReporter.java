@@ -98,18 +98,72 @@ final class PreviewIssueReporter {
         return sb.toString();
     }
 
-    /** Current plugin / IDE / OS / JDK, formatted for the report. */
+    /** Current plugin / IDE / OS / JDK, with no render-target facts (nothing was resolved yet). */
     static String environment() {
-        return "Plugin: ZKIdea " + pluginVersion()
-                + "\nIDE: " + ideDescription()
-                + "\nOS: " + System.getProperty("os.name") + " " + System.getProperty("os.version")
-                + "\nJDK: " + System.getProperty("java.version");
+        return environment(null, null, null);
     }
 
-    /** Open a prefilled GitHub issue for a preview failure in the system browser (with the
-     * {@code .zul} source inlined for later debugging; {@code zulSource} may be {@code null}). */
-    static void report(String title, String context, String zulSource) {
-        BrowserUtil.browse(issueUrl(title, body(context, environment(), zulSource)));
+    /**
+     * The environment block including the render target: which build tool imported the module,
+     * which docroot rule matched, and which ZK jars resolved. Those three are what actually
+     * explain a failed render -- the plugin/IDE/OS/JDK alone never did
+     * (tasks/preview-report-environment-analysis.md). Any fact that could not be determined is
+     * passed as {@code null} and omitted.
+     */
+    static String environment(String buildSystem, String layout, String zkJars) {
+        return renderEnvironment("ZKIdea " + pluginVersion(), ideDescription(),
+                System.getProperty("os.name") + " " + System.getProperty("os.version"),
+                System.getProperty("java.version"),
+                // No servlet variant here: these reports fire when the preview can't be *displayed*,
+                // which is before (or instead of) any launcher run, so nothing detected one. The
+                // launcher's own report path fills it in.
+                buildSystem, layout, null, zkJars);
+    }
+
+    /**
+     * Pure: the environment block, one {@code "Label: value"} per line, skipping any value that
+     * could not be determined (a blank fact must vanish, never print as an empty or {@code "null"}
+     * line). GitHub renders single newlines as line breaks, so no padding or fencing is needed.
+     *
+     * <p><b>The label set and order here are a contract</b> shared with the launcher's own
+     * assembler ({@code org.zkoss.zkpreview.Main#reportEnv}), so the same failure reads identically
+     * whichever of the two report paths produced it. The modules have no compile dependency on each
+     * other; {@code PreviewIssueReporterTest} and {@code ReportEnvTest} each lock the same list.
+     */
+    static String renderEnvironment(String plugin, String ide, String os, String jdk,
+                                    String buildSystem, String layout, String servlet, String zkJars) {
+        StringBuilder sb = new StringBuilder();
+        appendFact(sb, "Plugin", plugin);
+        appendFact(sb, "IDE", ide);
+        appendFact(sb, "OS", os);
+        appendFact(sb, "JDK", jdk);
+        appendFact(sb, "Build", buildSystem);
+        appendFact(sb, "Layout", layout);
+        appendFact(sb, "Servlet", servlet);
+        appendFact(sb, "ZK jars", zkJars);
+        return sb.toString();
+    }
+
+    private static void appendFact(StringBuilder sb, String label, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        if (sb.length() > 0) {
+            sb.append('\n');
+        }
+        sb.append(label).append(": ").append(value);
+    }
+
+    /**
+     * Open a prefilled GitHub issue for a preview failure in the system browser (with the
+     * {@code .zul} source inlined for later debugging; {@code zulSource} may be {@code null}).
+     * {@code environment} is the render-target-aware block built when the preview target resolved;
+     * when the failure happened before that (so there is none), the plugin/IDE/OS/JDK block stands
+     * in.
+     */
+    static void report(String title, String context, String zulSource, String environment) {
+        String env = (environment == null || environment.isBlank()) ? environment() : environment;
+        BrowserUtil.browse(issueUrl(title, body(context, env, zulSource)));
     }
 
     /** Plugin version (e.g. {@code 0.8.0}); also passed to the launcher for the error-page report link. */

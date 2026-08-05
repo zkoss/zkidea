@@ -80,6 +80,10 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
     private JBCefBrowser browser;
     private volatile String previewUrl;
     private volatile boolean disposed;
+    /** The render target (build tool / docroot layout / resolved ZK jars) of the last preview
+     * attempt, for the GitHub report links. Null until a target resolves -- the reporter then
+     * falls back to the plain plugin/IDE/OS/JDK block. */
+    private volatile String reportEnvironment;
 
     ZulPreviewFileEditor(@NotNull Project project, @NotNull VirtualFile file) {
         this.project = project;
@@ -102,7 +106,7 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
         reportBar.setBorder(JBUI.Borders.empty(4, 12, 8, 12));
         reportBar.add(new ActionLink("Report this issue on GitHub", (ActionListener) e ->
                 PreviewIssueReporter.report("[Layout Preview] Cannot display preview",
-                        messageArea.getText(), currentSource())));
+                        messageArea.getText(), currentSource(), reportEnvironment)));
         messagePanel.add(reportBar, BorderLayout.SOUTH);
         component.add(messagePanel, CARD_MESSAGE);
         component.add(new JLabel("Starting ZK preview server…", SwingConstants.CENTER), CARD_LOADING);
@@ -124,6 +128,7 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
             if (disposed) {
                 return;
             }
+            reportEnvironment = result.getEnvironment();
             if (result.getStatus() == PreviewResult.Status.READY) {
                 previewUrl = "http://localhost:" + result.getPort() + result.getRequestPath();
                 if (jcefDiagnosis != null) {
@@ -164,7 +169,7 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
         bar.add(new ActionLink("Open preview in external browser", (ActionListener) e -> BrowserUtil.browse(url)));
         bar.add(new ActionLink("Report this issue on GitHub", (ActionListener) e ->
                 PreviewIssueReporter.report("[Layout Preview] Cannot display preview",
-                        area.getText(), currentSource())));
+                        area.getText(), currentSource(), reportEnvironment)));
         panel.add(bar, BorderLayout.SOUTH);
 
         component.add(panel, CARD_EXTERNAL);
