@@ -203,6 +203,70 @@ class ZkClasspathFilterTest {
                 ZkClasspathFilter.detectZkPresence(List.of(danglingZk, existingNonZk)));
     }
 
+    // --- classpathSummary: the "ZK jars:" line of a GitHub failure report
+    //     (tasks/preview-report-environment-analysis.md §3a -- the resolved ZK jar set is the
+    //     single most diagnostic fact about a render failure, and used to be invisible).
+
+    @Test
+    void classpathSummary_listsZkJarFileNamesOnly_neverAbsolutePaths() {
+        String summary = ZkClasspathFilter.classpathSummary(List.of(
+                "/Users/someone/.m2/repository/org/zkoss/zk/zk/10.0.0/zk-10.0.0.jar",
+                "/Users/someone/.m2/repository/org/slf4j/slf4j-api/2.0.7/slf4j-api-2.0.7.jar",
+                "/Users/someone/.m2/repository/org/zkoss/zk/zul/10.0.0/zul-10.0.0.jar"));
+
+        assertTrue(summary.contains("zk-10.0.0.jar"), summary);
+        assertTrue(summary.contains("zul-10.0.0.jar"), summary);
+        // Non-ZK jars are noise in the report (and blow the URL budget).
+        assertFalse(summary.contains("slf4j"), () -> "only ZK jars belong in the summary: " + summary);
+        // Absolute paths are long AND leak the user's home directory -- names only.
+        assertFalse(summary.contains("/Users/someone"),
+                () -> "absolute paths must never reach a public bug report: " + summary);
+    }
+
+    @Test
+    void classpathSummary_reportsTheTotalClasspathEntryCount() {
+        String summary = ZkClasspathFilter.classpathSummary(List.of(
+                "/repo/zk-10.0.0.jar", "/repo/slf4j-api-2.0.7.jar", "/repo/commons-io-2.11.jar"));
+
+        assertTrue(summary.contains("3 classpath entries"),
+                () -> "the total entry count tells us how much else was on the classpath: " + summary);
+    }
+
+    @Test
+    void classpathSummary_capsTheListAndSaysHowManyItDropped() {
+        List<String> many = new java.util.ArrayList<>();
+        for (int i = 0; i < ZkClasspathFilter.MAX_SUMMARY_JARS + 3; i++) {
+            many.add("/repo/zkcharts-" + i + ".0.0.jar");
+        }
+
+        String summary = ZkClasspathFilter.classpathSummary(many);
+
+        assertTrue(summary.contains("(+3 more)"),
+                () -> "a capped list must say how many it dropped: " + summary);
+        assertFalse(summary.contains("zkcharts-" + (ZkClasspathFilter.MAX_SUMMARY_JARS + 2) + ".0.0.jar"),
+                () -> "the list must actually be capped: " + summary);
+    }
+
+    @Test
+    void classpathSummary_saysNoneWhenTheClasspathCarriesNoZkJar() {
+        String summary = ZkClasspathFilter.classpathSummary(List.of("/repo/slf4j-api-2.0.7.jar"));
+
+        assertTrue(summary.startsWith("none"),
+                () -> "the no-ZK case must read as 'none', not as an empty line: " + summary);
+        assertTrue(summary.contains("1 classpath entries"), summary);
+    }
+
+    @Test
+    void classpathSummary_keepsClasspathOrder_soJarShadowingIsVisible() {
+        // A stale duplicate earlier on the classpath shadows the good one; the report must show
+        // the order it actually had, not a tidied alphabetical view.
+        String summary = ZkClasspathFilter.classpathSummary(List.of(
+                "/old/zk-9.6.0.jar", "/new/zk-10.0.0.jar"));
+
+        assertTrue(summary.indexOf("zk-9.6.0.jar") < summary.indexOf("zk-10.0.0.jar"),
+                () -> "classpath order must be preserved: " + summary);
+    }
+
     private File newJar(String name) throws IOException {
         Path path = tempDir.resolve(name);
         Files.writeString(path, "stub");

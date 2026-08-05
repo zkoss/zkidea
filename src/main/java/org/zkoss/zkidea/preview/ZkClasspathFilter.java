@@ -133,6 +133,49 @@ public final class ZkClasspathFilter {
         return result;
     }
 
+    /** How many ZK jar names {@link #classpathSummary} lists before it starts counting. */
+    static final int MAX_SUMMARY_JARS = 12;
+
+    /**
+     * One-line description of a module's resolved classpath for a preview failure's GitHub issue:
+     * the ZK jar <em>file names</em> plus the total entry count, e.g.
+     * {@code "zk-10.0.0.jar, zul-10.0.0.jar (+3 more) [24 classpath entries]"}.
+     *
+     * <p>This is the single most diagnostic fact about a failed render -- it carries the ZK
+     * version, CE vs EE, and any missing transitive (the documented {@code zkex}/{@code
+     * CometServerPush} failure is exactly a "wrong jar set" failure) -- and used to be absent from
+     * every report (tasks/preview-report-environment-analysis.md §3a).
+     *
+     * <p>Deliberate choices: <b>names only</b>, never absolute paths -- those are long and leak the
+     * reporter's home directory into a public issue; <b>ZK jars only</b>, because the rest is noise
+     * that would blow the issue-URL budget (the total count still says how much else was there);
+     * and <b>classpath order preserved</b>, not sorted, so a stale duplicate shadowing a good jar
+     * stays visible.
+     *
+     * <p>Takes the raw resolved entries rather than the filtered launcher classpath so a ZK jar
+     * that is declared but missing on disk still shows up -- that is precisely the
+     * {@link ZkPresence#DECLARED_BUT_MISSING} case a reporter needs to see.
+     */
+    public static String classpathSummary(List<String> classpathEntries) {
+        List<File> zkJars = filterZkJars(classpathEntries);
+        StringBuilder sb = new StringBuilder();
+        if (zkJars.isEmpty()) {
+            sb.append("none");
+        } else {
+            int listed = Math.min(zkJars.size(), MAX_SUMMARY_JARS);
+            for (int i = 0; i < listed; i++) {
+                if (i > 0) {
+                    sb.append(", ");
+                }
+                sb.append(zkJars.get(i).getName());
+            }
+            if (zkJars.size() > listed) {
+                sb.append(" (+").append(zkJars.size() - listed).append(" more)");
+            }
+        }
+        return sb.append(" [").append(classpathEntries.size()).append(" classpath entries]").toString();
+    }
+
     /**
      * Stable signature over a jar set: it changes iff the set of paths, sizes, or
      * modification times changes -- i.e. iff the actually-resolved classpath changed.
