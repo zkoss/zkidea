@@ -42,7 +42,8 @@ XML editor.
 | Components, attributes, layout (`window`, `grid`, `hlayout`, styles, …) | **Rendered** — real ZK HTML/CSS, real widget geometry |
 | EL implicit objects — `${desktop}`, `${execution}`, `${page}`, scopes, `${param}`, … | **Live** — resolved by ZK's real page-evaluation runtime (24 of 25 resolve; `event` is null because no event is dispatched at render time) |
 | Plain EL over page data — `${zscript-created-var}`, `forEach` lists, `<variables>` | **Evaluated** |
-| MVVM bindings — `@load`, `@bind`, `@init`, `@save`, `@command` | **Placeholder** — the expression text is shown; the ViewModel is never instantiated |
+| MVVM bindings — `@load`, `@bind`, `@init`, `@save`, `@command` | **Placeholder** — the expression text is shown in a dimmed italic style; the ViewModel is never instantiated |
+| Model-bound data components — `<grid model="@load(vm.rows)"/>`, listbox, tree | **Placeholder rows/nodes** — a few dimmed sample rows so the component keeps its real geometry instead of collapsing to an empty box |
 | `apply="a.MyComposer"` / auto MVVM `BindComposer` | **No-op** — user composers never run (that is the isolation guarantee) |
 | Client-side namespace `w:` (e.g. `w:onClick="…"` JS) | **Runs** — it is client JavaScript, executed in the preview browser |
 | Server-side event listeners (`onClick` → Java), AU round-trips (paging, sort, tree-expand) | **Not simulated** — first paint only; interactions are silent no-ops |
@@ -171,10 +172,10 @@ preview" cards report everything else.
 
 ## Under the hood (short version)
 
-- Rendering runs in a short-lived **helper JVM** the plugin spawns — a small standalone
-  "rendering core" (`zk-preview-launcher`) with zero IntelliJ dependencies — driving *your*
-  ZK jars through ZK's real `DHtmlLayoutServlet`. Both `javax` and `jakarta` servlet
-  variants are auto-detected and supported.
+- Rendering runs in a **helper JVM** the plugin spawns — a small standalone "rendering core"
+  (`zk-preview-launcher`) with zero IntelliJ dependencies — driving *your* ZK jars through
+  ZK's real `DHtmlLayoutServlet`. Both `javax` and `jakarta` servlet variants are
+  auto-detected and supported.
 - **Isolation** rests on a scoped classloader (only ZK jars + isolation hooks; your
   compiled output is never on it) and a `UiFactory` hook that turns every composer/ViewModel
   resolution into a no-op. That is *why* bound values are placeholders — by design, not a
@@ -200,7 +201,8 @@ Full details: [feature_overview.md §10](feature_overview.md) and
   closes (no idle timeout).
 
 The full, itemized limitation list (L-1 … L-14) lives in
-[zul_preview_spec.md §4](zul_preview_spec.md).
+[zul_preview_spec.md §4](zul_preview_spec.md); the still-open review findings — bugs, not
+design decisions — are tracked in [§5](zul_preview_spec.md) of the same file.
 
 ---
 
@@ -209,6 +211,8 @@ The full, itemized limitation list (L-1 … L-14) lives in
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Pane says the module has no ZK | ZK isn't on the module's IntelliJ classpath | Declare ZK as a Maven/Gradle dependency and reimport, or attach it as a module library. |
+| Pane says ZK is declared but the jars aren't on disk | The dependency resolves in the build file but the local repository cache is missing/wiped | Re-import (Maven/Gradle sync) so the jars are downloaded again. |
+| *"Unable to access jarfile …/zkidea-1.0.0.jar/lib/zk-preview-launcher.jar"* | The plugin was installed as a **single jar** — that artifact is a build intermediate and carries no render helper | Install the distribution **`.zip`** (`build/distributions/zkidea-<version>.zip`) via Settings ▸ Plugins ▸ ⚙ ▸ Install Plugin from Disk. A single-jar install is broken by construction (no launcher, no jsoup, uninstrumented). |
 | Bound value shows as literal text (e.g. `vm.name`) | Expected — the ViewModel doesn't run in preview | Not an error. The same page on a real server shows the value. |
 | A button/click/sort does nothing | Expected — first paint only; server round-trips aren't simulated | Client-side `w:` listeners *do* work; server logic is out of scope. |
 | "Preview unavailable" / no browser | JCEF missing or disabled in this IDE runtime | Switch the Boot Java Runtime to a JetBrains Runtime, or enable `ide.browser.jcef.enabled`; meanwhile use the **Open in external browser** link. |

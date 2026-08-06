@@ -1,10 +1,9 @@
 # Layout Preview — special ZUML syntax cases
 
 Ten hand-picked ZUL fixtures for manually checking that the Layout Preview renders the
-**less-common / more distinctive ZUML syntax** correctly. They are distilled from the P3
-automated corpus (`tasks/zul-preview/PLAN-P3-syntax-corpus.md`,
-`tasks/zul-preview/SYNTAX-MATRIX.md`) — the groups a developer is most likely to be unsure
-about: **directives** (`<?page?>`, `<?component?>`, `<?taglib?>`, `<?xel-method?>`), the
+**less-common / more distinctive ZUML syntax** correctly. They are distilled from the
+automated corpus (`ZulSyntaxCorpusTest` in `zk-preview-launcher`) — the groups a developer
+is most likely to be unsure about: **directives** (`<?page?>`, `<?component?>`, `<?taglib?>`, `<?xel-method?>`), the
 **native** and **client** namespaces, `forEach` comma-lists, inline `zscript`, `variables`,
 the MVVM binding **placeholder**, and every **EL implicit object**.
 

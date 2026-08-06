@@ -33,5 +33,6 @@ Open the sample as a Maven project in the runIde sandbox IDE, then open
 - Opening `web/zul/page.zul` directly previews it at `/zul/page.zul`; its live
   `desktop id` renders (a real ZK render, not a stub).
 
-See [tasks/zul-preview/MANUAL-springboot-jar.md](../tasks/zul-preview/MANUAL-springboot-jar.md)
-for the step-by-step checklist.
+See [doc/zul-preview-feature.md](../doc/zul-preview-feature.md) ("Supported project layouts")
+for what the Spring-Boot-jar rule guarantees, and
+[doc/zul_preview_spec.md](../doc/zul_preview_spec.md) §2.3 for the docroot resolution order.

@@ -197,11 +197,15 @@ Defined in `plugin.xml` as an action group `ZK_Feedback_Group` added to `HelpMen
 
 ---
 
-## 10. Layout Preview (since 0.8.0, in development)
+## 10. Layout Preview (since 1.0.0)
 
-> **Naming (M-2).** User-facing copy calls this feature **"Layout Preview"**, never
+> **Naming.** User-facing copy calls this feature **"Layout Preview"**, never
 > "live preview"/"live app preview" — it renders how a page *lays out*, not a running
 > application. See `doc/zul_preview_product_positioning.md` §2.
+>
+> Companion docs: the **user guide** is [zul-preview-feature.md](zul-preview-feature.md);
+> the **engineering contract**, the itemized limitations and the still-open review
+> findings are in [zul_preview_spec.md](zul_preview_spec.md).
 
 ### What it does
 Adds a side-by-side **Layout Preview** to the ZUL editor (Markdown-editor style): the
@@ -209,32 +213,36 @@ left pane is the normal text editor, the right pane renders the actual HTML ZK's
 engine would produce, refreshed on save. Rendering never loads the project's own compiled
 classes (ViewModels, Composers, converters, ...) — it is a **first-paint-only** layout
 view: bound values render as dimmed placeholders (the binding expression text) rather than
-their real values.
-Rendering happens in a short-lived helper JVM, spawned and owned by the plugin, that
-drives the project's own ZK jars directly (not a bundled copy) via a small standalone
-"rendering core" module (`zk-preview-launcher`) that has zero IntelliJ dependencies and
-is independently runnable as a CLI. Design background, approaches considered, and the
-full acceptance-criteria matrix live in `tasks/zul-preview/PLAN.md` and `RESEARCH.md`.
+their real values, and model-bound grids/listboxes/trees get synthesized placeholder rows
+so they keep their real geometry.
+Rendering happens in a helper JVM, spawned and owned by the plugin, that drives the
+project's own ZK jars directly (not a bundled copy) via a small standalone "rendering
+core" module (`zk-preview-launcher`) that has zero IntelliJ dependencies and is
+independently runnable as a CLI.
 
 ### Key classes — plugin side (`preview` package, `src/main/java/org/zkoss/zkidea/preview/`)
 
 | Class | Role |
 |-------|------|
 | `ZulPreviewFileEditorProvider` | `FileEditorProvider`. `accept()` matches any file whose extension is `.zul` (cheap, PSI-free — never fires for `zk.xml`/`lang-addon.xml`, which share the same built-in XML `FileType`). `createEditor()` wraps IntelliJ's normal `PsiAwareTextEditorProvider` text editor and a `ZulPreviewFileEditor` in a `TextEditorWithPreview` split. `getPolicy()` returns `HIDE_DEFAULT_EDITOR` so the split replaces the plain XML editor for `.zul` files. |
-| `ZulPreviewFileEditor` | The preview half of the split. Gated on `JBCefApp.isSupported()`: if JCEF is unavailable, shows an explanatory Swing panel instead of a browser and does nothing else (R5). Otherwise asks `ZulPreviewServerService` to prepare a preview target, then points a `JBCefBrowser` at `http://localhost:<port><requestPath>`. A `MergingUpdateQueue`-debounced `BulkFileListener` reloads the browser on VFS content-change events (i.e. after save — unsaved in-editor changes do not refresh in v1). All child resources (browser, listener, refresh queue) are parented to `this` via `Disposer.register`, so `Disposer.dispose(this)` (fired when the editor tab closes) tears them down automatically. On a successful render it pins the M-3 hint banner (see `LayoutPreviewHint`) above the browser. |
-| `ZulPreviewServerService` | Project-level `Disposable` service that owns the helper JVMs. `preparePreview()` resolves the previewed file's module classpath and docroot off the EDT (`ReadAction.nonBlocking`), then looks up or starts a `ManagedPreviewServer` keyed by `docroot + "#" + classpathSignature` — **one helper JVM per distinct (docroot, classpath) pair**, shared across every open preview tab that resolves to the same pair, kept alive for the project session. `dispose()` kills every server this service started (no orphan JVMs left on project close). |
-| `ManagedPreviewServer` | Owns one spawned `zk-preview-launcher` process via IntelliJ's `KillableProcessHandler`. Parses the `PREVIEW_PORT=<n>` line the launcher prints on stdout once its HTTP server is up; `destroy()` kills the OS process. Has no dependency on `Project`/platform APIs so its start/kill contract can be unit-tested with a lightweight stand-in process. |
-| `DocrootResolver` | Pure logic: walks a `.zul` file's ancestor directories for the first one containing `WEB-INF/` or named `webapp` (standard Maven/Gradle webapp layout) to use as the `--webapp` argument; falls back to the nearest module content root, then the file's own parent. |
-| `ZkClasspathFilter` | Pure logic, two filters over a module's resolved runtime classpath: `filterZkJars`/`isZkJar` recognize ZK (and ZK addon, e.g. `zkcharts-`/`keikai-`) artifact-name prefixes — used **only** as the "does this module have any ZK at all" gate (R7); `filterLibraryJars` keeps every non-directory, existing-regular-file classpath entry regardless of name (ZK's own transitive deps like `slf4j-api` aren't ZK-prefixed) and is what actually gets handed to the launcher's `--classpath`. Also computes a stable SHA-256 `signature()` over a jar set (path+size+mtime) so `ZulPreviewServerService` can tell whether an existing helper JVM can be reused. |
-| `PreviewResult` | Outcome of `preparePreview()`: `READY` (port + request path), `NO_ZK_JARS` (R7 — module has no ZK dependency), or `ERROR` (helper JVM failed to start; carries the root-cause message). |
-| `LayoutPreviewHint` | M-3 in-pane hint copy + dismissal state. Holds the canonical banner text ("binding values are placeholders — your ViewModel doesn't run here") and an application-wide dismissed flag (`PropertiesComponent`), so `ZulPreviewFileEditor` shows a dismissible `EditorNotificationPanel` above the render until the user clicks "Got it" once. |
+| `ZulPreviewFileEditor` | The preview half of the split. Gated on `JBCefApp.isSupported()`: if JCEF is unavailable it shows the `JcefAvailability` diagnosis plus an "open in external browser" link instead of a browser. Otherwise asks `ZulPreviewServerService` to prepare a preview target, then points a `JBCefBrowser` at `http://localhost:<port><requestPath>`. A `MergingUpdateQueue`-debounced `BulkFileListener` reloads the browser on VFS content-change events (i.e. after save — unsaved in-editor changes do not refresh). An `onBeforeBrowse` handler keeps non-loopback http(s) navigation out of the pane and hands it to the external browser. All child resources (browser, listener, refresh queue) are parented to `this` via `Disposer.register`, so `Disposer.dispose(this)` (fired when the editor tab closes) tears them down automatically. On a successful render it pins the hint banner (see `LayoutPreviewHint`) above the browser. |
+| `ZulPreviewServerService` | Project-level `Disposable` service that owns the helper JVMs. `preparePreview()` resolves the previewed file's module classpath and docroot off the EDT (`ReadAction.nonBlocking`, both outcomes routed through the `wireResolveOutcome` seam so a resolve failure ends in an error card rather than a pane stuck on "loading"), then looks up or starts a `ManagedPreviewServer` keyed by `docroot + "#" + classpathSignature` — **one helper JVM per distinct (docroot, classpath) pair**, shared across every open preview tab that resolves to the same pair, kept alive for the project session. Process creation runs on the pooled executor, not the EDT, and is wrapped by the `startGuarded` seam so any throw becomes a failed server (not a lost callback). `reportArguments(...)` passes the render-target facts to the launcher as `--report-*`. `dispose()` kills every server this service started (no orphan JVMs left on project close). |
+| `ManagedPreviewServer` | Owns one spawned `zk-preview-launcher` process via IntelliJ's `KillableProcessHandler`. Parses the `PREVIEW_PORT=<n>` line the launcher prints on stdout once its HTTP server is up; keeps a **bounded** stderr tail (trimmed on append) for the "died before reporting a port" message; `destroy()` kills the OS process. Has no dependency on `Project`/platform APIs so its start/kill contract can be unit-tested with a lightweight stand-in process. |
+| `DocrootResolver` | Pure logic: resolves the `--webapp` docroot **and reports which rule matched** (`Layout` enum → `WAR_WEBAPP` / `SPRING_BOOT_CLASSPATH` / `CONTENT_ROOT` / `FILE_PARENT`, used in failure reports). The `WEB-INF`/`webapp` ancestor scan is clipped to the module's content roots so an unrelated ancestor named `webapp` can't hijack it; a file under `<resource-root>/web/` resolves to the classpath `web` root (Spring Boot jar layout); otherwise nearest content root, then the file's own parent. |
+| `ZkClasspathFilter` | Pure logic over a module's resolved runtime classpath. `detectZkPresence` classifies `PRESENT` / `NONE` / `DECLARED_BUT_MISSING` (ZK named on the classpath but absent from disk — a wiped repo cache) so the pane's message can differ; `isZkJar` recognizes ZK and ZK-addon artifact-name prefixes (`zkcharts-`, `keikai-`, …). `filterLibraryJars` keeps every non-directory, existing-regular-file classpath entry regardless of name (ZK's own transitive deps like `slf4j-api` aren't ZK-prefixed) and is what actually gets handed to the launcher's `--classpath`; `classpathSummary` renders the ZK-jar line for a failure report (file names only, capped). Also computes a stable SHA-256 `signature()` over a jar set (path+size+mtime) so `ZulPreviewServerService` can tell whether an existing helper JVM can be reused. |
+| `PreviewResult` | Outcome of `preparePreview()`: `READY` (port + request path), `NO_ZK_JARS` (module has no ZK dependency), `STALE_CLASSPATH` (declared but not on disk → "re-import"), or `ERROR` (carries the root-cause message). |
+| `LayoutPreviewHint` | In-pane hint copy + dismissal state. Holds the canonical banner text ("binding values are placeholders — your ViewModel doesn't run here") and an application-wide dismissed flag (`PropertiesComponent`), so `ZulPreviewFileEditor` shows a dismissible `EditorNotificationPanel` above the render until the user clicks "Got it" once. |
+| `JcefAvailability` | Pure diagnosis of *why* the embedded browser is unavailable — `BOOT_JDK_NO_JCEF` (boot runtime isn't a JetBrains Runtime), `REGISTRY_DISABLED` (`ide.browser.jcef.enabled` off), `INCOMPATIBLE` — each with the explanation and remedy shown on the card. |
+| `PreviewIssueReporter` | Builds and opens the prefilled GitHub new-issue for every "cannot display preview" card: `issueUrl`/`body`/`renderEnvironment` are pure and unit-tested, the environment probe is a thin platform wrapper. The body is capped on its **encoded** length so dense markup can't silently break the link. Nothing is posted automatically — the user reviews and submits on GitHub. |
+| `BuildSystemDetector` | One line of a failure report: the build tool that imported the module (`Maven` / `Gradle` / `none`), read from `ExternalSystemModulePropertyManager.getExternalSystemId()`. Pure `label(String)` + a thin `detect(Module)` wrapper. |
 
 ### Key classes — rendering core (`zk-preview-launcher` module)
 
 The core is a **separate Gradle subproject** (`zk-preview-launcher/`), deliberately
 free of any `com.intellij.*` import, so it is independently callable:
 ```
-java -jar zk-preview-launcher.jar --classpath <os-separated jars> --webapp <docroot> --port <n>
+java -jar zk-preview-launcher.jar --classpath <os-separated jars> --webapp <docroot> --port <n> \
+     [--report-plugin <s> --report-ide <s> --report-build <s> --report-layout <s> --report-zkjars <s>]
 ```
 It prints `PREVIEW_PORT=<n>` to stdout once its HTTP server is bound (port `0` picks an
 ephemeral port), then blocks until killed. `ZulPreviewServerService` spawns exactly this
@@ -243,14 +251,17 @@ built jar into the plugin distribution at `<plugin>/lib/zk-preview-launcher.jar`
 
 | Class | Path (relative to `zk-preview-launcher/src/`) | Role |
 |-------|------|------|
-| `Main` | `main/java/.../Main.java` | CLI entry point: parses `--classpath`/`--webapp`/--port`, builds a `RenderEngine`, starts a `PreviewHttpServer`, prints the port line. |
-| `PreviewHttpServer` | `main/java/.../PreviewHttpServer.java` | A plain JDK `com.sun.net.httpserver.HttpServer` (no servlet container, no Jetty) bridging plain HTTP to the mock servlet environment: `GET *.zul` → page render (on failure, a formatted HTML error page via `ErrorPageRenderer`, **not** raw JSON — L-10), `GET /zkau/web/*` → extendlet-processed resource (JS/CSS), `POST /zkau` → a benign stubbed AU response (first paint never issues a real AU round-trip). |
+| `Main` | `main/java/.../Main.java` | CLI entry point: parses `--classpath`/`--webapp`/`--port` plus the `--report-*` facts, builds a `RenderEngine`, starts a `PreviewHttpServer`, prints the port line. `reportEnv(...)` assembles the environment block the error page's GitHub report carries, filling in the render JVM's OS/JDK and the detected servlet variant. |
+| `PreviewHttpServer` | `main/java/.../PreviewHttpServer.java` | A plain JDK `com.sun.net.httpserver.HttpServer` (no servlet container, no Jetty) bound to loopback and dispatching on a fixed 8-thread daemon pool (so one hung render can't freeze the other tabs sharing the JVM), bridging plain HTTP to the mock servlet environment: `GET *.zul` → page render (on failure, a formatted HTML error page via `ErrorPageRenderer`, **not** raw JSON), `GET /zkau/web/*` → extendlet-processed resource (JS/CSS), `POST /zkau` → a benign stubbed AU response (first paint never issues a real AU round-trip). |
 | `ErrorPageRenderer` | `main/java/.../ErrorPageRenderer.java` | Turns a `RenderError` into a self-contained, theme-aware, HTML-escaped error page shown in the preview pane when a `.zul` fails to render (L-10): phase + message + `file:line`, a collapsed "Show full stack trace" `<details>`, and a prefilled "Report on GitHub" link (error + `--report-*` env + the failing `.zul` source, all budgeted/URL-encoded). The structured `RenderError`/`toJson()` contract is unchanged — this only replaces the browser-facing bytes. |
 | `RenderEngineFactory` / `RenderEngine` | `main/java/.../RenderEngineFactory.java`, `RenderEngine.java` | Picks the servlet-API variant (via `VariantDetector`) and constructs the matching `JavaxRenderEngine` or `JakartaRenderEngine`. |
 | `VariantDetector` | `main/java/.../VariantDetector.java` | Detects javax vs. jakarta by scanning the resolved `DHtmlLayoutServlet.class` bytecode for which servlet package it references (no reflection/loading needed) — tries the canonically-named `zk-<version>.jar` first so an unrelated same-path class elsewhere on a wide classpath can't win by list position. |
-| `JavaxRenderEngine` / `JakartaRenderEngine` | `main/java/.../javax/`, `.../jakarta/` | Drive `DHtmlLayoutServlet`/`DHtmlUpdateServlet` directly via reflection against hand-written mock servlet objects (`mock/MockServletContext`, `MockHttpServletRequest/Response`, `MockHttpSession`, `MockServletConfig`) — one full mock-servlet-API implementation per variant, since the packages (`javax.servlet.*` vs. `jakarta.servlet.*`) don't collide. |
-| `ScopedZkClassLoader` / `IsolatedRuntime` | `main/java/.../ScopedZkClassLoader.java`, `IsolatedRuntime.java` | Builds the classloader a render runs under: the caller-supplied ZK jars plus the isolation-hook classes, child-first for `org.zkoss.*`, parented on the launcher's own classloader (required so reflectively-invoked mock servlet objects share the exact same `Class` identity as the loaded ZK code). |
-| `ErrorMapper` / `RenderError` / `RenderResult` / `RenderPhase` | `main/java/.../ErrorMapper.java`, etc. | Turns a render-time exception into the structured JSON failure contract (AC-6) — see "Isolation & structured failures" below. |
+| `AbstractRenderEngine` | `main/java/.../AbstractRenderEngine.java` | **Template Method** base holding the whole drive logic once — classloader isolation and TCCL save/restore, servlet bootstrap by reflection, the render/resource service calls (each with a *fresh* session), the AU stub, and the `resourceOutcome`/`resourceFailure` diagnostic seams that log a `[zk-preview]` stderr line naming the path when an asset fetch fails. Exposes nine `protected` seams for the parts whose types are tied to a servlet namespace. |
+| `JavaxRenderEngine` / `JakartaRenderEngine` | `main/java/.../javax/`, `.../jakarta/` | Thin subclasses: the nine seam overrides that construct the namespace's mocks and supply the `Class` literals reflection needs. Kept as distinct types so `RenderEngineFactory` and the isolation tests can identify the variant. |
+| `mockcore/*Core` + `javax|jakarta/mock/*` | `main/java/.../mockcore/`, `.../{javax,jakarta}/mock/` | **Bridge**: every servlet-agnostic piece of state and behavior (path-traversal containment, `zk.xml` overlay, header lowercasing, response capture, session attributes) lives once in a JDK-only `*Core` class; each per-namespace mock is a thin adapter `extends *Core implements <servlet interface>`, implementing only the methods whose signature actually mentions a `javax`/`jakarta` type. `MockServletOutputStream` is the one mock with no shared core — it `extends` the per-namespace abstract class. |
+| `ScopedZkClassLoader` / `IsolatedRuntime` | `main/java/.../ScopedZkClassLoader.java`, `IsolatedRuntime.java` | Builds the classloader a render runs under: the caller-supplied ZK jars plus the isolation-hook classes, child-first for `org.zkoss.*`, parented on the launcher's own classloader (required so reflectively-invoked mock servlet objects share the exact same `Class` identity as the loaded ZK code). Child-first definition holds `getClassLoadingLock(name)` and the loader is `registerAsParallelCapable()`, so the concurrent `/zkau/web/*` burst cannot produce a duplicate-`defineClass` `LinkageError`. |
+| `ErrorMapper` / `RenderError` / `RenderResult` / `RenderPhase` / `ResourceResult` | `main/java/.../ErrorMapper.java`, etc. | Turns a render-time exception into the structured JSON failure contract — see "Isolation & structured failures" below. |
+| `IsolationMode` / `ForbiddenLoadTracker` | `main/java/.../IsolationMode.java`, `ForbiddenLoadTracker.java` | Test-only levers on the isolation guarantee: `IsolationMode` (`-Dzkpreview.isolation=false`) turns the hooks off to prove the hook-less baseline genuinely fails, and `ForbiddenLoadTracker` records attempted loads under a forbidden package prefix as a second, independent proof. **Both are inert in production** — `Main` passes no tracker; the real guarantee is the classpath boundary plus the `UiFactory` hook. |
 
 ### How it works
 1. `plugin.xml` registers `ZulPreviewFileEditorProvider` as a `fileEditorProvider`.
@@ -261,8 +272,9 @@ built jar into the plugin distribution at `<plugin>/lib/zk-preview-launcher.jar`
    `GeneralCommandLine`/`KillableProcessHandler` if none exists yet.
 4. Once the helper JVM reports its port, the preview pane's `JBCefBrowser` loads
    `http://localhost:<port>/<path-to-zul>` directly — the embedded browser renders
-   whatever the launcher's `PreviewHttpServer` returns (real HTML on success, a
-   structured JSON body on failure, since the browser has no special-cased error UI in v1).
+   whatever the launcher's `PreviewHttpServer` returns: real HTML on success, or the
+   `ErrorPageRenderer` page (phase, message, `file:line`, collapsible stack trace and a
+   prefilled GitHub report) on failure.
 5. Saving the file triggers a VFS content-change event, debounced then coalesced into
    a browser reload of the same URL.
 6. Closing the tab disposes the editor's own resources (browser, listeners); the shared
@@ -275,7 +287,7 @@ converter/validator classes are never loaded, not even to fail loudly** — rest
 things, not on a restricted classpath (an early design considered a ZK-jars-only
 classpath allowlist; it was abandoned because ZK's own transitive deps, e.g.
 `slf4j-api`, aren't ZK-prefixed and would starve the launcher's own bootstrap — see
-`ZkClasspathFilter`'s javadoc and `tasks/zul-preview/PLAN.md`'s D1):
+`ZkClasspathFilter`'s javadoc):
 
 1. `ScopedZkClassLoader` — the isolation-hook classes and the caller-supplied ZK jars
    are the *only* jars on the classloader that renders the page; a user project's own
@@ -295,6 +307,13 @@ classpath allowlist; it was abandoned because ZK's own transitive deps, e.g.
      ZK's own compiler didn't recognize it as annotation syntax — and substitutes a
      synthesized empty page instead of delegating to a real file lookup, matching real
      ZK's "the apply contributes nothing" outcome instead of throwing "Page not found".
+3. `PlaceholderInjector` (same `hooks` sourceSet) makes that isolation *legible* rather
+   than blank: post-composition it writes each unresolvable binding's expression text into
+   the component and appends a dimmed-italic style (merged onto any existing inline style,
+   so a styled bound label doesn't render as undimmed literal content), and synthesizes a
+   few placeholder rows/nodes for model-bound grids, listboxes and trees so they keep
+   their real geometry. A flag attribute prevents double-injection where nested composer
+   subtrees overlap.
 
 When rendering does fail (parse errors, missing zscript classes, invalid component
 hierarchies, ...), `ErrorMapper.map(zulPath, throwable)` turns the exception chain into
@@ -313,25 +332,31 @@ document (e.g. "Unsupported parent for row" from placing a `<row>` outside a `<r
 `<grid>` ancestor). `line`/`column` are best-effort: populated only when the failing
 layer's own exception message reports a position (guaranteed for BeanShell/zscript
 failures; structurally absent for plain `UiException`s like the hierarchy case above —
-there is nothing in that exception chain to recover a line from). The full JSON schema
-and field-by-field semantics are documented as the stage-2 ("Fail-Render reporting")
-integration contract in `tasks/zul-preview/stage2-hook.md`; v1 ships no consumer of it.
+there is nothing in that exception chain to recover a line from). `ErrorPageRenderer` is
+the in-product consumer of this contract; the JSON itself stays the stable integration
+surface for any future consumer.
 
-### v1 limitations (honest, by design)
+### Limitations (honest, by design)
 - **First paint only**: no AU (asynchronous update) round-trip is driven — the launcher
   stubs `POST /zkau` with a benign empty response. Client-side interactions that require
   a server round-trip (e.g. a button's `onClick` reaching a real Java handler) are not
   simulated.
 - **No user-class fidelity**: ViewModels/Composers/converters/validators are never
-  loaded, so MVVM-bound values always render empty/placeholder rather than their real
+  loaded, so MVVM-bound values always render as placeholders rather than their real
   runtime values — this is intentional (the isolation guarantee), not a fidelity bug to
   fix later.
 - **JCEF required for the embedded browser render**: if `JBCefApp.isSupported()` is
-  false (e.g. some remote-dev/headless/alternative-JDK IDE runtimes), the preview pane
-  shows an explanatory message instead of a live render; there is no non-JCEF fallback
-  renderer in v1.
+  false (e.g. some remote-dev/headless/alternative-JDK IDE runtimes), the pane shows the
+  diagnosed reason plus an "open in external browser" fallback; there is no in-IDE
+  non-JCEF renderer.
 - **No ZK jars on the classpath**: if the previewed file's module has no ZK dependency
-  at all, the preview pane explains this (R7) rather than attempting a render.
+  at all — or has one whose jars aren't on disk — the preview pane explains which of the
+  two it is rather than attempting a render.
+- **Refresh on save**, not on keystroke; one idle helper JVM per `(docroot, classpath)`
+  pair until the project closes.
+
+The itemized limitation list (L-1 … L-14) and the still-open review findings live in
+[zul_preview_spec.md](zul_preview_spec.md) §4 and §5.
 
 ---
 
