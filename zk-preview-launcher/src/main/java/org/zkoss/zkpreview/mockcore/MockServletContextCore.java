@@ -79,7 +79,16 @@ public class MockServletContextCore {
     }
 
     public void setAttribute(String name, Object object) {
-        attributes.put(name, object);
+        // A null value means "remove" per the servlet spec, and ZK addons depend on that: zkcharts'
+        // WebAppInit stores its license code -- null when there is none -- through
+        // WebApp.setAttribute, which SimpleWebApp forwards here. Putting it into the backing
+        // ConcurrentHashMap instead threw an NPE out of invokeWebAppInits and killed the launcher
+        // before it bound a port, so any project with zkcharts on its classpath could not preview.
+        if (object == null) {
+            attributes.remove(name);
+        } else {
+            attributes.put(name, object);
+        }
     }
 
     public void removeAttribute(String name) {
