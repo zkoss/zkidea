@@ -23,6 +23,15 @@ public final class ErrorMapper {
      * literal java.lang.ClassNotFoundException in the throwable chain -- see fixture (f), AC-6. */
     private static final Pattern MISSING_CLASS_IN_MESSAGE =
             Pattern.compile("[Cc]lass:?\\s+([\\w.$]+)\\s+not found in namespace");
+    /**
+     * ZK's {@code DefinitionNotFoundException} for an element no loaded language defines, e.g.
+     * {@code "Component definition not found: ckeditor in [LanguageDefinition: xul/html]"}. Matched
+     * on the message rather than the exception type because the same type also reports a missing
+     * <em>language</em> ("Language not found: ..."), which is a different problem with a different
+     * fix; the "in [LanguageDefinition" tail is what makes this specifically the component case.
+     */
+    private static final Pattern UNKNOWN_COMPONENT_IN_MESSAGE =
+            Pattern.compile("Component definition not found:\\s+(?:class\\s+)?([^\\s\\]]+)\\s+in\\s+\\[LanguageDefinition");
 
     private ErrorMapper() {
     }
@@ -31,7 +40,9 @@ public final class ErrorMapper {
         List<Throwable> chain = chainOf(t);
 
         Throwable classNotFound = findByType(chain, "java.lang.ClassNotFoundException");
-        String missingClassInMessage = classNotFound == null ? findMissingClassInMessage(chain) : null;
+        String missingClassInMessage =
+                classNotFound == null ? findFirstGroup(chain, MISSING_CLASS_IN_MESSAGE) : null;
+        String unknownComponent = findFirstGroup(chain, UNKNOWN_COMPONENT_IN_MESSAGE);
         Integer[] pos = findPosition(chain);
 
         RenderPhase phase;
@@ -42,6 +53,18 @@ public final class ErrorMapper {
         } else if (missingClassInMessage != null) {
             phase = RenderPhase.COMPOSE;
             message = "Missing class: " + missingClassInMessage + " (" + summarize(chain) + ")";
+        } else if (unknownComponent != null) {
+            // Checked before the parse/UiException branches: those would report ZK's own wording,
+            // which blames the ZUL and sends the reader looking for a typo. The far more common
+            // cause is a ZK add-on jar (ckez, calendar, pivottable, zkcharts, ...) that is not on
+            // the module's runtime classpath -- a commented-out or unsynced dependency -- and the
+            // preview hands the launcher every jar the module resolves, so the classpath is where
+            // the fix is. ZK's own text is kept in the summary tail.
+            phase = RenderPhase.PARSE;
+            message = "Unknown component <" + unknownComponent + ">: no ZK jar on this module's"
+                    + " classpath defines it. Add the ZK add-on that provides <" + unknownComponent
+                    + "> and re-import the build, or check the element name."
+                    + " (" + summarize(chain) + ")";
         } else if (looksLikeParseError(chain)) {
             phase = RenderPhase.PARSE;
             message = summarize(chain);
@@ -84,11 +107,12 @@ public final class ErrorMapper {
         return null;
     }
 
-    private static String findMissingClassInMessage(List<Throwable> chain) {
+    /** First capture group of {@code pattern} across the chain's messages, or null if none matches. */
+    private static String findFirstGroup(List<Throwable> chain, Pattern pattern) {
         for (Throwable t : chain) {
             String msg = t.getMessage();
             if (msg == null) continue;
-            Matcher m = MISSING_CLASS_IN_MESSAGE.matcher(msg);
+            Matcher m = pattern.matcher(msg);
             if (m.find()) return m.group(1);
         }
         return null;
