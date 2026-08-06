@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- No unit on width/height: org.zkoss.chart.Charts.setWidth takes a number, unlike every ZK
+     core component, so width="600px" throws NumberFormatException. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <charts id="c" type="pie"/>
+</zk>

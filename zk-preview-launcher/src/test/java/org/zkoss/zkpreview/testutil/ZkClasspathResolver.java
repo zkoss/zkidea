@@ -73,6 +73,24 @@ public final class ZkClasspathResolver {
         }
     }
 
+    /**
+     * Resolves an arbitrary caller-supplied pom. Used by {@link AddonMatrix}, whose rows each
+     * pin their own ZK core alongside an add-on, so neither {@link #resolveJakarta()} nor
+     * {@link #resolveJavax()} (both hard-wired to one ZK version) can serve them. Not
+     * memoized -- the caller owns caching.
+     */
+    public static Resolution resolve(String pomXml) {
+        try {
+            Path pom = Files.createTempFile("zkpreview-resolve-", ".xml");
+            Files.writeString(pom, pomXml, StandardCharsets.UTF_8);
+            Resolution r = runMvnBuildClasspath(pom.toFile(), true);
+            Files.deleteIfExists(pom);
+            return r;
+        } catch (IOException e) {
+            return skip("Could not write pom: " + e);
+        }
+    }
+
     private static Resolution runMvnBuildClasspath(File pom, boolean online) {
         File mvn = findMvn();
         if (mvn == null) {
