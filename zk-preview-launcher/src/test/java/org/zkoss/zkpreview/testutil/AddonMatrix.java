@@ -100,7 +100,12 @@ public final class AddonMatrix {
                     "10.3.0.1-jakarta", true, "/addons/keikai.zul", "zssex.Spreadsheet", "zssex"),
             // Keikai's jakarta line starts at 5.13.0, so 5.12.0 is javax-only.
             new Row("keikai-ex-5.12.0-zk9.6.2-javax", "io.keikai", "keikai-ex", "5.12.0",
-                    "9.6.2", false, "/addons/keikai.zul", "zssex.Spreadsheet", "zssex"));
+                    "9.6.2", false, "/addons/keikai.zul", "zssex.Spreadsheet", "zssex"),
+            new Row("ckez-4.25.0.1-lts-zk9.6.0.2-javax", "org.zkoss.zkforge", "ckez", "4.25.0.1-lts",
+                    "9.6.0.2", false, "/addons/ckeditor.zul", "ckez.CKeditor", "ckez"),
+            new Row("ckez-4.25.0.1-lts-jakarta-zk10.1.0-jakarta", "org.zkoss.zkforge", "ckez",
+                    "4.25.0.1-lts-jakarta", "10.1.0-jakarta", true, "/addons/ckeditor.zul",
+                    "ckez.CKeditor", "ckez"));
 
     public static Stream<Row> rows() {
         return ROWS.stream();
