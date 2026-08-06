@@ -11,7 +11,9 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.projectRoots.JavaSdk;
 import com.intellij.openapi.projectRoots.JavaSdkType;
+import com.intellij.openapi.projectRoots.JavaSdkVersion;
 import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.roots.OrderEnumerator;
@@ -54,6 +56,12 @@ public final class ZulPreviewServerService implements Disposable {
     private static final Logger LOG = Logger.getInstance(ZulPreviewServerService.class);
     private static final String LAUNCHER_JAR_NAME = "zk-preview-launcher.jar";
     private static final String PLUGIN_ID = "org.zkoss.zkidea";
+    /**
+     * The oldest JVM that can load {@link #LAUNCHER_JAR_NAME}. Must track the launcher module's
+     * {@code targetCompatibility} -- {@code LauncherJvmVersionGateTest} reads the packaged jar's
+     * actual bytecode level and fails if the two drift apart.
+     */
+    static final JavaSdkVersion MINIMUM_LAUNCHER_SDK = JavaSdkVersion.JDK_17;
 
     private final Project project;
     private final Map<String, ManagedPreviewServer> serversByKey = new ConcurrentHashMap<>();
@@ -281,18 +289,47 @@ public final class ZulPreviewServerService implements Disposable {
     private String resolveJavaExecutable() {
         Sdk sdk = ProjectRootManager.getInstance(project).getProjectSdk();
         if (sdk != null && sdk.getSdkType() instanceof JavaSdkType) {
-            String exe = ((JavaSdkType) sdk.getSdkType()).getVMExecutablePath(sdk);
-            if (exe != null) {
-                return exe;
+            JavaSdkVersion version = JavaSdk.getInstance().getVersion(sdk);
+            if (canRunLauncherJar(version)) {
+                String exe = ((JavaSdkType) sdk.getSdkType()).getVMExecutablePath(sdk);
+                if (exe != null) {
+                    return exe;
+                }
+            } else {
+                LOG.info("Project SDK '" + sdk.getName() + "' (" + version + ") is older than "
+                        + MINIMUM_LAUNCHER_SDK + " and cannot load " + LAUNCHER_JAR_NAME
+                        + "; running the preview helper on the IDE runtime instead");
             }
         }
         // Fallback: the JRE running the IDE itself. There is no JetBrains guidance prescribing
         // which JDK a plugin should launch a helper JVM from; the corroborated precedent is the
         // project SDK via ProjectRootManager.getProjectSdk() + JavaSdkType.getVMExecutablePath()
         // (above), with the IDE's own runtime as the fallback so a project with no configured
-        // SDK still previews.
+        // -- or too old (see canRunLauncherJar) -- SDK still previews.
         return Paths.get(System.getProperty("java.home"), "bin", SystemInfo.isWindows ? "java.exe" : "java")
                 .toString();
+    }
+
+    /**
+     * Whether a project SDK of {@code version} can load {@link #LAUNCHER_JAR_NAME}'s main class.
+     *
+     * <p>The launcher jar is compiled to {@link #MINIMUM_LAUNCHER_SDK} bytecode, so an older project
+     * SDK kills the helper JVM at main-class load with {@code UnsupportedClassVersionError} -- before
+     * it can print a port, which surfaced only as the generic "exited before it reported a port"
+     * card. A {@code null} version (an SDK whose version string {@code JavaSdk#getVersion} cannot
+     * parse) is treated as too old: unknown is not worth gambling a hard crash on.
+     *
+     * <p>Falling back costs nothing in fidelity. The helper JVM never receives the module's compiled
+     * output on {@code --classpath} (see {@link #resolveTarget}) -- only ZK library jars and resource
+     * roots -- so no user bytecode runs in it, and the IDE's own runtime is at least Java 17 for
+     * every build this plugin supports ({@code sinceBuild} 233.2 / IntelliJ 2023.3). Matching the
+     * project's JDK is a preference, not a requirement, and this keeps it whenever it is viable.
+     *
+     * <p>Package-visible and platform-free (it touches only the version enum) so
+     * {@code LauncherJvmVersionGateTest} can exercise it without an {@code Application}.
+     */
+    static boolean canRunLauncherJar(JavaSdkVersion version) {
+        return version != null && version.isAtLeast(MINIMUM_LAUNCHER_SDK);
     }
 
     private Path resolveLauncherJar() {
