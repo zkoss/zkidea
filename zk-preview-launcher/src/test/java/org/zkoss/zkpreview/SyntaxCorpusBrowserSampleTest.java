@@ -17,8 +17,8 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * P3.4 deeper-oracle sample (layer 2 of the verification model in
- * PLAN-P3-syntax-corpus.md): drive a REAL headless browser (Playwright/Chromium) against a
+ * Deeper-oracle sample: where {@link ZulSyntaxCorpusTest} asserts on the served HTML string,
+ * this drives a REAL headless browser (Playwright/Chromium) against a
  * representative handful of {@link ZulSyntaxCorpusTest} fixtures and assert the marker appears in
  * the <em>live DOM</em> -- i.e. the ZK client actually instantiated the widgets from the served
  * HTML, not merely that the server emitted the marker as a string.

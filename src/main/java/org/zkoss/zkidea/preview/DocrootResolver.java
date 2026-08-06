@@ -32,7 +32,7 @@ public final class DocrootResolver {
 
     /**
      * Which of the rules above produced a docroot. Reported in a preview failure's GitHub issue
-     * (tasks/preview-report-environment-analysis.md §3b): the branch taken explains most
+     * (doc/zul_preview_spec.md §2.7): the branch taken explains most
      * "page not found" / broken-{@code <include>} / {@code ~./}-not-resolving reports, and a
      * fallback branch is itself a strong hint that the project layout wasn't recognised.
      */

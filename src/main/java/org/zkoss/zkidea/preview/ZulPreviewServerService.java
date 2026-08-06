@@ -43,12 +43,11 @@ import java.util.stream.Collectors;
  * <p><b>Server lifetime policy</b> -- one helper JVM per distinct
  * {@code (docroot, classpath-signature)} pair, shared by every open preview tab that
  * resolves to that pair, and kept alive for the lifetime of the project session: closing
- * a preview tab only drops that tab's reference, it does not stop the server. This is
- * the simple choice recorded in tasks/zul-preview/PLAN.md's E3 deliverable -- it avoids
- * restart churn when switching between tabs of the same webapp, at the cost of one idle
- * JVM per previewed webapp/classpath combination until the project closes, at which
- * point {@link #dispose()} kills every server this service started (E3-G2: no orphan
- * JVMs left behind).
+ * a preview tab only drops that tab's reference, it does not stop the server. The trade
+ * is deliberate: it avoids restart churn when switching between tabs of the same webapp,
+ * at the cost of one idle JVM per previewed webapp/classpath combination until the project
+ * closes, at which point {@link #dispose()} kills every server this service started, so no
+ * orphan JVMs are left behind (locked by {@code ManagedPreviewServerTeardownTest}).
  */
 public final class ZulPreviewServerService implements Disposable {
 
@@ -68,9 +67,14 @@ public final class ZulPreviewServerService implements Disposable {
     }
 
     /**
-     * Resolves the preview target for {@code zulFile} off the EDT (inside a read
-     * action, per RESEARCH.md U5-F5/F6), ensures a helper JVM backs it, and delivers
-     * the outcome on the EDT via {@code onReady}.
+     * Resolves the preview target for {@code zulFile} off the EDT, ensures a helper JVM
+     * backs it, and delivers the outcome on the EDT via {@code onReady}.
+     *
+     * <p>The resolve must run inside a read action -- it touches the project model
+     * ({@link ProjectFileIndex}/{@link OrderEnumerator}) -- but deliberately <em>not</em>
+     * inside {@code ReadAction.compute()}: a long, non-cancellable read action on a
+     * background thread can block write actions and freeze the UI, which is why the
+     * platform steers this exact case to {@code ReadAction.nonBlocking(...).submit(...)}.
      */
     public void preparePreview(@NotNull VirtualFile zulFile, @NotNull Consumer<PreviewResult> onReady) {
         // Resolve the target AND ensure its helper JVM entirely off the EDT (U1): constructing the
@@ -204,7 +208,7 @@ public final class ZulPreviewServerService implements Disposable {
      */
     private PreviewTarget resolveTarget(VirtualFile zulFile) {
         Module module = ProjectFileIndex.getInstance(project).getModuleForFile(zulFile);
-        // .withoutSdk() (D4, PLAN.md E3 round 3): without it, a live launcher process
+        // .withoutSdk(): without it, a live launcher process spawned by the real IDE
         // was observed with project-SDK pseudo-entries on its classpath (e.g.
         // ".../zulu-24.jdk/Contents/Home!/java.base", a JDK module root) -- the SDK is
         // never something ZK needs handed explicitly, and filterLibraryJars' defensive
@@ -221,11 +225,11 @@ public final class ZulPreviewServerService implements Disposable {
         String zkJarSummary = ZkClasspathFilter.classpathSummary(classpathEntries);
         String buildSystem = BuildSystemDetector.detect(module);
 
-        // ZK presence gate (R7), now three-way (U3): NONE ("add a ZK dependency"),
-        // DECLARED_BUT_MISSING (declared but not on disk -> "re-import/re-sync"), or PRESENT.
+        // ZK presence gate, three-way: NONE ("add a ZK dependency"), DECLARED_BUT_MISSING
+        // (declared but not on disk -> "re-import/re-sync"), or PRESENT.
         // Only PRESENT proceeds to a launcher. The actual handoff classpath below is deliberately
-        // wider than just ZK jars (see filterLibraryJars' javadoc / PLAN.md D1): ZK's own runtime
-        // deps (e.g. slf4j-api) are not ZK-prefixed, so a ZK-only allowlist starves the bootstrap.
+        // wider than just ZK jars (see filterLibraryJars' javadoc): ZK's own runtime deps (e.g.
+        // slf4j-api) are not ZK-prefixed, so a ZK-only allowlist starves the bootstrap.
         ZkClasspathFilter.ZkPresence presence = ZkClasspathFilter.detectZkPresence(classpathEntries);
         boolean hasZkJars = presence == ZkClasspathFilter.ZkPresence.PRESENT;
         List<File> libraryJars = hasZkJars
@@ -282,7 +286,11 @@ public final class ZulPreviewServerService implements Disposable {
                 return exe;
             }
         }
-        // Fallback: the JRE running the IDE itself (RESEARCH.md U5).
+        // Fallback: the JRE running the IDE itself. There is no JetBrains guidance prescribing
+        // which JDK a plugin should launch a helper JVM from; the corroborated precedent is the
+        // project SDK via ProjectRootManager.getProjectSdk() + JavaSdkType.getVMExecutablePath()
+        // (above), with the IDE's own runtime as the fallback so a project with no configured
+        // SDK still previews.
         return Paths.get(System.getProperty("java.home"), "bin", SystemInfo.isWindows ? "java.exe" : "java")
                 .toString();
     }

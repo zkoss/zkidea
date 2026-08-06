@@ -16,12 +16,16 @@ import java.util.Locale;
  */
 public final class ZkClasspathFilter {
 
-    // Artifact-id prefixes that identify a ZK framework jar (jars are named
-    // "<artifactId>-<version>[-<variant>].jar", RESEARCH.md U5-F7/F8).
-    // Also covers addon-only jars (a module may depend on an addon without a core
-    // zk-*.jar directly on its own classpath signature, R7 watch item, PLAN.md §8):
-    // zkcharts/zkpivot follow the same "<artifactId>-<version>.jar" convention;
-    // Keikai's are named "keikai-<version>.jar".
+    // Artifact-id prefixes that identify a ZK framework jar. Every released ZK jar follows
+    // the Maven convention "<artifactId>-<version>[-<variant>].jar" (e.g. "zk-9.6.4.jar",
+    // "zul-10.1.0-jakarta.jar"), so a name-prefix match is enough here.
+    // Addon-only jars are included deliberately: a module may depend on an addon without a
+    // core zk-*.jar of its own. zkcharts/zkpivot follow the same convention; Keikai's are
+    // named "keikai-<version>.jar".
+    // Known gap: this list gates only "does this module have any ZK at all", and an addon
+    // whose artifact name falls outside it would be misjudged as "no ZK". The classpath
+    // actually handed to the launcher is unaffected -- filterLibraryJars passes every
+    // library jar regardless of name.
     private static final List<String> ZK_ARTIFACT_PREFIXES = List.of(
             "zk-", "zul-", "zkbind-", "zcommon-", "zweb-", "zel-", "zhtml-",
             "zkmax-", "zkex-", "zuti-", "zkplus-", "zkcharts-", "zkpivot-", "keikai-");
@@ -87,13 +91,20 @@ public final class ZkClasspathFilter {
      * (every resolved runtime dependency, ZK or not) is handed to the preview launcher
      * so it has the full runtime environment ZK actually needs to bootstrap (e.g.
      * ZK's {@code WebManager} requires {@code slf4j-api}, which is not a ZK-prefixed
-     * jar -- see tasks/zul-preview/PLAN.md D1). Isolation from user classes is
-     * guaranteed by the launcher's {@code UiFactory} hook, not by classpath narrowness:
-     * this method's only isolation contract is "never a directory".
+     * jar). Isolation from user classes is guaranteed by the launcher's {@code UiFactory}
+     * hook, not by classpath narrowness: this method's only isolation contract is
+     * "never a directory".
      *
-     * <p>Also drops any entry that isn't an existing regular file (D4, PLAN.md E3
-     * round 3): {@code OrderEnumerator} can hand back project-SDK pseudo-entries such
-     * as {@code .../zulu-24.jdk/Contents/Home!/java.base} (JDK module roots), which are
+     * <p><b>Do not narrow this to ZK-named jars.</b> An earlier version did exactly that
+     * and every preview died at ZK bootstrap with
+     * {@code NoClassDefFoundError: org.slf4j.LoggerFactory} from {@code WebManager.<clinit>}
+     * inside the scoped loader -- the defect that {@link #filterZkJars} now exists only to
+     * gate on ("has this module any ZK?"), never to build a classpath from.
+     *
+     * <p>Also drops any entry that isn't an existing regular file: {@code OrderEnumerator}
+     * can hand back project-SDK pseudo-entries such as
+     * {@code .../zulu-24.jdk/Contents/Home!/java.base} (JDK module roots) -- observed on a
+     * live launcher process before {@code .withoutSdk()} was added upstream -- which are
      * neither directories nor openable jars and would otherwise reach the launcher's
      * {@code --classpath} verbatim.
      */
@@ -144,7 +155,7 @@ public final class ZkClasspathFilter {
      * <p>This is the single most diagnostic fact about a failed render -- it carries the ZK
      * version, CE vs EE, and any missing transitive (the documented {@code zkex}/{@code
      * CometServerPush} failure is exactly a "wrong jar set" failure) -- and used to be absent from
-     * every report (tasks/preview-report-environment-analysis.md §3a).
+     * every report (doc/zul_preview_spec.md §2.7).
      *
      * <p>Deliberate choices: <b>names only</b>, never absolute paths -- those are long and leak the
      * reporter's home directory into a public issue; <b>ZK jars only</b>, because the rest is noise

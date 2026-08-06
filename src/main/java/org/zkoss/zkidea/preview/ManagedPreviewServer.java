@@ -38,8 +38,9 @@ final class ManagedPreviewServer {
         this.handler = new KillableProcessHandler(commandLine) {
             @Override
             protected BaseOutputReader.Options readerOptions() {
-                // lsp4ij precedent (RESEARCH.md U5-F19): a long-lived, mostly-silent
-                // daemon process should not be polled aggressively.
+                // A long-lived, mostly-silent daemon process should not be polled
+                // aggressively -- the same reader-options choice other plugins that manage
+                // long-running local daemons make (lsp4ij, flutter-intellij).
                 return BaseOutputReader.Options.forMostlySilentProcess();
             }
         };

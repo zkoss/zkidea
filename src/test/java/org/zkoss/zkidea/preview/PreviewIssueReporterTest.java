@@ -104,7 +104,7 @@ class PreviewIssueReporterTest {
     // --- The environment block. Reports used to carry only Plugin/IDE/OS/JDK, so nothing about
     //     *how the page was set up to render* reached the issue -- the two hardest documented
     //     failure modes (an unresolved zkex, a ~./ page not found) were undiagnosable from the
-    //     report alone. See tasks/preview-report-environment-analysis.md.
+    //     report alone. See doc/zul_preview_spec.md §2.7.
     //
     //     ORDER AND LABELS ARE A CONTRACT shared with the launcher's own assembler
     //     (Main.reportEnv / ReportEnvTest): the same failure must read identically whichever

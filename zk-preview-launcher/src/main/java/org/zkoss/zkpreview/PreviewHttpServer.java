@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li>{@code GET *.zul} -> page render</li>
  *   <li>{@code GET /zkau/web/*} -> resource (extendlet-processed JS/CSS)</li>
- *   <li>{@code POST /zkau} -> benign AU stub (RESEARCH.md U1 Q3)</li>
+ *   <li>{@code POST /zkau} -> benign AU stub (first paint never issues an AU round-trip)</li>
  * </ul>
  */
 public final class PreviewHttpServer {
@@ -104,11 +104,13 @@ public final class PreviewHttpServer {
                     send(exchange, 200, "text/html;charset=UTF-8",
                             withCanvasBackground(r.getHtml()).getBytes(StandardCharsets.UTF_8));
                 } else {
-                    // L-10 (tasks/stage2-error-pane/PLAN.md): serve a formatted HTML error
-                    // page so the browser shows a readable error, not the raw JSON it used
-                    // to paint verbatim. The structured RenderError (r.getError()/toJson())
-                    // is unchanged and still the place a future programmatic sink would tap
-                    // (a server-side Consumer<RenderError>, see stage2-hook.md).
+                    // Serve a formatted HTML error page so the browser shows a readable error,
+                    // not the raw 500 JSON it used to paint verbatim (a broken .zul is the most
+                    // frequent touchpoint of this feature -- files are broken half the time while
+                    // editing). Changing the wire format is safe because no test asserts the
+                    // HTTP-level body is JSON: the structured RenderError (r.getError()/toJson())
+                    // is unchanged and remains the contract, and the place a future programmatic
+                    // sink would tap (a server-side Consumer<RenderError> passed in here).
                     send(exchange, 500, "text/html;charset=UTF-8",
                             ErrorPageRenderer.render(r.getError(), reportEnv, readZulSource(path))
                                     .getBytes(StandardCharsets.UTF_8));

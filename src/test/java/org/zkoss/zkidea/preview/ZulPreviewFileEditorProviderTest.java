@@ -10,18 +10,24 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase;
 import com.intellij.ui.jcef.JBCefApp;
 
 /**
- * Registration-level test for {@link ZulPreviewFileEditorProvider} -- the automated
- * slice of AC-5 (tasks/zul-preview/PLAN.md §5): opening a {@code .zul} file must offer
- * the ZUL preview provider, and opening {@code zk.xml}/{@code lang-addon.xml}/plain
- * {@code .xml} files (which share the same built-in XML FileType as {@code .zul}, see
+ * Registration-level test for {@link ZulPreviewFileEditorProvider} -- the automated slice
+ * of the preview-UI acceptance criterion: opening a {@code .zul} file must offer the ZUL
+ * preview provider, and opening {@code zk.xml}/{@code lang-addon.xml}/plain {@code .xml}
+ * files (which share the same built-in XML FileType as {@code .zul}, see
  * {@code ZulDomUtil}) must NOT.
  *
- * <p>JCEF is unavailable in headless test mode (RESEARCH.md U4-F12), so this test only
- * exercises provider selection ({@code accept()}/{@code getPolicy()}), not JCEF-backed
- * preview content -- {@link ZulPreviewFileEditor} always falls back to a Swing message
- * panel when {@code JBCefApp.isSupported()} is false, so it is safe to construct
- * headlessly, but the actual rendered/refresh behaviour is covered by the manual script
- * under tasks/zul-preview/manual-qa/AC-5.md instead.
+ * <p>JCEF is never available in a headless test JVM -- {@code JBCefApp.isSupportedImpl()}
+ * reports unsupported when {@code GraphicsEnvironment.isHeadless()} is true (unless the
+ * {@code ide.browser.jcef.headless.enabled} registry key is set), as well as when the
+ * {@code ide.browser.jcef.enabled} toggle is off or the platform libc is unsupported. So
+ * this test only exercises provider selection ({@code accept()}/{@code getPolicy()}), not
+ * JCEF-backed preview content -- {@link ZulPreviewFileEditor} falls back to a Swing message
+ * card when {@code JBCefApp.isSupported()} is false, so it is safe to construct headlessly.
+ *
+ * <p>What no headless test can cover, and is therefore verified by hand in
+ * {@code ./gradlew runIde} against the {@code manual-test/} Maven project: the actual
+ * rendered browser content, save-triggers-refresh, and full helper-process teardown on
+ * project close.
  */
 public class ZulPreviewFileEditorProviderTest extends BasePlatformTestCase {
 
@@ -71,9 +77,8 @@ public class ZulPreviewFileEditorProviderTest extends BasePlatformTestCase {
     /**
      * Exercises {@code createEditor()} itself, not just {@code accept()}. JCEF is
      * unavailable in this headless test JVM, so {@link ZulPreviewFileEditor} must take
-     * its fallback-message-panel branch rather than requiring a real browser -- this is
-     * the "must not require JCEF for registration-level tests" requirement from
-     * tasks/zul-preview.md's E3 deliverable list.
+     * its fallback-message-panel branch rather than requiring a real browser -- registration
+     * -level tests must never depend on JCEF being present.
      */
     public void testCreateEditor_headless_buildsSplitEditorWithFallbackPreview() {
         assertFalse("this test assumes headless test mode has no JCEF", JBCefApp.isSupported());

@@ -10,7 +10,8 @@ import java.nio.file.Paths;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Optional extra smoke coverage (not one of PLAN.md's six canonical gate fixtures):
+ * Optional extra smoke coverage (not one of the six canonical gate fixtures under
+ * {@code src/test/resources/fixtures/}):
  * renders real-world ZUL files from two Maven projects already present in this dev
  * environment, as a broader corpus check beyond the six controlled fixtures.
  * <ul>

@@ -26,7 +26,7 @@ public final class VariantDetector {
     // "zk-9.6.0.2.jar") -- distinct from sibling artifacts like "zkbind-"/"zkmax-"/"zkex-"
     // which have no hyphen directly after "zk". Scanning this candidate first makes
     // detection deterministic and fast even when the caller hands us a much larger
-    // classpath (PLAN.md D2: once the plugin widened its handoff classpath to every
+    // classpath: once the plugin widened its handoff classpath to every
     // runtime library jar, not just ZK-named ones, an unrelated jar that incidentally
     // bundles a class at the same path as DHtmlLayoutServlet -- e.g. a shaded/uber-jar,
     // or a stale duplicate ZK jar -- could otherwise win a first-match-wins scan purely

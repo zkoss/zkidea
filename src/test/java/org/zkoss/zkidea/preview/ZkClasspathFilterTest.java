@@ -40,9 +40,10 @@ class ZkClasspathFilterTest {
 
     @Test
     void recognizesAddonOnlyJarsAsZkJarsForTheR7Gate() {
-        // R7 watch item (tasks/zul-preview/PLAN.md §8): a module that only depends on a
-        // ZK addon (no core zk-*.jar directly on its own classpath signature) must still
-        // pass the "does this module have ZK at all" gate.
+        // A module that only depends on a ZK addon (no core zk-*.jar directly on its own
+        // classpath signature) must still pass the "does this module have ZK at all" gate.
+        // Known gap this test bounds: the gate is a name-prefix list, so an addon named
+        // outside it still reads as "no ZK" (see ZkClasspathFilter's prefix constant).
         assertTrue(ZkClasspathFilter.isZkJar("zkcharts-11.0.0.jar"));
         assertTrue(ZkClasspathFilter.isZkJar("zkpivot-3.1.0.jar"));
         assertTrue(ZkClasspathFilter.isZkJar("keikai-6.0.0.jar"));
@@ -124,10 +125,11 @@ class ZkClasspathFilterTest {
     @Test
     void filterLibraryJarsExcludesSdkPseudoEntriesAndNonexistentPaths() throws IOException {
         File zk = newJar("zk-10.1.0-jakarta.jar");
-        // D4 (tasks/zul-preview/PLAN.md E3 round 3): a live launcher process spawned by
-        // the real IDE showed JDK module pseudo-entries like this on its classpath --
-        // OrderEnumerator included SDK roots. Such an entry is neither a directory nor
-        // an openable regular file, so it must be dropped defensively here too.
+        // Regression guard from a real observation: a live launcher process spawned by the
+        // real IDE showed JDK module pseudo-entries like this on its classpath, because
+        // OrderEnumerator included SDK roots (since fixed at the source with .withoutSdk()).
+        // Such an entry is neither a directory nor an openable regular file, so it must be
+        // dropped defensively here too.
         String sdkPseudoEntry = "/Library/Java/JavaVirtualMachines/zulu-24.jdk/Contents/Home!/java.base";
         String nonexistentPath = tempDir.resolve("does-not-exist.jar").toString();
 
@@ -204,7 +206,7 @@ class ZkClasspathFilterTest {
     }
 
     // --- classpathSummary: the "ZK jars:" line of a GitHub failure report
-    //     (tasks/preview-report-environment-analysis.md §3a -- the resolved ZK jar set is the
+    //     (doc/zul_preview_spec.md §2.7 -- the resolved ZK jar set is the
     //     single most diagnostic fact about a render failure, and used to be invisible).
 
     @Test

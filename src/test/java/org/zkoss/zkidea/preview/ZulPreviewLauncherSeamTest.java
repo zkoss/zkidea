@@ -26,8 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * E3-G1b seam test (PLAN.md "E3 round 2" -- the automated plugin&lt;-&gt;launcher seam test
- * that was missing from round 1). Builds a classpath the exact same way
+ * Plugin&lt;-&gt;launcher seam test. Builds a classpath the exact same way
  * {@link ZulPreviewServerService} does (by calling {@link ZkClasspathFilter}'s real
  * filtering logic on manual-test's real Maven-resolved runtime classpath, including a
  * fake module-output directory the way {@code OrderEnumerator} would report one), then
@@ -81,12 +80,13 @@ class ZulPreviewLauncherSeamTest {
         List<String> entriesAsOrderEnumeratorWouldReportThem = new ArrayList<>(rawClasspath);
         entriesAsOrderEnumeratorWouldReportThem.add(fakeModuleOutputDir.toString());
 
-        // NOTE (round 2 fix): production code (ZulPreviewServerService#resolveTarget)
-        // now calls ZkClasspathFilter.filterLibraryJars -- the SAME call this test makes
-        // -- to build the handoff classpath. Before the fix it called filterZkJars,
-        // which dropped every non-org.zkoss jar (including slf4j-api) and reproduced the
-        // user's exact crash; see tasks/zul-preview/E3-evidence-round2.md for the "before"
-        // run of this same test against filterZkJars.
+        // NOTE: production code (ZulPreviewServerService#resolveTarget) calls
+        // ZkClasspathFilter.filterLibraryJars -- the SAME call this test makes -- to build the
+        // handoff classpath. An earlier version called filterZkJars, which dropped every
+        // non-org.zkoss jar (including slf4j-api). Running this test against filterZkJars
+        // reproduces that shipped crash exactly: NoClassDefFoundError org.slf4j.LoggerFactory
+        // raised from WebManager.<clinit> during the launcher's ZK bootstrap. That is the RED
+        // this test was written against, and re-pointing it at filterZkJars reproduces it.
         List<File> libraryJars = ZkClasspathFilter.filterLibraryJars(entriesAsOrderEnumeratorWouldReportThem);
 
         assertFalse(libraryJars.stream().anyMatch(f -> f.getAbsolutePath().equals(fakeModuleOutputDir.toString())),

@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Locks the {@code --report-*} flags the plugin hands the launcher so the render-error page can
- * describe the render target (tasks/preview-report-environment-analysis.md).
+ * describe the render target (doc/zul_preview_spec.md §2.7).
  *
  * <p>These flag names cross a module boundary that has <b>no shared constant</b>: the plugin emits
  * them here and {@code org.zkoss.zkpreview.Main#reportEnv} reads them by string key on the other

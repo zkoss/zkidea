@@ -9,7 +9,8 @@ import org.zkoss.zk.ui.util.Composer;
 import java.util.regex.Pattern;
 
 /**
- * Registered via zk.xml {@code <system-config><ui-factory-class>} (RESEARCH.md U6).
+ * Registered via zk.xml {@code <system-config><ui-factory-class>} (ZK's documented
+ * customization point; default is {@code org.zkoss.zk.ui.http.SimpleUiFactory}).
  *
  * <p>{@code ComponentInfo.resolveComposer} resolves BOTH an explicit
  * {@code apply="user.X"} AND the auto-applied MVVM composer (the FQCN stored by
@@ -19,16 +20,15 @@ import java.util.regex.Pattern;
  * implementation, which resolves the class name via {@code Page.resolveClass} -- blocks
  * both paths from ever loading a user class, in one hook.
  *
- * <p>Deviation from RESEARCH.md U6's literal recipe: U6 additionally proposed a
- * {@code BindComposer} subclass overriding {@code initViewModel} (via the
- * {@code org.zkoss.bind.defaultComposer.class} library property) to preserve full
- * binder fidelity against a stub ViewModel. Verified via {@code javap} against both
- * zkbind-9.6.0.2.jar and zkbind-10.1.0-jakarta.jar: {@code BindComposer.initViewModel}
- * is a PRIVATE method, not overridable by subclassing. This single {@code UiFactory}
- * hook is therefore the whole isolation mechanism for v1 (see E1-evidence.md).
+ * <p>Design alternative considered and ruled out: a {@code BindComposer} subclass overriding
+ * {@code initViewModel} (installed via the {@code org.zkoss.bind.defaultComposer.class} library
+ * property) would have preserved full binder fidelity against a stub ViewModel. It is not
+ * possible -- {@code javap} against both zkbind-9.6.0.2.jar and zkbind-10.1.0-jakarta.jar shows
+ * {@code BindComposer.initViewModel} is PRIVATE, so it cannot be overridden by subclassing.
+ * This single {@code UiFactory} hook is therefore the whole isolation mechanism.
  *
- * <p>{@link #getPageDefinition} additionally guards D3 (tasks/zul-preview/PLAN.md E3
- * round 3): a shadow element such as {@code <apply templateURI="...">} resolves an
+ * <p>{@link #getPageDefinition} additionally guards a second leak path: a shadow element such
+ * as {@code <apply templateURI="...">} resolves an
  * annotation-valued attribute (e.g. {@code @load(vm.templatePath)}) by handing the
  * raw, unresolved annotation text to {@code Execution.createComponents(uri, ...)} as
  * a literal page path -- either because ZK's compiler never recognized a half-typed

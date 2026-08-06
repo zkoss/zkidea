@@ -14,9 +14,10 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * E4 watch item (tasks/zul-preview/PLAN.md §8): a {@code UiException} thrown while ZK
- * builds the component tree -- i.e. after the ZUML document already parsed successfully
- * -- must classify as {@link RenderPhase#COMPOSE}, not {@link RenderPhase#UNKNOWN}.
+ * A {@code UiException} thrown while ZK builds the component tree -- i.e. after the ZUML
+ * document already parsed successfully -- must classify as {@link RenderPhase#COMPOSE},
+ * not {@link RenderPhase#UNKNOWN} (it used to report UNKNOWN, which told the user nothing
+ * about where their page broke).
  * Fixture (h) ({@code unsupported-parent.zul}, a {@code <row>} directly under
  * {@code <window>}) reproduces the exact "Unsupported parent for row" the user hit via
  * manual-test/scope-var-completion.zul's {@code <apply templateURI="/WEB-INF/template/row.zul">}
@@ -47,7 +48,7 @@ class HierarchyFailureTest {
                     "hierarchy UiException must classify as COMPOSE, not UNKNOWN: " + r.toJson());
             assertTrue(error.getMessage().contains("Unsupported parent for row"),
                     "message must preserve ZK's own diagnostic: " + error.getMessage());
-            // Investigation finding (E4-evidence.md): the real org.zkoss.zk.ui.UiException
+            // Investigation finding: the real org.zkoss.zk.ui.UiException
             // thrown by Row.beforeParentChanged() carries no cause and no line/column in
             // its message -- there is no position info anywhere in the exception chain to
             // recover, so line/column legitimately stay null here (not a mapper defect).

@@ -12,7 +12,7 @@ import java.util.Locale;
  * {@code pom.xml}/{@code build.gradle} and drives everything off IntelliJ's already-resolved
  * project model, so a Maven and a Gradle project with the same dependencies render identically.
  * It earns its line in the report for three other reasons
- * (tasks/preview-report-environment-analysis.md §3e): it says what kind of skeleton project to
+ * (doc/zul_preview_spec.md §2.7): it says what kind of skeleton project to
  * build when reproducing, it distinguishes the hand-configured / not-imported project as its own
  * support category, and Maven's and Gradle's IntelliJ importers genuinely differ in how they
  * expose runtime and provided scope -- which is the next question to ask whenever the reported

@@ -29,12 +29,17 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>The {@code ~./} fixture is served from {@code src/test/resources/web/} so it is on the
  * render classloader's classpath (reachable exactly as a bundled {@code ~./} resource would
  * be in a packaged ZK library). This proves ZK's {@code ~./} <em>mechanism</em> given a
- * classpath resource — which, in the real plugin, holds for {@code ~./} resources bundled in a
- * jar (ZK's own components, addon libs), because the launcher's {@code --classpath} is jars.
- * It does <em>not</em> hold for a user project's own {@code ~./} resources: the plugin excludes
- * module output/resource directories from that classpath by design (class-isolation — see
- * {@code ZkClasspathFilter.filterLibraryJars}), so a user's {@code src/main/resources/web/…}
- * is never passed. That production gap is documented in MANUAL-apply-include.md, not here.
+ * classpath resource, which covers {@code ~./} resources bundled in a jar (ZK's own
+ * components, addon libs).
+ *
+ * <p>A user project's own {@code ~./} pages live in a resource <em>directory</em>, not a jar,
+ * and {@code ZkClasspathFilter.filterLibraryJars} keeps only regular files — so they were
+ * originally never passed to the launcher and failed with "Page not found" in the preview
+ * while rendering fine under a real container. The plugin therefore also hands the module's
+ * <em>resource roots</em> to the render classpath ({@code ZkClasspathFilter.filterResourceRoots});
+ * the module <em>output</em> directory stays excluded, so class isolation is unaffected (a
+ * resource root holds no compiled user classes). That production path has its own coverage in
+ * {@code ClasspathResourceResolutionTest}; this class stays on the ZK mechanism itself.
  */
 class PathResolutionTest {
 

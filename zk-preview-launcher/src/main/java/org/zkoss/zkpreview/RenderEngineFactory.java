@@ -9,8 +9,10 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Programmatic entry point: detects which servlet API a ZK classpath needs
- * (RESEARCH.md R2) and builds the matching {@link RenderEngine}. This is the
+ * Programmatic entry point: detects which servlet API a ZK classpath needs -- ZK 9.x and
+ * earlier are {@code javax.servlet}, ZK 10+ is {@code jakarta.servlet}; both variants are
+ * supported and the choice is always derived from the resolved ZK jars, never configured --
+ * and builds the matching {@link RenderEngine}. This is the
  * "independently callable" rendering core -- no IntelliJ APIs, callable directly
  * from a JUnit test or embedded elsewhere, in addition to the CLI ({@link Main}).
  */

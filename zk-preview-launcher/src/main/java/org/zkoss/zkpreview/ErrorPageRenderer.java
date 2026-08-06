@@ -30,9 +30,12 @@ public final class ErrorPageRenderer {
             + "The full details — the ZUL source, the environment, and the complete stack trace — "
             + "have been copied to your clipboard.\n\n"
             + "**Please paste them below (⌘V / Ctrl+V) before submitting.**\n";
-    /** Above this full-URL length a prefilled GitHub link risks a 414 / silent truncation
-     *  (classic web-server request-line limit is ~8 KB), so we switch to the clipboard
-     *  hand-off. See tasks/error-reporting/URL-LENGTH.md. */
+    /** Above this full-URL length a prefilled GitHub link risks a 414 / silent truncation, so we
+     *  switch to the clipboard hand-off. The classic web-server request-line limit is ~8 KB
+     *  (e.g. Apache {@code LimitRequestLine}), and a measured worst case here -- source and stack
+     *  trace both at their caps -- came out at 8,210 chars, i.e. right at that line. Hence the cap
+     *  below rather than a comfortable margin: reports that exceed it lose nothing, because the
+     *  clipboard path carries the full untruncated body. */
     private static final int MAX_URL_LENGTH = 8000;
 
     private ErrorPageRenderer() {

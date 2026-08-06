@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * change how the preview resolves ZK (the plugin reads IntelliJ's resolved model, never
  * {@code pom.xml}/{@code build.gradle}), but it is what tells us how to reproduce a reported
  * failure and whether the project was imported at all -- see
- * tasks/preview-report-environment-analysis.md §3e. The {@code Module} lookup itself is a thin
+ * doc/zul_preview_spec.md §2.7. The {@code Module} lookup itself is a thin
  * platform wrapper verified in the IDE.
  */
 class BuildSystemDetectorTest {

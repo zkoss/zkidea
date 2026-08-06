@@ -160,7 +160,7 @@ class DocrootResolverTest {
         assertEquals(webRoot, docroot);
     }
 
-    // --- Which rule fired (tasks/preview-report-environment-analysis.md §3b). resolve() returns
+    // --- Which rule fired (doc/zul_preview_spec.md §2.7). resolve() returns
     //     only a Path, discarding the branch it took -- but that branch is what explains most
     //     "page not found" / broken-include reports, so it must be reportable.
 

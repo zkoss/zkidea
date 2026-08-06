@@ -15,7 +15,7 @@ import java.util.jar.JarOutputStream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * D2 regression (PLAN.md "E3 round 2"): {@link VariantDetector} must deterministically
+ * Regression guard: {@link VariantDetector} must deterministically
  * identify the ZK core jar's servlet-API variant even when the classpath handed to it
  * also contains an unrelated jar that happens to bundle a class at the exact same fully
  * qualified path as ZK's own {@code DHtmlLayoutServlet} (e.g. a shaded/uber-jar

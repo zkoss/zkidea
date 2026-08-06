@@ -14,6 +14,10 @@ public interface RenderEngine extends Closeable {
     /** @param pathInfo the part of the URL after the {@code /zkau} prefix, e.g. {@code "/web/foo/js/zk/zk.wpd"} */
     ResourceResult resource(String pathInfo);
 
-    /** Benign stub for the AU (async-update) POST channel; first paint never needs it (RESEARCH.md U1 Q3). */
+    /** Benign stub for the AU (async-update) POST channel. First paint never needs it: the initial
+     *  response embeds the whole widget tree in its {@code zkmx([...])} bootstrap, so the client
+     *  builds the DOM from that plus the {@code /zkau/web/*} resources alone -- the AU channel only
+     *  carries post-load interactions. (Note {@code /zkau/web/*} GET resources are NOT optional:
+     *  without them nothing paints at all.) */
     byte[] auStub();
 }

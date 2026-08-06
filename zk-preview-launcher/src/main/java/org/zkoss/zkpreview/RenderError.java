@@ -1,11 +1,13 @@
 package org.zkoss.zkpreview;
 
 /**
- * Structured render failure (AC-6). {@code message} must contain the offending
- * fully-qualified class name when a missing class is the cause. {@code zulFile}/
- * {@code line}/{@code column} are best-effort: populated only when the failing
- * layer reports position info (guaranteed for BindComposer-path errors, per
- * RESEARCH.md U7-F11 -- not all failure modes carry positional data).
+ * Structured render failure. {@code message} must contain the offending fully-qualified
+ * class name when a missing class is the cause. {@code zulFile}/{@code line}/{@code column}
+ * are best-effort: they are populated only when the failing layer reports a position in its
+ * own exception -- guaranteed for BeanShell/{@code <zscript>} failures, and structurally
+ * absent for a component-hierarchy {@code UiException} (e.g. "Unsupported parent for row"),
+ * whose chain carries no cause and no position-shaped message at all. A null line there is
+ * therefore correct, not a mapper defect.
  */
 public final class RenderError {
     private final RenderPhase phase;

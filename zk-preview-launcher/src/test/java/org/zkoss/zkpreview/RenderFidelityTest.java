@@ -14,10 +14,14 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * E1-G1 / AC-3: with isolation hooks ON (default), fixtures (a)-(e) all render
- * SUCCESS, for both servlet-API variants. Markers below were captured once from
- * a real render (see tasks/zul-preview/E1-evidence.md) and hard-coded, per
- * RESEARCH.md U7's own methodology -- not guessed.
+ * With the isolation hooks ON (default), the gate fixtures (a)-(e) must all render SUCCESS,
+ * on both servlet-API variants.
+ *
+ * <p>The markers below are not guessed: each was captured once from a real render against
+ * real ZK jars and then hard-coded, so they are ZK's own widget-class and property names
+ * (e.g. {@code zul.wgt.Label} together with {@code value:'Hello ZK'}) rather than a
+ * hand-written approximation of what ZK "should" emit. A marker that stops matching means
+ * ZK's rendered output changed -- which is exactly what this test is for.
  */
 class RenderFidelityTest {
 

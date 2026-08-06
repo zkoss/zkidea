@@ -1,9 +1,12 @@
 package org.zkoss.zkpreview;
 
 /**
- * Toggle for the isolation hooks (RESEARCH.md U6). On by default; off is the
- * "canary mode" used to prove AC-4's baseline (hook-less renders of fixtures
- * referencing missing classes must fail with a classloading exception).
+ * Toggle for the isolation hooks (the no-op {@code UiFactory}/composer chain). On by
+ * default; off is the <b>canary mode</b> the isolation tests use to prove the baseline:
+ * with the hooks disabled, a fixture that names a user Composer/ViewModel must fail with
+ * a {@code ClassNotFoundException} for that exact FQCN in its cause chain -- which is what
+ * makes "the hooks are why nothing loads" a measured claim rather than an assumption.
+ * Production never sets it.
  */
 public final class IsolationMode {
 

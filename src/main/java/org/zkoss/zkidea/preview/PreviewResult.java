@@ -3,7 +3,9 @@ package org.zkoss.zkidea.preview;
 /**
  * Outcome of {@link ZulPreviewServerService#preparePreview}: either a ready server
  * (port + request path) or one of the documented non-fatal states the preview panel
- * must explain to the user (R5/R7 in tasks/zul-preview/PLAN.md).
+ * must explain to the user: the module has no ZK dependency at all, ZK is declared but
+ * its jars are not on disk, or the helper JVM failed to start. Each of these ends in an
+ * explanatory card with a "report this" link -- never a silently blank or stuck pane.
  */
 final class PreviewResult {
 

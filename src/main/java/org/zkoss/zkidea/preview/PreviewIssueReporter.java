@@ -107,7 +107,7 @@ final class PreviewIssueReporter {
      * The environment block including the render target: which build tool imported the module,
      * which docroot rule matched, and which ZK jars resolved. Those three are what actually
      * explain a failed render -- the plugin/IDE/OS/JDK alone never did
-     * (tasks/preview-report-environment-analysis.md). Any fact that could not be determined is
+     * (doc/zul_preview_spec.md §2.7). Any fact that could not be determined is
      * passed as {@code null} and omitted.
      */
     static String environment(String buildSystem, String layout, String zkJars) {

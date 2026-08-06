@@ -14,9 +14,9 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * P3 -- every EL implicit object listed in the ZUML Reference
- * ({@code zuml_ref/implicit_objects__predefinedvariables_.md}), exercised through the production
- * launcher render path on BOTH servlet variants ({@link Variants#both()}).
+ * Every EL implicit object listed in ZK's own ZUML Reference (its
+ * "Implicit Objects / Predefined Variables" chapter), exercised through the production launcher
+ * render path on BOTH servlet variants ({@link Variants#both()}).
  *
  * <p>The single fixture {@code syntax/el-implicit-objects.zul} prints, per object, a unique token
  * immediately followed by {@code ${obj != null}} so the rendered value reads {@code ioXxxtrue} or

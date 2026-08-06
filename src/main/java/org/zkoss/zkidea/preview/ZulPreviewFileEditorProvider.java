@@ -13,11 +13,10 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * Registers the split text+preview editor for {@code .zul} files (see
- * doc/feature_overview.md and tasks/zul-preview/PLAN.md §2 for the surrounding
- * architecture).
+ * doc/feature_overview.md §10 for the surrounding architecture).
  *
- * <p>{@code accept()} is a cheap, PSI-free extension check (Android
- * {@code DesignerEditorProvider} precedent, RESEARCH.md U4-F6) so it never fires for
+ * <p>{@code accept()} is a cheap, PSI-free extension check -- the same shape Android's
+ * {@code DesignerEditorProvider} uses -- so it never fires for
  * {@code zk.xml}/{@code lang-addon.xml}/plain {@code .xml} files, which share the same
  * built-in XML {@link com.intellij.openapi.fileTypes.FileType} as {@code .zul}
  * (see {@link org.zkoss.zkidea.dom.ZulDomUtil}) but do not end in {@code .zul}.

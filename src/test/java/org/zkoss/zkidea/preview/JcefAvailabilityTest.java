@@ -10,10 +10,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * P1 (tasks/zul-preview/PLAN-followups.md): when JCEF is unavailable, tell the user <em>why</em>
- * and how to fix it. This locks the pure reason-diagnosis; the actual editor wiring (the message
- * card + the "Open preview in external browser" link) is JCEF/Swing behaviour verified in runIde
- * (MANUAL-jcef-fallback.md, lesson #1).
+ * When JCEF is unavailable, the pane must tell the user <em>why</em> and how to fix it. This locks
+ * the pure reason-diagnosis; the actual editor wiring (the message card + the "Open preview in
+ * external browser" link) is JCEF/Swing behaviour with no headless seam, verified by hand in
+ * {@code ./gradlew runIde} with {@code -Dide.browser.jcef.enabled=false} to force the unavailable
+ * path (lesson #1: don't claim a Swing/JCEF card works without seeing it).
  *
  * <p>{@code diagnose(jcefEnabledInRegistry, javaVendor)} takes the two probe signals so it stays
  * pure and headless-testable. The two signals JCEF actually depends on: the IDE registry toggle

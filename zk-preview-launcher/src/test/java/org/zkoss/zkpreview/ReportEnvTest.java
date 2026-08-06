@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * ({@link Main#reportEnv}). This is the report path a *render* failure actually takes, and it used
  * to say only which plugin/IDE/OS/JDK were involved -- nothing about how the page was set up to
  * render, which is what a render failure is almost always about
- * (tasks/preview-report-environment-analysis.md).
+ * (doc/zul_preview_spec.md §2.7).
  *
  * <p>The label set and order are a contract shared with the plugin-side assembler
  * ({@code PreviewIssueReporter.renderEnvironment} / {@code PreviewIssueReporterTest}); the two

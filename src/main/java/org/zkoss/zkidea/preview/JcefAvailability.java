@@ -7,7 +7,7 @@ import java.util.Locale;
 /**
  * Explains <em>why</em> the embedded browser (JCEF) is unavailable and how the user can fix it,
  * so the Layout Preview can give targeted guidance instead of one generic "JCEF not supported"
- * message (P1, tasks/zul-preview/PLAN-followups.md).
+ * message.
  *
  * <p>JCEF availability ({@code JBCefApp.isSupported()}) depends on two things a user can actually
  * change: the IDE registry toggle {@code ide.browser.jcef.enabled}, and whether the IDE's boot
@@ -17,7 +17,13 @@ import java.util.Locale;
  * <p>{@link #diagnose(boolean, String)} is pure (it takes those two signals as arguments) so the
  * reason mapping is unit-tested headlessly; {@link #diagnose()} is the thin live probe that reads
  * the registry and the JVM vendor. The resulting card + external-browser link is JCEF/Swing
- * behaviour verified in runIde (MANUAL-jcef-fallback.md).
+ * behaviour with no headless seam; it is verified manually in {@code ./gradlew runIde}, forcing
+ * the unavailable path with {@code -Dide.browser.jcef.enabled=false} (screenshot of the verified
+ * card: {@code doc/jcef-unavailable.png}).
+ *
+ * <p>There is no portable "why is JCEF unsupported" platform API to use instead: JCEF ships with
+ * the JetBrains Runtime rather than the IDE jars, so {@code JBCefApp} is absent from the platform
+ * jars this plugin compiles against. Probing the environment is the deliberate choice.
  */
 final class JcefAvailability {
 

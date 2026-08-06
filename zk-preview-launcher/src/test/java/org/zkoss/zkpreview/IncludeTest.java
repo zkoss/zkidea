@@ -13,11 +13,17 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * P2 (tasks/zul-preview/PLAN-followups.md): {@code <include>} coverage from zero, on both
- * servlet-API variants. ZK's {@code Include} pulls another page's content in through the
- * servlet container ({@code RequestDispatcher.include}); the preview renders headlessly
- * against mock servlet objects, so this is the test that proves the mock env can (or is
- * taught to) serve an include.
+ * {@code <include>} coverage on both servlet-API variants: the preview renders headlessly
+ * against mock servlet objects, so these cases prove the mock environment can serve an
+ * include at all.
+ *
+ * <p>Finding worth keeping: no mock {@code RequestDispatcher} was needed. Both mock contexts
+ * still return {@code null} from {@code getRequestDispatcher(...)}, yet a static {@code .zul}
+ * include renders its content — ZK resolves a {@code .zul} include as an <em>instant</em>
+ * include (it loads the page definition and builds the child components inline within the same
+ * execution, exactly like {@code <apply>}), so it never routes through
+ * {@code RequestDispatcher.include}. That only matters for non-ZK includes (JSP/servlet),
+ * which are out of scope for a ZUL layout preview.
  *
  * <ul>
  *   <li><b>static</b> literal {@code src} -> the included page's content renders, host still renders;</li>

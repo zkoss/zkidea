@@ -15,8 +15,9 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * P3 (tasks/zul-preview/PLAN-P3-syntax-corpus.md): a data-driven corpus that exercises every
- * ZUML syntax group (ZUML Reference) through the production launcher render path. Each
+ * A data-driven corpus that exercises every ZUML syntax group (per ZK's own ZUML Reference)
+ * through the production launcher render path -- 15 groups, each with several cases, so the
+ * claim "the preview handles ZUML" is measured rather than assumed. Each
  * {@link SyntaxCase} is crossed with both servlet variants ({@link Variants#both()}), so every
  * case runs on javax (ZK 9.6) and jakarta (ZK 10) with one assertion switch.
  *
