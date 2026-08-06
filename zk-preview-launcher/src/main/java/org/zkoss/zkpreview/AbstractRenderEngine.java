@@ -28,6 +28,9 @@ import java.util.Map;
  */
 public abstract class AbstractRenderEngine implements RenderEngine {
 
+    /** ZK's library-wide "how often to re-stat a cached resource" knob (unit: seconds). */
+    private static final String CHECK_PERIOD_PROPERTY = "org.zkoss.util.resource.checkPeriod";
+
     private final ScopedZkClassLoader zkLoader;
     /** Shared mock context created by the subclass; downcast back to the adapter type inside the seams. */
     protected final MockServletContextCore servletContext;
@@ -37,6 +40,7 @@ public abstract class AbstractRenderEngine implements RenderEngine {
     private final Method updateServiceMethod;
 
     protected AbstractRenderEngine(List<File> zkJars, Path webappDir, ForbiddenLoadTracker forbiddenLoadTracker) {
+        alwaysRecheckSourcesOnDisk();
         this.zkLoader = IsolatedRuntime.buildZkClassLoader(zkJars, getClass().getClassLoader(),
                 forbiddenLoadTracker);
         this.servletContext = createServletContext(webappDir);
@@ -65,6 +69,27 @@ public abstract class AbstractRenderEngine implements RenderEngine {
             throw new IllegalStateException("Failed to bootstrap the ZK mock webapp", e);
         } finally {
             Thread.currentThread().setContextClassLoader(prev);
+        }
+    }
+
+    /**
+     * Makes ZK re-stat a cached page definition on every request instead of trusting it for the
+     * next 5 seconds ({@code ResourceCache}'s default check period).
+     *
+     * <p>Server-side staleness is invisible in a real webapp -- the user just hits reload -- but
+     * fatal here, because the preview pane reloads only on save (AC-5): an edit saved inside the
+     * window is answered from the cache, and no further event ever arrives to correct the pane.
+     * The failure is also perfectly camouflaged, since a page whose parse threw is never cached:
+     * fixing a broken ZUL always refreshes, and it is the <em>next</em> edit that silently doesn't.
+     *
+     * <p>A non-positive value disables the window (ZK keeps the cache entry but compares
+     * {@code lastModified} every time, so an unchanged file still isn't re-parsed). It cannot be
+     * set through the bundled {@code zk.xml}: {@code <file-check-period>} is parsed as
+     * positive-only. Set only when absent, so an explicit {@code -D} on the CLI still wins.
+     */
+    private static void alwaysRecheckSourcesOnDisk() {
+        if (System.getProperty(CHECK_PERIOD_PROPERTY) == null) {
+            System.setProperty(CHECK_PERIOD_PROPERTY, "-1");
         }
     }
 
