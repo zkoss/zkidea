@@ -231,6 +231,16 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
      * Debounced (via {@code refreshQueue}) reload on save (AC-5): document-change-
      * without-save does not refresh in v1, only VFS content changes (i.e. after the
      * file is written to disk).
+     *
+     * <p>Refreshes via {@code reload()} rather than {@code loadURL(previewUrl)}. The URL never
+     * changes for the life of this editor, so re-loading it is an ordinary same-URL navigation
+     * that Chromium is free to answer out of its own cache -- and did: a live session was found
+     * repainting the pre-edit render from {@code jcef_cache} while the server already had the new
+     * one, and since the pane only refreshes on save, nothing would ever have corrected it. A
+     * reload revalidates the page instead, while still letting the {@code /zkau/web/*} assets come
+     * from cache. The launcher also marks the page {@code no-store} (see {@code PreviewHttpServer});
+     * both ends are fixed because either one alone leaves the pane's correctness resting on
+     * browser-cache heuristics.
      */
     private void installRefreshListener(MergingUpdateQueue refreshQueue) {
         project.getMessageBus().connect(this).subscribe(VirtualFileManager.VFS_CHANGES, new BulkFileListener() {
@@ -241,7 +251,7 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
                         refreshQueue.queue(Update.create("zul-preview-reload", () ->
                                 ApplicationManager.getApplication().invokeLater(() -> {
                                     if (browser != null && previewUrl != null) {
-                                        browser.loadURL(previewUrl);
+                                        browser.getCefBrowser().reload();
                                     }
                                 })));
                         return;

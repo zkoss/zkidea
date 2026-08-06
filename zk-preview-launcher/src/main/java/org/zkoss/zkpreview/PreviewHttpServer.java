@@ -100,6 +100,7 @@ public final class PreviewHttpServer {
             }
             if ("GET".equalsIgnoreCase(method) && path.endsWith(".zul")) {
                 RenderResult r = engine.renderZul(path);
+                noStore(exchange);
                 if (r.isSuccess()) {
                     send(exchange, 200, "text/html;charset=UTF-8",
                             withCanvasBackground(r.getHtml()).getBytes(StandardCharsets.UTF_8));
@@ -167,6 +168,26 @@ public final class PreviewHttpServer {
         }
         int at = m.end();
         return html.substring(0, at) + "<style>html{background:#fff}</style>" + html.substring(at);
+    }
+
+    /**
+     * Marks the rendered {@code .zul} (success page or error page alike) as never-store.
+     *
+     * <p>The response used to carry no cache directives at all -- no {@code Cache-Control}, no
+     * {@code ETag}, no {@code Last-Modified} -- which leaves a browser free to keep the first
+     * render and answer later loads from disk with nothing to revalidate against. That is exactly
+     * what JCEF's Chromium cache did: verified in a live IDE session, the entry under
+     * {@code jcef_cache/Cache/Cache_Data} still held the pre-edit body while this server was
+     * already serving the new one. Because the pane reloads only on save, the stale paint was
+     * permanent -- no later event would have corrected it.
+     *
+     * <p>Scoped to the page on purpose: the {@code /zkau/web/*} assets are ZK's own static JS/CSS,
+     * unchanged for the life of the process, and re-fetching them on every save would make each
+     * refresh needlessly slow.
+     */
+    private static void noStore(HttpExchange exchange) {
+        exchange.getResponseHeaders().set("Cache-Control", "no-store, no-cache, must-revalidate");
+        exchange.getResponseHeaders().set("Pragma", "no-cache");
     }
 
     private static void send(HttpExchange exchange, int status, String contentType, byte[] body) throws IOException {
