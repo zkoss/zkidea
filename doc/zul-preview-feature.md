@@ -131,6 +131,40 @@ instead of just failing:
 
 ---
 
+## Debugging a blank or wrong render
+
+Not every disappointing preview is a *failure* — sometimes the page renders "fine" and your
+component just isn't visible. Right-click inside the preview pane for two tools:
+
+![The preview pane's context menu: Print…, Open DevTools, View Rendered HTML](preview-contextmenu.png)
+
+
+- **View Rendered HTML** — opens the pane's **live DOM** as a read-only editor tab
+  (`<name>-rendered.html`), with the usual highlighting and Ctrl+F. This answers the
+  question a blank pane can't: *is my component missing, or is it there but hidden?* If you
+  find your `<button>` in the dump as a `z-button` div, the problem is CSS/geometry
+  (`visible="false"`, zero height, a collapsed parent), not rendering. If it isn't in the
+  dump at all, it never composed.
+- **Open DevTools** — the full Chromium inspector (Elements, Console, Network). This is what
+  finds the causes the DOM can't show you: a JavaScript error, or a `/zkau/web/*` resource
+  that 404s (without those assets nothing paints at all). Reach for it when the pane is
+  blank *and* the dump is empty.
+
+Two notes on this:
+
+- The dump is the **live DOM**, not the raw HTTP response — deliberately. A ZK page's
+  response body is mostly a `zkmx([…])` bootstrap that the client engine expands into DOM,
+  so the raw bytes would tell you far less than what you can actually see.
+- The browser's own **View Source** entry is gone. It is dead in any embedded Chromium (it
+  tries to open a tab, and the preview pane has no tab strip), so it was removed rather than
+  left there doing nothing. **View Rendered HTML** replaces it.
+
+Each **View Rendered HTML** click replaces the previous dump tab rather than stacking up new
+ones. **Open DevTools** costs nothing until you click it; once opened, its window stays alive
+until you close the preview tab.
+
+---
+
 ## When a page fails to render
 
 A parse error, a missing `<zscript>` class, or an invalid component hierarchy produces a
@@ -219,6 +253,9 @@ design decisions — are tracked in [§5](zul_preview_spec.md) of the same file.
 | Spring Boot jar: *"Failed to bootstrap the ZK mock webapp"* / `NoClassDefFoundError: …zkex…CometServerPush` | An incomplete ZK jar set on the classpath — a ZK EE artifact (`zkex`/`zkmax`) didn't resolve | Ensure your build declares **all** the ZK repositories it needs (CE + EE-eval + EE) so `zkmax`'s transitive `zkex` resolves, then reimport. |
 | `~./page.zul`: *Page not found* in preview though it runs under a server | The resource directory holding `web/` wasn't a recognized resource root | Mark `src/main/resources` as a resource root and reimport so it's on the render classpath. *(handled automatically since 1.0.0 for standard layouts)* |
 | Preview didn't update | You haven't saved, or the file is on an unrecognized layout | Save the file; check the docroot table above. |
+| Pane is blank, but no error page | The page composed but painted nothing visible, or a client-side asset failed | Right-click ▸ **View Rendered HTML** to see whether your component reached the DOM; if the dump is empty too, right-click ▸ **Open DevTools** and check Console/Network. See *Debugging a blank or wrong render* above. |
+| A component is missing from the render | Often `visible="false"`, zero geometry, or a collapsed parent — not a render failure | Right-click ▸ **View Rendered HTML**: if the component *is* in the dump, it rendered and the problem is CSS/layout. |
+| Right-click has no **View Source** | Removed on purpose — it never worked in an embedded browser | Use **View Rendered HTML**, which shows the live DOM (more useful for ZK than the raw response). |
 
 ---
 

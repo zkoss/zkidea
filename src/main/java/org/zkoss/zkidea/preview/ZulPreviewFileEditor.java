@@ -5,6 +5,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.fileEditor.FileEditor;
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.FileEditorState;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
@@ -14,6 +15,7 @@ import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileContentChangeEvent;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
+import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.ui.EditorNotificationPanel;
 import com.intellij.ui.components.ActionLink;
 import com.intellij.ui.components.JBScrollPane;
@@ -84,6 +86,8 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
      * attempt, for the GitHub report links. Null until a target resolves -- the reporter then
      * falls back to the plain plugin/IDE/OS/JDK block. */
     private volatile String reportEnvironment;
+    /** The tab holding the last "View Rendered HTML" dump, closed before a new one opens. */
+    private LightVirtualFile renderedHtmlDump;
 
     ZulPreviewFileEditor(@NotNull Project project, @NotNull VirtualFile file) {
         this.project = project;
@@ -134,9 +138,19 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
                 if (jcefDiagnosis != null) {
                     showExternalBrowserFallback(jcefDiagnosis, previewUrl);
                 } else {
-                    browser = new JBCefBrowser(previewUrl);
+                    // setEnableOpenDevToolsMenuItem: adds IntelliJ's "Open DevTools" entry to the
+                    // context menu. For "the preview is blank" it is the only thing that shows the
+                    // actual cause -- a JS error, or a 404 on a /zkau/web/* resource -- which no
+                    // amount of source-reading reveals. It costs nothing until clicked; clicking it
+                    // spawns a second (DevTools frontend) browser in a dialog, parented to this
+                    // browser's Disposer, so it is torn down with the tab.
+                    browser = JBCefBrowser.createBuilder()
+                            .setUrl(previewUrl)
+                            .setEnableOpenDevToolsMenuItem(true)
+                            .build();
                     Disposer.register(this, browser);
                     installExternalLinkHandler(browser);
+                    installSourceViewer(browser);
                     component.add(wrapWithHint(browser.getComponent()), CARD_BROWSER);
                     cardLayout.show(component, CARD_BROWSER);
                 }
@@ -198,6 +212,40 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
                 return false;
             }
         }, browser.getCefBrowser());
+    }
+
+    /**
+     * Replaces CEF's dead built-in "View Source" item with one that works -- see
+     * {@link PreviewContextMenu} for why the built-in one silently does nothing here.
+     *
+     * <p>{@code getSource} calls the visitor back on a CEF thread, so the hop to the EDT happens
+     * here rather than inside the handler.
+     */
+    private void installSourceViewer(JBCefBrowser browser) {
+        browser.getJBCefClient().addContextMenuHandler(
+                new PreviewContextMenu(html -> ApplicationManager.getApplication().invokeLater(
+                        () -> showRenderedHtml(html))),
+                browser.getCefBrowser());
+    }
+
+    /**
+     * Opens the render's live DOM markup as a read-only editor tab. An editor rather than a dialog
+     * because the dump can be megabytes on one line -- which a {@code JTextArea} lays out very
+     * badly -- and because it gets HTML highlighting and Ctrl+F for free. The previous dump is
+     * closed first so repeated invocations don't pile up identically-named tabs.
+     */
+    private void showRenderedHtml(String html) {
+        if (disposed || project.isDisposed()) {
+            return;
+        }
+        FileEditorManager editors = FileEditorManager.getInstance(project);
+        if (renderedHtmlDump != null) {
+            editors.closeFile(renderedHtmlDump);
+        }
+        renderedHtmlDump = new LightVirtualFile(file.getNameWithoutExtension() + "-rendered.html",
+                html != null ? html : "");
+        renderedHtmlDump.setWritable(false);
+        editors.openFile(renderedHtmlDump, true);
     }
 
     /**
