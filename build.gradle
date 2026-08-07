@@ -37,6 +37,14 @@ patchPluginXml {
     untilBuild = provider { null }
 }
 
+// With no untilBuild upper bound, the verifier is the only thing that catches API breakage
+// in newer IDEs. Verify against the sinceBuild floor and the current releases.
+// (IntelliJ IDEA Community stops at 2025.3 — JetBrains unified the distribution after that,
+// so newer builds are only published under the IU code.)
+runPluginVerifier {
+    ideVersions = ['IC-2023.3', 'IU-2025.3', 'IU-2026.2']
+}
+
 java.sourceCompatibility = JavaVersion.VERSION_17
 java.targetCompatibility = JavaVersion.VERSION_17
 

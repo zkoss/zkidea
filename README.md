@@ -100,14 +100,16 @@ Update version numbers in two locations:
 
 ## 2. Testing and Validation
 ```bash
-# Build the plugin
+# Build the plugin (also runs the tests)
 ./gradlew build
 
-# Run tests
-./gradlew test
-
-# Verify plugin structure and compatibility
+# Verify plugin structure and descriptor
 ./gradlew verifyPlugin
+
+# Check API compatibility against real IDE builds.
+# Required every release: `untilBuild` has no upper bound, so this is the only gate
+# that catches API breakage in newer IDEs. Target builds are set in build.gradle.
+./gradlew runPluginVerifier
 
 # Test locally in IDE
 ./gradlew runIde
@@ -119,7 +121,7 @@ Update version numbers in two locations:
 ./gradlew publishPlugin
 ```
 
-## 5. Post-Release
+## 4. Post-Release
 1. **Create Git Tag**
    ```bash
    git tag v0.1.X
@@ -131,6 +133,12 @@ Update version numbers in two locations:
 3. **Verify Publication**
    - Check plugin appears on [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/7855)
    - Test installation from marketplace
+
+4. **Update the Marketplace Listing Media**
+   - Screenshots and GIFs are *not* part of the plugin ZIP and are not covered by
+     `intellijPublishToken`. Upload them by hand: sign in at
+     [plugins.jetbrains.com/plugin/7855-zk](https://plugins.jetbrains.com/plugin/7855-zk)
+     with the vendor account, then Edit → screenshots/media.
 
 
 # Troubleshooting

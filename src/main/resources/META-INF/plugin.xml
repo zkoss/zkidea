@@ -67,6 +67,13 @@
     ]]></description>
 
      <change-notes><![CDATA[
+      <p>1.0.0</p>
+      <ul>
+          <li>[feature] <b>Layout Preview</b> — a side-by-side preview for <code>.zul</code> files, refreshed on save. Rendered through your project's own ZK jars in an isolated helper process, so no server and no deploy are needed. Covers MVVM binding placeholders, model-bound data components (grid, listbox, tree), <code>&lt;apply&gt;</code>/<code>&lt;include&gt;</code>, ZK add-ons, and Spring Boot jar projects.</li>
+          <li>[feature] A source view in the preview pane, alongside the rendered layout.</li>
+          <li>[feature] A formatted render-error page with a collapsible stack trace and a one-click "Report on GitHub" hand-off that states what the report contains before sending it.</li>
+          <li>[feature] JCEF-unavailable diagnosis with an open-in-external-browser fallback.</li>
+      </ul>
       <p>0.7.3</p>
       <ul>
           <li><a href="https://github.com/zkoss/zkidea/issues/64">#64 Add support for IntelliJ IDEA 2026.2</a> — remove the until-build upper bound so the plugin stays compatible with current and future IntelliJ IDEA releases without a per-version update</li>
