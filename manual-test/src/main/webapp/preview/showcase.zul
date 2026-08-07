@@ -1,0 +1,32 @@
+<window xmlns="http://www.zkoss.org/2005/zul"
+        title="Order Detail" width="480px" border="normal"
+        viewModel="@id('vm') @init('com.example.OrderVM')">
+  <vlayout spacing="12px">
+    <grid width="410px">
+      <columns><column align="right" hflex="min"/><column/></columns>
+      <rows>
+        <row><label value="Order #"/><label value="SO-10231"/></row>
+        <row><label value="Customer"/><textbox value="@bind(vm.customer)"/></row>
+        <row><label value="Status"/><label value="Shipped"/></row>
+      </rows>
+    </grid>
+    <listbox model="@load(vm.items)" height="195px">
+      <listhead>
+        <listheader label="Product"/>
+        <listheader label="Qty" width="100px"/>
+        <listheader label="Price" width="110px"/>
+      </listhead>
+      <template name="model">
+        <listitem>
+          <listcell label="@load(each.product)"/>
+          <listcell label="@load(each.qty)"/>
+          <listcell label="@load(each.price)"/>
+        </listitem>
+      </template>
+    </listbox>
+    <hlayout spacing="8px">
+      <button label="Submit" onClick="@command('submit')"/>
+      <button label="Cancel"/>
+    </hlayout>
+  </vlayout>
+</window>
