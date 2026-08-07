@@ -73,6 +73,26 @@ both:
   `each` / `forEachStatus`); only `event` is `null`, which is correct — no event is dispatched during
   a first-paint render.
 
+### Add-ons
+
+Commercial and community add-ons render in the preview like core components — the add-on's own
+widget markup and its JS/CSS both come through, so the page looks like the real thing rather than an
+unstyled box. Verified against real jars, on both servlet variants:
+
+| Add-on | Versions verified | In the preview |
+|---|---|---|
+| **ZK Charts** | 12.5.0.0 | **Renders**, styled |
+| **ZK Calendar** | 3.2.1 | **Renders**, styled |
+| **Pivottable** | 3.1.0 | **Renders**, styled |
+| **Keikai** | 6.3.0, 5.12.0 | **Renders** — the full spreadsheet widget, no license or server push needed for first paint |
+| **ZK CKEditor (ckez)** | 4.25.0.1-lts | **Renders**, styled |
+
+Add-ons follow the same rules as everything else: **first paint only** (no server round-trips) and
+the add-on jar must be on the module's IntelliJ classpath — a dependency that is commented out or
+unresolved shows up as *"Unknown component"*, not as a broken preview. An add-on version pairing
+that differs from the one it was built against is fine; the matrix deliberately covers mismatched
+pairs. The exact matrix lives in [zul_preview_spec.md §8](zul_preview_spec.md).
+
 ---
 
 ## Supported project layouts
@@ -114,6 +134,11 @@ instead.
 3. **No build tool needed at render time.** The preview never runs `mvn`/`gradle` and never
    reads `pom.xml`/`build.gradle`; it reads only IntelliJ's resolved project model. The
    render helper is bundled inside the plugin.
+4. **No particular project JDK.** The render helper needs Java 17, and it uses your project SDK
+   when that SDK is 17 or newer — otherwise it quietly runs on the IDE's own runtime instead.
+   A project on JDK 8 or 11 previews normally; you do not need to change its SDK, and doing so
+   would not affect what the preview shows. (Your own code never runs in that JVM, so its Java
+   version has no bearing on the render.)
 
 ---
 
@@ -252,6 +277,7 @@ design decisions — are tracked in [§5](zul_preview_spec.md) of the same file.
 | "Preview unavailable" / no browser | JCEF missing or disabled in this IDE runtime | Switch the Boot Java Runtime to a JetBrains Runtime, or enable `ide.browser.jcef.enabled`; meanwhile use the **Open in external browser** link. |
 | Spring Boot jar: *"Failed to bootstrap the ZK mock webapp"* / `NoClassDefFoundError: …zkex…CometServerPush` | An incomplete ZK jar set on the classpath — a ZK EE artifact (`zkex`/`zkmax`) didn't resolve | Ensure your build declares **all** the ZK repositories it needs (CE + EE-eval + EE) so `zkmax`'s transitive `zkex` resolves, then reimport. |
 | `~./page.zul`: *Page not found* in preview though it runs under a server | The resource directory holding `web/` wasn't a recognized resource root | Mark `src/main/resources` as a resource root and reimport so it's on the render classpath. *(handled automatically since 1.0.0 for standard layouts)* |
+| *"Unknown component `<x>`: no ZK jar on this module's classpath defines it"* | The jar that defines the component isn't on the module classpath — most often an add-on dependency that is commented out or failed to resolve | Add/uncomment the add-on dependency (e.g. `org.zkoss.zkforge:ckez` for `<ckeditor>`) and reimport. It is a classpath problem, not a typo in your ZUL. |
 | Preview didn't update | You haven't saved, or the file is on an unrecognized layout | Save the file; check the docroot table above. |
 | Pane is blank, but no error page | The page composed but painted nothing visible, or a client-side asset failed | Right-click ▸ **View Rendered HTML** to see whether your component reached the DOM; if the dump is empty too, right-click ▸ **Open DevTools** and check Console/Network. See *Debugging a blank or wrong render* above. |
 | A component is missing from the render | Often `visible="false"`, zero geometry, or a collapsed parent — not a render failure | Right-click ▸ **View Rendered HTML**: if the component *is* in the dump, it rendered and the problem is CSS/layout. |

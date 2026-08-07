@@ -81,9 +81,24 @@ explanatory message with a "Report on GitHub" link (see FR-19).
   `zk-preview-launcher.jar` process is spawned via `GeneralCommandLine` +
   `KillableProcessHandler`:
   `java -jar zk-preview-launcher.jar --classpath <jars> --webapp <docroot> --port 0 --report-*`.
-  The `java` executable is the **project SDK's** VM, falling back to the **IDE's own JRE**
-  (`java.home`) when the project has no Java SDK. Process creation runs on the pooled executor,
-  never on the EDT. — `ZulPreviewServerService.startServer` / `resolveJavaExecutable`
+  Process creation runs on the pooled executor, never on the EDT.
+  — `ZulPreviewServerService.startServer`
+- **FR-10a (which JVM runs the helper)** The `java` executable is the **project SDK's** VM, but
+  **only when that SDK is JDK 17 or newer** (`MINIMUM_LAUNCHER_SDK`); otherwise — and when the
+  project has no Java SDK at all — it falls back to the **IDE's own JRE** (`java.home`).
+  The gate exists because the launcher jar is **Java 17 bytecode (class file 61.0)**: handed to an
+  older project SDK it dies at main-class load with `UnsupportedClassVersionError`, *before* it can
+  print a port, so the only symptom was the generic "exited before it reported a port" card. Any
+  project whose SDK is below 17 hit this on its first preview regardless of ZUL content.
+  Falling back costs nothing in fidelity — no user bytecode ever runs in the helper (FR-7), so
+  matching the project's JDK was a preference, not a requirement — and it is always viable, because
+  every IDE in the supported range (`sinceBuild` 233.2) runs on JBR 17+.
+  **Maintenance:** the launcher's `targetCompatibility` and `MINIMUM_LAUNCHER_SDK` must move
+  together; `LauncherJvmVersionGateTest` locks that by reading the packaged jar's real
+  `major_version` and asserting it equals `44 + MINIMUM_LAUNCHER_SDK`. Note that *lowering* the
+  launcher's target instead of gating was considered and rejected: it only moves the cliff, since a
+  project on a JDK 8 SDK (still common for ZK 9.x) would break identically.
+  — `resolveJavaExecutable` / `canRunLauncherJar`
 - **FR-11 (sharing)** One helper JVM per `(docroot, classpath-signature)` pair, shared by every
   open preview tab that resolves to the same pair; kept alive for the whole project session.
   Classpath `signature()` = SHA-256 over each jar's path+size+mtime, so a dependency change forces
@@ -131,7 +146,40 @@ explanatory message with a "Report on GitHub" link (see FR-19).
 ### 2.6 Refresh
 - **FR-19** A `MergingUpdateQueue`-debounced (300 ms) `BulkFileListener` reloads the browser on VFS
   **content-change** events, i.e. after the file is **saved to disk**. Unsaved in-editor edits do
-  not refresh.
+  not refresh. The reload is `CefBrowser.reload()`, **not** `loadURL(previewUrl)` — the URL is fixed
+  for the editor's lifetime, so the latter was a same-URL navigation, which Chromium may answer from
+  its own cache (see FR-19a).
+- **FR-19a (a refresh must show the current file — three caches, all defeated)** "Refresh on save
+  only" makes any stale layer *permanent*: nothing later arrives to correct the pane, so every cache
+  between the file on disk and the painted pixels has to be disarmed. Each of the three below
+  reproduces the same symptom on its own — the preview silently keeps showing the previous edit.
+
+  | Layer | Behavior | How it is defeated |
+  |---|---|---|
+  | ZK's page-definition cache (`ResourceCache`) | Re-validates an entry against the file's `lastModified` only after a **check period** (default **5 s**); inside that window it returns cached HTML without touching disk | `AbstractRenderEngine` sets `org.zkoss.util.resource.checkPeriod=-1` during bootstrap, before ZK lazily builds the cache |
+  | The browser's HTTP cache | The rendered page carried no `Cache-Control`/`ETag`/`Last-Modified`, so Chromium replayed its stored copy | `PreviewHttpServer` sends `Cache-Control: no-store, no-cache, must-revalidate` + `Pragma: no-cache` on the rendered page **and** the error page |
+  | Same-URL navigation | `loadURL` on an unchanged URL need not revalidate | `reload()` (FR-19) |
+
+  Three constraints that are easy to undo by accident:
+  - **`checkPeriod` cannot move into the bundled `preview/zk.xml`** — ZK's `ConfigParser` parses
+    `<file-check-period>` as `POSITIVE_ONLY`, so the disabling value is unrepresentable there. It is
+    set only when the property is absent, so an explicit `-D` on the standalone CLI still wins, and
+    it lives in the engine bootstrap rather than `Main` so the CLI, the plugin and the tests behave
+    alike.
+  - **Non-positive disables the *window*, not the cache.** ZK still keeps the entry and still
+    compares `lastModified`; the cost is one `File.lastModified()` stat per request, not a re-parse
+    of an unchanged file.
+  - **`no-store` is scoped to the page.** `/zkau/web/*` stays cacheable — those are ZK's static
+    JS/CSS (a ~1.6 MB `zk.wpd` among them) and re-fetching them on every save would slow every
+    refresh.
+
+  The reason this reads as "the preview works, then randomly stops": `ResourceCache` drops an entry
+  whose load threw, so a page that **failed** to parse is never cached. Fixing a broken ZUL always
+  appears to work — that render is what populates the cache — and it is the *next* edit that
+  silently does not. Anyone editing slower than the check period never sees it at all.
+
+  A stale JCEF cache entry already on disk needs no clearing: entries are keyed by URL and the
+  preview port is new every session, so a restarted IDE cannot hit one.
 
 ### 2.7 Failure reporting
 - **FR-20 (two assemblers, one label contract)** Both report paths emit the same label set in the
@@ -165,6 +213,45 @@ explanatory message with a "Report on GitHub" link (see FR-19).
   **encoded** URL (8000 chars) so dense markup cannot silently break the link; over-long launcher
   reports are handed off via the **clipboard** so nothing is truncated. ZK jar **file names** only —
   never paths, never non-ZK dependencies — and the docroot **kind**, never the docroot path.
+
+### 2.8 In-pane debugging (preview context menu)
+
+- **FR-23 (View Rendered HTML)** The pane's context menu drops CEF's built-in **View Source** entry
+  (`MENU_ID_VIEW_SOURCE`) and adds **"View Rendered HTML"**, which opens the browser's **live DOM**
+  as a read-only `LightVirtualFile` editor tab (`<name>-rendered.html`); each invocation closes the
+  previous dump rather than stacking tabs. — `PreviewContextMenu`, `ZulPreviewFileEditor`
+
+  Three constraints behind that shape:
+  - **CEF's own item is unfixable from plugin code.** It is handled natively below the Java layer
+    and routes into Chromium's open-source-in-a-new-tab path; an embedded browser in an editor split
+    has no tab strip, so the request is dropped silently. `CefBrowser.viewSource()` is the same dead
+    end. Removing it beats leaving a menu item that visibly does nothing.
+  - **The command id must be `MENU_ID_USER_FIRST`, never `MENU_ID_USER_LAST`.** This handler shares
+    the browser's `JBCefClient` with IntelliJ's `DefaultCefContextMenuHandler`, which claims
+    `MENU_ID_USER_LAST` for its DevTools item; colliding would silently shadow FR-24.
+    `PreviewContextMenuTest` pins it.
+  - **The dump is the live DOM by design, not the response bytes.** For a ZK page those differ
+    completely — the response is mostly a `zkmx([…])` bootstrap the client engine expands into DOM —
+    so only the DOM answers the question the feature exists for: *is the component missing, or
+    present but hidden?* The `getSource` visitor fires on a CEF thread, so the EDT hop lives in
+    `ZulPreviewFileEditor`, keeping `PreviewContextMenu` headlessly testable.
+
+  Two smaller choices, both easy to undo by accident:
+  - **An editor tab, not a dialog.** DOM markup can be megabytes on a single line, which `JTextArea`
+    lays out very badly; an editor brings HTML highlighting and Ctrl+F for free.
+  - **`LightVirtualFile` is safe to ship** despite its `com.intellij.testFramework` package — it
+    resolves from `lib/util-8.jar`, a core runtime jar present in every IDE, **not** from
+    `testFramework.jar` (which is not shipped to end users). Verified by scanning the distribution;
+    getting this wrong is a `NoClassDefFoundError` for every user.
+- **FR-24 (Open DevTools)** The browser is built with `setEnableOpenDevToolsMenuItem(true)`, adding
+  IntelliJ's DevTools entry (Elements / Console / Network) — the only thing that shows a JS error or
+  a 404 on a `/zkau/web/*` asset, neither of which any source view reveals. It costs nothing until
+  clicked; clicking spawns a second (DevTools frontend) browser in a `HIDE_ON_CLOSE` dialog, so
+  closing that dialog does not free it — it lives until the preview tab disposes the parent browser.
+  Roughly 100–200 MB RSS while open. No privacy concern: the frontend loads from `devtools://`
+  resources bundled in CEF, with no network access. One known environment caveat — JCEF DevTools has
+  historically been unreliable under **off-screen rendering**, which `JBCefBrowser` takes from the
+  registry key `ide.browser.jcef.osr.enabled`, so it may misbehave on setups that force OSR on.
 
 ---
 
@@ -233,9 +320,14 @@ resolved and is kept here only so the ID does not get reused.
 
 ### 4.4 Known gaps carried from the design record
 - **L-12 Addon-only classpaths.** The ZK-jar *presence* gate (`isZkJar`) recognizes core + known
-  addon prefixes (`zk-`, `zul-`, `zkbind-`, …, `zkcharts-`, `zkpivot-`, `keikai-`); an unusual
-  addon-only jar name outside this list could be misjudged as "no ZK". The handoff classpath is
-  unaffected — it passes *all* library jars.
+  addon prefixes (`zk-`, `zul-`, `zkbind-`, …, `zkcharts-`, `zkpivot-`, `keikai-`); an addon jar
+  outside this list is misjudged as "no ZK". **Three real misses are known**, found while building
+  the add-on matrix (§8): Calendar ships as `calendar-3.2.1.jar` and CKEditor as
+  `ckez-4.25.0.1-lts.jar`, neither matching any prefix, and the listed `zkpivot-` matches nothing —
+  the real Pivottable artifact is `pivottable-3.1.0-Eval.jar`. Consequence is narrow and the fix is
+  a one-line list change: `detectZkPresence` reports `NONE` only for a module whose **only** ZK jar
+  is one of these, and the handoff classpath is unaffected either way — `filterLibraryJars` passes
+  *all* library jars, which is why every affected row in §8 still renders.
 - **L-13 Error position.** `line`/`column` are `null` for component-hierarchy `UiException`s (e.g.
   "Unsupported parent for X") — the exception genuinely carries no position. A ZK structural limit,
   not a plugin bug.
@@ -276,6 +368,19 @@ HTTP server, encoded-length URL cap and the loopback authority check. What follo
 | **R2-MIN10** | The javax mocks' class javadocs still say "Jakarta" (the dedup `sed` was lowercase-only). Contributor-facing only. | `javax/mock/*.java` (5 files) |
 | **M4** (review #1) | `send()` forwards only `Content-Type`; a ZK redirect (`Location`) or conditional-GET header (`ETag`/`Last-Modified`) is silently dropped. | `PreviewHttpServer.send` |
 
+### Carried over from field reports
+
+Open items left behind by shipped bug fixes — the defect itself is fixed, these are the
+"while we were in there" remainders. No review IDs; they came from user reports, not a review pass.
+
+| Finding | Where | Impact |
+|---|---|---|
+| **Single-jar installs fail with the JVM's error, not a diagnosis.** `resolveLauncherJar()` guards only `descriptor == null` (which essentially never happens) and then assumes `getPluginPath()` is a *directory* — its contract is "the plugin directory **or jar file**". For a jar-shaped install it builds a path *inside a file* (`…/zkidea-1.0.0.jar/lib/zk-preview-launcher.jar`) and hands it to `java -jar`, so the first component that notices is the JVM, several layers down: *"Unable to access jarfile …"*. The plugin held every fact needed to say "you installed the wrong artifact". Fix: validate `pluginPath` is a directory and that `lib/zk-preview-launcher.jar` exists, and throw a message naming the `.zip` — it already surfaces on the error card, since `resolveLauncherJar()` runs inside `startGuarded` and `rootMessage` walks to the root cause. | `ZulPreviewServerService.resolveLauncherJar` | The install mistake is easy to make (see §6) and the resulting message points nowhere near the cause. |
+| **`README.md` documents no way to install a locally built plugin** — it covers `runIde`, `publishPlugin` and Marketplace installs only. That gap is what produced the single-jar report above. Fix: a short "install a local build" step naming the `.zip` and warning that `build/libs/*.jar` is a build intermediate. | `README.md` | Documentation. |
+| **`@Tag("addons")` is not acted on by Gradle.** The tag is on `AddonRenderMatrixTest`, but no `addonTest` task exists and the default `test` task excludes nothing, so the matrix runs on every build. The render is cheap (bootstrap 240–390 ms, under 1 s per row); the cost is 11 `mvn dependency:build-classpath` invocations — ~15 s warm, minutes cold, with little sharing across five distinct ZK cores. | `zk-preview-launcher/build.gradle` | Default build is minutes slower than it needs to be, and offline/credential-less machines pay resolution timeouts to reach a skip. |
+| **`setAttribute(name, null)` stores a null instead of removing the entry**, deviating from the servlet spec. This is the same latent shape as the fixed zkcharts NPE (`MockServletContextCore` rejected a null value and killed the launcher before it bound a port). No add-on in §8 trips it. | `MockHttpSessionCore`, `MockHttpServletRequestCore` | Latent; cheap two-line fix behind a mock-boundary unit test. |
+| **A non-daemon `Timer-0` thread survives `RenderEngine.close()` on every ZK 10.x classpath.** Not an add-on effect — plain ZK 10.1.0-jakarta with no add-on leaves the same thread, ZK 9.6.x leaves none. Harmless in production: `Main` blocks on a latch and is killed by process destroy, never asked to exit on its own. Matters only for the "independently callable / embedded" use the factory advertises (cf. R2-MIN9). | ZK core, observed via `RenderEngineFactory` | None in the shipped path. |
+
 ### Deferred by decision
 - **Helper stderr never reaches `idea.log`.** The launcher now logs `/zkau/web/*` failures to
   stderr, but `ManagedPreviewServer` only surfaces its bounded `stderrTail` when the process dies
@@ -312,12 +417,25 @@ HTTP server, encoded-length URL cap and the loopback authority check. What follo
   merged — the two servlet APIs share no supertype — without reflection/proxies or codegen.
   `MockServletOutputStream` is the one mock with no shared core (it `extends` the per-namespace
   abstract class).
-- **Single-jar plugin installs will not be supported.** `build/libs/zkidea-<v>.jar` is a build
-  intermediate: it carries neither the launcher jar nor jsoup, and it is the uninstrumented jar.
-  Making it work would mean embedding and extracting the launcher at runtime while the install
-  stayed broken for other reasons. The supported shape is the distribution zip; the failure should
-  be a clear diagnosis instead. *(That diagnosis is not implemented yet — see
-  [tasks/preview-launcher-jar-path-bug.md](../tasks/preview-launcher-jar-path-bug.md).)*
+- **Single-jar plugin installs will not be supported.** Gradle produces two artifacts and only one
+  is an installable plugin:
+
+  | Path | What it is | Launcher? | jsoup? | Instrumented? |
+  |---|---|---|---|---|
+  | `build/libs/zkidea-<v>.jar` | the plugin's **own classes only** — a build intermediate | no | no | no |
+  | `build/distributions/zkidea-<v>.zip` | the **plugin distribution** (`zkidea/lib/*`) | yes | yes | yes |
+
+  The launcher is added by `prepareSandbox`, which feeds the **zip** — not by the plain `jar` task
+  (FR-13). *Install Plugin from Disk* copies a handed-in jar into `plugins/` as-is, while a zip is
+  unpacked to `plugins/zkidea/lib/…`, so a single-jar install is identifiable on disk and is broken
+  by construction: no render helper, no jsoup for `ZKNews`, and the uninstrumented jar rather than
+  `instrumented-zkidea-<v>.jar`. The preview is merely the first place it shows.
+
+  Making it work would mean embedding the launcher jar inside the plugin jar and extracting it to a
+  temp dir at runtime — and the install would *still* be broken for the other two reasons. A plugin
+  with bundled dependencies is distributed as a zip; that is the supported shape. Fail with a clear
+  diagnosis instead of half-supporting a shape that cannot work. *(The diagnosis itself is still
+  open — see §5, "Carried over from field reports".)*
 - **The two report assemblers stay separate** (§2.7). Each side legitimately owns facts the other
   cannot see, and the launcher's OS/JDK are deliberately the render JVM's. They are kept in step by
   the shared label contract, locked by tests on both sides.
@@ -334,5 +452,108 @@ HTTP server, encoded-length URL cap and the loopback authority check. What follo
 - **Isolation** — `IsolationTest`, `IsolationChildProcessTest` (a real spawned process),
   `CoreIndependenceTest` (the mock cores import no servlet API),
   `ScopedZkClassLoaderConcurrencyTest`.
+- **Add-ons** — `AddonRenderMatrixTest` over `testutil/AddonMatrix` (§8).
+- **Freshness & environment** — `EditReloadFreshnessTest` (the reported three-step edit sequence
+  over real HTTP on both variants), `PreviewCacheHeaderTest` (page and error page are `no-store`, a
+  `/zkau/web/*` asset is not), `LauncherJvmVersionGateTest` (the JDK-17 gate plus the packaged-jar
+  bytecode-level drift check), `PreviewContextMenuTest` (menu surgery and command routing).
 - **Manual fixtures** — `manual-test/` (WAR; `src/main/webapp/preview/**` including the syntax
   corpus and deliberate error cases) and `manual-test-springboot/` (Spring Boot jar layout).
+
+---
+
+## 8. Add-on support
+
+ZK add-ons are the population most likely to break the preview: they register `WebAppInit`
+listeners, ship their own `lang-addon.xml` + WPD/JS/CSS **inside their jars**, and probe for
+licenses — three things the mock container fakes. `AddonRenderMatrixTest` renders each row below
+against the real launcher and asserts three things: the render succeeds, the add-on's **widget
+class** appears in the HTML, and the add-on's own **WPD** serves a non-empty 200 (the "renders
+unstyled" failure mode, invisible to a render-only assertion).
+
+### 8.1 Verified matrix
+
+Versions are **reviewed constants**, never queried live, so a passing suite never depends on what
+got published this morning. All 11 rows render.
+
+| # | Add-on | Coordinates | Add-on version | ZK core | Variant | Widget marker | WPD pkg |
+|---|---|---|---|---|---|---|---|
+| 1 | Charts | `org.zkoss.chart:zkcharts` | 12.5.0.0 | 9.6.0.2 | javax | `chart.Charts` | `chart` |
+| 2 | Charts | `org.zkoss.chart:zkcharts` | 12.5.0.0 | 10.1.0-jakarta | jakarta | `chart.Charts` | `chart` |
+| 3 | Calendar | `org.zkoss.calendar:calendar` | 3.2.1 | 9.6.0.2 | javax | `calendar.CalendarsDefault` | `calendar` |
+| 4 | Calendar | `org.zkoss.calendar:calendar` | 3.2.1 | 10.1.0-jakarta | jakarta | `calendar.CalendarsDefault` | `calendar` |
+| 5 | Pivottable | `org.zkoss.pivot:pivottable` | 3.1.0-Eval | 10.1.0 | javax | `pivot.Pivottable` | `pivot` |
+| 6 | Pivottable | `org.zkoss.pivot:pivottable` | 3.1.0-Eval | 10.1.0-jakarta | jakarta | `pivot.Pivottable` | `pivot` |
+| 7 | Keikai | `io.keikai:keikai-ex` | 6.3.0 | 10.3.0.1 | javax | `zssex.Spreadsheet` | `zssex` |
+| 8 | Keikai | `io.keikai:keikai-ex` | 6.3.0-jakarta | 10.3.0.1-jakarta | jakarta | `zssex.Spreadsheet` | `zssex` |
+| 9 | Keikai | `io.keikai:keikai-ex` | 5.12.0 | 9.6.2 | javax | `zssex.Spreadsheet` | `zssex` |
+| 10 | CKEditor | `org.zkoss.zkforge:ckez` | 4.25.0.1-lts | 9.6.0.2 | javax | `ckez.CKeditor` | `ckez` |
+| 11 | CKEditor | `org.zkoss.zkforge:ckez` | 4.25.0.1-lts-jakarta | 10.1.0-jakarta | jakarta | `ckez.CKeditor` | `ckez` |
+
+**Mismatched pairings are the point, not an accident.** zkcharts 12.5 is built against ZK 9.6.5 and
+renders on ZK 10.1.0-jakarta; pivottable 3.1 is built against ZK 10.0.0 and renders on both 9.6 and
+10.1. Even Keikai — a server-side spreadsheet that a one-shot mock render was expected to be
+structurally unable to host, needing its own servlet mapping, server push and a license — renders
+its full spreadsheet widget tree without any of them.
+
+### 8.2 Facts a maintainer will get wrong from first principles
+
+Each of these was guessed incorrectly before being measured; changing a row without re-checking them
+produces a test that passes for the wrong reason.
+
+- **Every row pins its own ZK core**, so `Variants.both()` (hard-wired to ZK 9.6.0.2 / 10.1.0-jakarta)
+  cannot be reused — required for Keikai, whose variants carry *different version strings*
+  (6.3.0 ↔ 10.3.0.1, `6.3.0-jakarta` ↔ `10.3.0.1-jakarta`), and whose jakarta line only starts at
+  5.13.0, making 5.12.0 javax-only. Calendar's pom declares **no ZK dependency at all**, so the
+  generated pom must supply the core itself.
+- **The Keikai artifact is `keikai-ex`, not `keikai`.** `io.keikai:keikai`'s `lang-addon.xml`
+  declares no components; `<spreadsheet>` (widget `zssex.Spreadsheet`) lives in `keikai-ex`, which is
+  also what real Keikai projects depend on. Plain `keikai` fails all three rows identically with
+  `DefinitionNotFoundException: spreadsheet`.
+- **The asset URL is the dotted *widget* package, not the `<javascript-module name>` and not the
+  jar's directory layout** — `/zkau/web/<hash>/js/<pkg>.wpd`. `calendar.wpd` is 200 while the module
+  name `calendar.calendars.wpd` is 404; `pivot.wpd` is 200 while `pivottable.wpd` is 404. `<hash>` is
+  a per-ZK-build segment scraped from the rendered HTML (`/zkau/web/([^/]+)/`). The probe genuinely
+  discriminates: against the charts classpath, `chart.wpd` → 200 while `charts.wpd`/`zkcharts.wpd` →
+  404.
+- **Widget markers must be alphanumeric** — ZK 10 escapes `-` as `\-` in rendered widget values. All
+  five current markers already are.
+- **`<charts width="600px"/>` throws `NumberFormatException`** — `org.zkoss.chart.Charts.setWidth`
+  takes a number, unlike every ZK core component. The fixture omits the unit.
+- **Repository ids in the generated pom must match the `<server>` ids in `~/.m2/settings.xml`**
+  (`ZK EE`, `Keikai EE`) or the credentialed rows fail to resolve.
+- **Eval jars print a license banner to stdout** announcing a 12-hour uptime cap. It does not break
+  the port handshake — `ManagedPreviewServer` matches `PREVIEW_PORT=(\d+)` with `find()` per stdout
+  chunk — but assertions must target the widget/DOM, never the banner, and Eval artifacts can be
+  re-published under the same coordinates.
+
+### 8.3 Coverage boundaries
+
+- **Credentials.** Only the two Calendar rows resolve from the free repo (`mavensync.zkoss.org/maven2`,
+  GPL). Charts needs ZK EE, the three Keikai rows need Keikai EE, Pivottable comes from ee-eval — all
+  via `~/.m2/settings.xml` credentials that do not exist on CI. Rows are `Assumptions`-gated on
+  resolution, so a machine without creds or network **skips and prints why**, never false-fails; CI
+  coverage is partial by construction.
+- **Reporting.** Gradle's console prints rows as `[1]`…`[11]`, but the row id
+  (`keikai-ex-6.3.0-jakarta-zk10.3.0.1-jakarta`, …) is the `<testcase name>` in the XML and HTML
+  reports, so a failing row is identifiable.
+- **`ForbiddenLoadTracker` is deliberately not asserted here.** It records loads of a
+  caller-supplied forbidden prefix; these fixtures reference no user code, so the assertion would be
+  vacuously true. Isolation is covered by `RenderFidelityTest` and the `Isolation*` tests instead.
+
+### 8.4 What a broken add-on row means
+
+The one add-on defect ever found was the zkcharts NPE (`MockServletContextCore.setAttribute`
+rejecting a null value, killing the launcher before it bound a port) — six of these rows would have
+caught it. Should a future version break a row: smallest-boundary failing test first, minimal fix,
+row goes green. If a row ever becomes **unfixable**, the deliverable changes shape rather than
+disappearing — the preview must *fail well* (a structured `RenderError` naming the add-on and why,
+not a dead launcher) plus a limitation recorded in §4.
+
+A reported failure is not automatically a preview defect. `<ckeditor>` was reported as failing to
+preview with `DefinitionNotFoundException`; the reporter's `pom.xml` had the `ckez` dependency
+commented out, so no jar defining the component was on the module classpath at all. The real defect
+was the **diagnosis** — `ErrorMapper` classified it through the generic `isUiException` branch and
+echoed ZK's wording, which reads as a broken preview or a typo. It now reports "Unknown component
+`<ckeditor>`: no ZK jar on this module's classpath defines it …" at phase `PARSE`, where ZK actually
+raises it, locked by `UnknownComponentDiagnosticTest` (same fixture, ZK core alone).
