@@ -65,11 +65,15 @@ state of the working tree (checked 2026-08-07).
 
 ## 4. Publish
 
-- [ ] `./gradlew publishPlugin` (runs `buildPlugin` first; token already configured).
+- [x] `./gradlew publishPlugin` — **BUILD SUCCESSFUL** (2026-08-07). 1.0.0 uploaded to the
+      JetBrains Marketplace and is in their review queue. Note `signPlugin` was **SKIPPED** —
+      no signing certificate is configured for this project; that is the pre-existing setup,
+      not something this release changed.
 
 ## 5. Post-release
 
-- [ ] `git tag v1.0.0 && git push origin v1.0.0`
+- [x] `git push origin master` — `c7489ce..f6b6e40`.
+- [x] `git tag -a v1.0.0 && git push origin v1.0.0` — tag points at `f6b6e40`.
 - [ ] Create the GitHub release for `v1.0.0` with the same notes as the change-notes entry.
 - [ ] Verify the listing on [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/7855)
       after JetBrains review clears, then install from the marketplace into a clean IDE and
@@ -94,20 +98,39 @@ state of the working tree (checked 2026-08-07).
 
 ---
 
-## Uncommitted at this point
-
-Everything below is edited but **not committed**:
-
-- `src/main/resources/META-INF/plugin.xml` — the 1.0.0 change-notes entry
-- `build.gradle` — `runPluginVerifier { ideVersions = [...] }`
-- `README.md` — release-process fixes
-- `tasks/todo.md` — this file
-
-Also still unpushed from before: `758fe9c`. Commit and push before tagging, or `v1.0.0`
-will point at a commit the remote does not have.
-
----
-
 ## Review
 
-_(fill in after the release)_
+**1.0.0 shipped 2026-08-07.** Published to the marketplace, `master` pushed, `v1.0.0` tagged
+at `f6b6e40`.
+
+Commits that made up the release:
+
+```
+f6b6e40 chore: record the 1.0.0 plugin verifier results
+d07951d chore: prepare the 1.0.0 release
+95012e0 docs: add Layout Preview marketplace screenshot and loop GIF
+758fe9c feat: say what the preview error report sends before it is sent
+```
+
+### What the release process missed, and now catches
+
+- The version had already been bumped to `1.0.0` in `7c921db`, but the matching
+  `<change-notes>` entry was never added — the marketplace "What's new" would have been
+  blank for the biggest release in the plugin's history. The two live in different files and
+  the README lists them as one step, which is how they drifted apart.
+- `runPluginVerifier` was documented in a `build.gradle` comment as the replacement for the
+  `untilBuild` upper bound, but had no `ideVersions`, so it silently only ever checked the
+  compile target. Now pinned to the floor plus the two current releases.
+
+### Follow-ups worth an issue
+
+- **Internal API in the new preview code.** `PluginManagerCore.getPlugin(PluginId)` is
+  `@ApiStatus.Internal` and is called from `ZulPreviewServerService.resolveLauncherJar()`
+  and `PreviewIssueReporter.pluginVersion()`. With no `untilBuild` ceiling, this is the
+  likeliest future break, and `resolveLauncherJar()` failing means Layout Preview cannot
+  start at all.
+- **Deprecated APIs** flagged on 2026.2: `DefaultLiveTemplatesProvider`, `ProcessAdapter`,
+  `ResourceRegistrar.addStdResource(String, String, Class)`,
+  `MavenVersionCompletionContributor`.
+- **No plugin signing.** `signPlugin` is skipped for want of a certificate.
+- **Left untracked on purpose:** `.vscode/`, `doc/potential-ideas.md`.
