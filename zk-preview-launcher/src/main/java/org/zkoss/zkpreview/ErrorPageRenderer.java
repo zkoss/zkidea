@@ -37,6 +37,14 @@ public final class ErrorPageRenderer {
      *  below rather than a comfortable margin: reports that exceed it lose nothing, because the
      *  clipboard path carries the full untruncated body. */
     private static final int MAX_URL_LENGTH = 8000;
+    /** The one-line reminder under the report link (user request). Two jobs: say what the report
+     *  carries, so nobody has to click to find out what they would be sending, and say the click
+     *  only opens a <em>draft</em> — GitHub's own form still stands between it and a filed issue.
+     *  True on both paths below: the direct link pre-fills the draft, the clipboard link fills it
+     *  by paste (the how-to-paste guidance stays in the issue body, out of this pane). */
+    static final String REPORT_HINT =
+            "Opens a GitHub draft with your ZUL source, environment and stack trace — "
+            + "review and edit it before submitting.";
 
     private ErrorPageRenderer() {
     }
@@ -108,7 +116,8 @@ public final class ErrorPageRenderer {
         String directUrl = NEW_ISSUE_URL + "?title=" + enc(title) + "&body=" + enc(body);
         if (directUrl.length() <= MAX_URL_LENGTH) {
             return "<p class=\"report\"><a href=\"" + escape(directUrl)
-                    + "\">Report this issue on GitHub ↗</a></p>\n";
+                    + "\">Report this issue on GitHub ↗</a></p>\n"
+                    + reportHint();
         }
         // Too large to prefill -> the link copies the full body to the clipboard and opens an
         // issue whose body is the paste instruction (the error info rides on the clipboard).
@@ -173,7 +182,12 @@ public final class ErrorPageRenderer {
                 + "' — copy failed; please copy the stack trace above manually';\n"
                 + "});\n"
                 + "})();\n"
-                + "</script>\n";
+                + "</script>\n"
+                + reportHint();
+    }
+
+    private static String reportHint() {
+        return "<p class=\"report-hint\">" + escape(REPORT_HINT) + "</p>\n";
     }
 
     private static String enc(String s) {
@@ -242,6 +256,7 @@ public final class ErrorPageRenderer {
             + ".note{font-size:.82rem;opacity:.72;margin:0 0 .6rem}"
             + ".report{font-size:.84rem;margin:0}.report>a{color:#2563eb;text-decoration:none}"
             + ".report>a:hover{text-decoration:underline}"
+            + ".report-hint{font-size:.76rem;opacity:.65;margin:.25rem 0 0}"
             + "@media(prefers-color-scheme:dark){body{color:#dfe1e5;background:#1e1f22}"
             + ".report>a{color:#6ea8fe}"
             + ".card{background:#2b2d30;border-color:#43454a}.phase{background:#43454a;color:#cfd2d6}"

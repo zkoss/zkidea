@@ -180,6 +180,44 @@ class ErrorPageRendererTest {
                 () -> "the fallback must not truncate -- carrying the full report is the point: " + html);
     }
 
+    // --- the reminder under the report link (user request): before clicking, the reader must
+    // know what rides along and that they still get to edit it. ---
+
+    @Test
+    void reportLink_isFollowedByAnEditableDraftReminder() {
+        String html = ErrorPageRenderer.render(
+                new RenderError(RenderPhase.COMPOSE, "boom", "/a.zul", null, null, "short trace"),
+                "Plugin: ZKIdea 0.8.0", "<zk/>");
+
+        int link = html.indexOf("Report this issue on GitHub");
+        int hint = html.indexOf(ErrorPageRenderer.REPORT_HINT);
+        assertTrue(link >= 0, () -> "the report link must still be there: " + html);
+        assertTrue(hint > link,
+                () -> "the reminder must sit under the report link, not above it: " + html);
+        String lower = ErrorPageRenderer.REPORT_HINT.toLowerCase(Locale.ROOT);
+        assertTrue(lower.contains("stack trace"),
+                () -> "the reminder must say the stack trace is carried: " + ErrorPageRenderer.REPORT_HINT);
+        assertTrue(lower.contains("draft") && lower.contains("submit"),
+                () -> "the reminder must say it is a draft the user submits: " + ErrorPageRenderer.REPORT_HINT);
+    }
+
+    @Test
+    void overlongReport_alsoGetsTheReminder_butStillNotThePasteGuidance() {
+        String huge = "<zk>\n" + "  <label value=\"SRC_MARKER\"/>\n".repeat(1500) + "</zk>";
+        String html = ErrorPageRenderer.render(
+                new RenderError(RenderPhase.PARSE, "bad", "/a.zul", null, null, "trace"),
+                "Plugin: ZKIdea 0.8.0", huge);
+
+        assertTrue(html.contains("id=\"copyReport\""),
+                () -> "precondition: this report must take the clipboard path: " + html);
+        assertTrue(html.contains(ErrorPageRenderer.REPORT_HINT),
+                () -> "the reminder must appear on the clipboard path too: " + html);
+        // Unchanged from before: the "too large / paste it" guidance still belongs in the issue
+        // body, not in the pane -- the reminder is a different, always-applicable line.
+        assertFalse(html.contains("class=\"report-note\""),
+                () -> "the paste guidance must still stay out of the IDE pane: " + html);
+    }
+
     // --- report body layout (user feedback): source -> environment -> full stack trace,
     // no redundant "Message:" header (the trace carries it), no empty "Steps to reproduce". ---
 

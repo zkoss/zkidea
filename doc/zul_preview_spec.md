@@ -136,7 +136,9 @@ explanatory message with a "Report on GitHub" link (see FR-19).
   `CLASSPATH`/`RESOURCE` are reserved and unused). `RenderResult.toJson()` remains the structured
   contract, and `ErrorPageRenderer` is its consumer: the browser receives a self-contained,
   theme-aware, HTML-escaped **error page** — phase + message, `file:line` where ZK can report it, a
-  collapsed full stack trace, and a prefilled "Report on GitHub" link. `line`/`column` are
+  collapsed full stack trace, and a prefilled "Report on GitHub" link under which a one-line
+  reminder names what the report carries and that the click only opens an editable draft
+  (`ErrorPageRenderer.REPORT_HINT`, shown on both the prefilled and the clipboard path). `line`/`column` are
   best-effort: present for BeanShell/zscript failures, structurally absent for bare hierarchy
   `UiException`s. — `ErrorMapper`, `ErrorPageRenderer`
 - **FR-18 (session per render)** Each `renderZul`/`resource` call gets a fresh `MockHttpSession`,
