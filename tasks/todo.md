@@ -40,12 +40,24 @@ state of the working tree (checked 2026-08-07).
       current releases. Verified against JetBrains' release feed that these exist —
       Community stops at 2025.3 (unified distribution after that), so 2026.2 is only
       published under `IU`.
-- [ ] **`./gradlew runPluginVerifier`** — **skipped by decision (2026-08-07).** It was
-      started and got as far as scheduling all three verifications
-      (`IC-233.11799.241`, `IU-253.28294.334`, `IU-262.8665.258`) before being skipped, so
-      the config is proven to resolve. **The compatibility result was never read.** Since
-      `untilBuild` has no upper bound, nothing else gates API breakage on 2025.3/2026.2 —
-      re-run this before or shortly after publishing.
+- [x] **`./gradlew runPluginVerifier`** — **BUILD SUCCESSFUL in 19m 53s**, all three
+      **Compatible**, no compatibility problems:
+      - `IC-233.11799.241` (2023.3) — 1 deprecated API usage, 1 override-only violation
+      - `IU-253.28294.334` (2025.3) — 6 deprecated API usages, 1 override-only violation
+      - `IU-262.8665.258` (2026.2) — 9 deprecated API usages, **2 internal API usages**,
+        1 override-only violation
+
+      Warnings only, none release-blocking, but two are worth a follow-up issue because
+      they are the most likely causes of a future break given the open-ended `untilBuild`:
+      - **Internal API** — `PluginManagerCore.getPlugin(PluginId)` is `@ApiStatus.Internal`
+        and is called from `ZulPreviewServerService.resolveLauncherJar()` and
+        `PreviewIssueReporter.pluginVersion()`. Both are new 1.0.0 preview code, and
+        `resolveLauncherJar()` failing means Layout Preview cannot start at all.
+      - **Deprecated** — `DefaultLiveTemplatesProvider`, `ProcessAdapter`,
+        `ResourceRegistrar.addStdResource(String, String, Class)`,
+        `MavenVersionCompletionContributor`.
+      - Also reported: the plugin is **not dynamic** (`defaultLiveTemplatesProvider` is a
+        non-dynamic extension), so install/uninstall requires an IDE restart.
 - [x] `./gradlew runIde` — manual smoke test. **Done by the user (2026-08-07).**
 - [x] Rebuilt and re-verified the zip — `build/distributions/zkidea-1.0.0.zip` (978 KB,
       17:19) contains `zkidea/lib/zk-preview-launcher.jar` (474 KB), plus the instrumented
