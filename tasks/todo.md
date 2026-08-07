@@ -74,10 +74,21 @@ state of the working tree (checked 2026-08-07).
 
 - [x] `git push origin master` — `c7489ce..f6b6e40`.
 - [x] `git tag -a v1.0.0 && git push origin v1.0.0` — tag points at `f6b6e40`.
-- [ ] Create the GitHub release for `v1.0.0` with the same notes as the change-notes entry.
+- [ ] **Create the GitHub release for `v1.0.0` — BLOCKED on token scope.** `gh release create`
+      fails with *"workflow scope may be required"*; nothing was created. Needs an
+      interactive re-auth, so it cannot be done from an automated session:
+      ```bash
+      gh auth refresh -h github.com -s workflow
+      gh release create v1.0.0 --title "Release 1.0.0" \
+          --notes-from-tag build/distributions/zkidea-1.0.0.zip
+      ```
+      Note the repo has no GitHub release for anything between 0.1.23 and 1.0.0 — the
+      practice lapsed after 2025-08. Worth deciding whether to keep it up at all.
 - [ ] Verify the listing on [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/7855)
       after JetBrains review clears, then install from the marketplace into a clean IDE and
       re-run the Layout Preview smoke test against the published build.
+      As of publish time the public API still lists 0.7.3 as the newest approved build,
+      which is expected — uploads are not listed until review passes.
 - [ ] **Upload the listing media — manual, web UI only.** `publishPlugin` ships the ZIP and
       nothing else; screenshots are not part of the distribution or `plugin.xml`, and the
       `intellijPublishToken` does not cover them. Sign in to
