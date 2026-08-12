@@ -1,0 +1,96 @@
+name: Release zk-preview-launcher
+
+# Cuts a GitHub Release carrying the standalone ZUL render helper consumed by the
+# `zul-writer` agent skill (zkoss-demo/agent-skill), which pins an exact version +
+# SHA-256. Deliberately decoupled from the plugin's own `v*` tags: the launcher has its
+# own version line (zk-preview-launcher/build.gradle) that moves only when its CLI
+# contract or render behaviour does.
+#
+# Publishing from Actions (github.token) rather than a maintainer's local `gh` is not
+# incidental: the local `gh` account historically lacked push on this repo, which is what
+# stalled earlier releases. See zk-preview-launcher/README.md for the manual fallback.
+on:
+  push:
+    tags:
+      - 'launcher-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing launcher-v* tag to build and release'
+        required: true
+
+permissions:
+  contents: write   # create a release; the org default may be read-only
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'          # matches the launcher's source/targetCompatibility
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Derive the version from the tag
+        id: v
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "tag=$TAG"                  >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#launcher-v}" >> "$GITHUB_OUTPUT"
+
+      # -x test on purpose: the launcher's own tests spawn mvn subprocesses and Playwright
+      # browsers. They are a pre-tag local gate, not a release-path gate.
+      - name: Build the versioned jar + checksum
+        run: ./gradlew --no-daemon :zk-preview-launcher:releaseLauncher -x test
+
+      - name: Refuse to publish if the tag and build.gradle disagree
+        run: |
+          f="zk-preview-launcher/build/release/zk-preview-launcher-${{ steps.v.outputs.version }}.jar"
+          if [ ! -f "$f" ]; then
+            echo "::error::${{ steps.v.outputs.tag }} does not match the version in zk-preview-launcher/build.gradle"
+            ls -l zk-preview-launcher/build/release/ || true
+            exit 1
+          fi
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd zk-preview-launcher/build/release
+          V='${{ steps.v.outputs.version }}'
+          SHA=$(cut -d' ' -f1 "zk-preview-launcher-$V.jar.sha256")
+          cat > notes.md <<EOF
+          Standalone ZUL rendering core. The same artifact the ZK IntelliJ plugin bundles at
+          \`<plugin>/lib/zk-preview-launcher.jar\`, published here so external consumers
+          (e.g. the \`zul-writer\` agent skill) can pin an exact version.
+
+          **Requires Java 17+.** ZK jars are never bundled -- supply your own via \`--classpath\`.
+
+          \`\`\`
+          java -jar zk-preview-launcher-$V.jar \\
+               --classpath <os-separated ZK jars> \\
+               --webapp <docroot dir> \\
+               --port 0
+          \`\`\`
+
+          Prints \`PREVIEW_PORT=<n>\` on stdout once bound, then blocks until killed.
+
+          **SHA-256** \`$SHA\`
+
+          Verify with \`shasum -a 256 -c zk-preview-launcher-$V.jar.sha256\`.
+          EOF
+          # --latest=false keeps the plugin's own release timeline readable: this tag
+          # sorts oddly against the v* tags and is not the plugin's newest build.
+          gh release create "${{ steps.v.outputs.tag }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "zk-preview-launcher $V" \
+            --notes-file notes.md \
+            --latest=false \
+            "zk-preview-launcher-$V.jar" \
+            "zk-preview-launcher-$V.jar.sha256"

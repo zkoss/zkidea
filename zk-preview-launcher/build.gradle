@@ -3,7 +3,12 @@ plugins {
 }
 
 group 'org.zkoss.zkpreview'
-version '0.1.0'
+// Versioned independently of the IntelliJ plugin (root build.gradle). External consumers
+// -- currently the `zul-writer` agent skill (zkoss-demo/agent-skill) -- pin an exact
+// version + SHA-256 of the released jar, so this moves only when this module's CLI
+// contract or render behaviour does, not when the plugin ships. Released under the tag
+// `launcher-v<this value>`; see README.md.
+version '1.0.0'
 
 java.sourceCompatibility = JavaVersion.VERSION_17
 java.targetCompatibility = JavaVersion.VERSION_17
@@ -90,6 +95,15 @@ task copyHooksJarIntoResources(type: Copy) {
 
 processResources.dependsOn(copyHooksJarIntoResources)
 
+// The released jar is published under a SHA-256 pin, so rebuilding the same tag must
+// reproduce the same bytes; without these, entry timestamps and filesystem iteration
+// order alone change the digest. Applied to every Jar task, not just `jar`: hooksJar is
+// embedded as a main-jar resource, so its non-determinism would leak into `jar` too.
+tasks.withType(Jar).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
 // Runnable jar: bundles the (small, non-conflicting) servlet-api classes so
 // `java -jar zk-preview-launcher.jar` works standalone; ZK jars are supplied
 // separately at runtime via --classpath (never bundled -- AC-2).
@@ -105,3 +119,44 @@ jar {
 }
 
 test.dependsOn(jar)
+
+// ---- Standalone distribution (GitHub Releases) ------------------------------------
+// The IntelliJ plugin keeps consuming build/libs/zk-preview-launcher.jar under that
+// exact name (ZulPreviewServerService.LAUNCHER_JAR_NAME, the root project's
+// prepareSandbox wiring, IsolationChildProcessTest), so `jar` is deliberately NOT
+// renamed. Release assets are versioned *copies* under build/release/, giving external
+// consumers a stable, immutable URL per release to pin against.
+def releaseAssetName = "zk-preview-launcher-${version}.jar"
+def releaseOutputDir = layout.buildDirectory.dir('release')
+
+tasks.register('releaseJar', Copy) {
+    group = 'distribution'
+    description = 'Versioned copy of the launcher jar, for a GitHub Release.'
+    from tasks.named('jar')
+    into releaseOutputDir
+    rename { releaseAssetName }
+}
+
+tasks.register('releaseChecksum') {
+    group = 'distribution'
+    description = 'SHA-256 sidecar for the versioned launcher jar.'
+    dependsOn 'releaseJar'
+    def asset = releaseOutputDir.map { it.file(releaseAssetName) }
+    def sidecar = releaseOutputDir.map { it.file(releaseAssetName + '.sha256') }
+    inputs.file(asset)
+    outputs.file(sidecar)
+    doLast {
+        def digest = java.security.MessageDigest.getInstance('SHA-256')
+        asset.get().asFile.eachByte(64 * 1024) { buf, n -> digest.update(buf, 0, n) }
+        def hex = digest.digest().encodeHex().toString()
+        // Two spaces between digest and filename: `shasum -a 256 -c` / `sha256sum -c` format.
+        sidecar.get().asFile.text = "${hex}  ${releaseAssetName}\n"
+        logger.lifecycle("SHA-256 ${hex}  ${releaseAssetName}")
+    }
+}
+
+tasks.register('releaseLauncher') {
+    group = 'distribution'
+    description = "Builds build/release/${releaseAssetName} and its .sha256 sidecar."
+    dependsOn 'releaseChecksum'
+}
