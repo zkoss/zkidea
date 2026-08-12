@@ -67,7 +67,15 @@ class ZulChildCompletionDescriptor implements XmlElementDescriptor {
     @Override public @Nullable XmlElementDescriptor getElementDescriptor(XmlTag c, XmlTag ctx) { return delegate.getElementDescriptor(c, ctx); }
     @Override public @NotNull XmlAttributeDescriptor[] getAttributesDescriptors(@Nullable XmlTag ctx) { return delegate.getAttributesDescriptors(ctx); }
     @Override public @Nullable XmlAttributeDescriptor getAttributeDescriptor(String name, @Nullable XmlTag ctx) { return delegate.getAttributeDescriptor(name, ctx); }
-    @Override public @Nullable XmlAttributeDescriptor getAttributeDescriptor(XmlAttribute attr) { return delegate.getAttributeDescriptor(attr); }
+    /**
+     * Resolves through the name/context overload rather than {@code delegate
+     * .getAttributeDescriptor(attr)}: that overload is {@code @ApiStatus.OverrideOnly}, so calling
+     * it on the delegate is an API usage violation the Marketplace verifier reports (overriding it
+     * here is fine and necessary -- the platform calls it to resolve every attribute on a wrapped
+     * tag). Behaviour is unchanged: the schema descriptor we wrap implements the override-only
+     * overload as exactly these two calls forwarded to the same private implementation.
+     */
+    @Override public @Nullable XmlAttributeDescriptor getAttributeDescriptor(XmlAttribute attr) { return delegate.getAttributeDescriptor(attr.getName(), attr.getParent()); }
     @Override public @Nullable XmlNSDescriptor getNSDescriptor()                      { return delegate.getNSDescriptor(); }
     @Override public @Nullable XmlElementsGroup getTopGroup()                         { return delegate.getTopGroup(); }
     @Override public int getContentType()                                             { return delegate.getContentType(); }
