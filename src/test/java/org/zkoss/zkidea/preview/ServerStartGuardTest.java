@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * U2 (code review): the helper-server start path must never let an exception escape without a
  * deliverable outcome. The command line is assembled from platform lookups
- * ({@code resolveLauncherJar}, which throws when the plugin descriptor is null; {@code
+ * ({@code resolveLauncherJar}, which throws when our own jar can't be located; {@code
  * resolveJavaExecutable}); if any of that throws, the preview pane used to stay on "loading"
  * forever with no error and no Report link. {@code startGuarded} converts any such throw into a
  * "failed" server whose {@code portFuture} completes exceptionally, so the caller always reaches

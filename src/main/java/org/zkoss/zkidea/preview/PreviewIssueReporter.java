@@ -1,13 +1,13 @@
 package org.zkoss.zkidea.preview;
 
 import com.intellij.ide.BrowserUtil;
-import com.intellij.ide.plugins.IdeaPluginDescriptor;
-import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.application.ApplicationInfo;
-import com.intellij.openapi.extensions.PluginId;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Properties;
 
 /**
  * Builds and opens a prefilled GitHub new-issue when a preview can't be displayed, so the
@@ -166,10 +166,27 @@ final class PreviewIssueReporter {
         BrowserUtil.browse(issueUrl(title, body(context, env, zulSource)));
     }
 
-    /** Plugin version (e.g. {@code 0.8.0}); also passed to the launcher for the error-page report link. */
+    /**
+     * Plugin version (e.g. {@code 0.8.0}); also passed to the launcher for the error-page report link.
+     *
+     * <p>Read from a resource stamped by {@code processResources} rather than from our own plugin
+     * descriptor: {@code PluginManagerCore.getPlugin} is {@code @ApiStatus.Internal} in the 2026.2
+     * platform and the Marketplace compatibility check rejects it, and every descriptor lookup that
+     * could replace it is internal too (see {@code tasks/internal-api-fix-plan.md}). The version is a
+     * build-time constant, so baking it in needs no platform lookup at all -- which also makes it
+     * correct under unit tests, where there is no {@code Application}.
+     */
     static String pluginVersion() {
-        IdeaPluginDescriptor descriptor = PluginManagerCore.getPlugin(PluginId.getId("org.zkoss.zkidea"));
-        return descriptor != null ? descriptor.getVersion() : "unknown";
+        try (InputStream in = PreviewIssueReporter.class.getResourceAsStream("plugin-version.properties")) {
+            if (in == null) {
+                return "unknown";
+            }
+            Properties props = new Properties();
+            props.load(in);
+            return props.getProperty("version", "unknown");
+        } catch (IOException e) {
+            return "unknown";
+        }
     }
 
     /** IDE name + build (e.g. {@code IntelliJ IDEA 2024.3 (IU-243.x)}); shared with the launcher report link. */

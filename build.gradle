@@ -48,6 +48,16 @@ runPluginVerifier {
 java.sourceCompatibility = JavaVersion.VERSION_17
 java.targetCompatibility = JavaVersion.VERSION_17
 
+// Stamp the build version into a resource PreviewIssueReporter can read. Asking the platform for
+// our own plugin descriptor (PluginManagerCore.getPlugin) is an internal API the Marketplace
+// rejects, and the version is a build-time constant anyway.
+tasks.named('processResources') {
+    inputs.property('pluginVersion', project.version)
+    filesMatching('org/zkoss/zkidea/preview/plugin-version.properties') {
+        expand(pluginVersion: project.version)
+    }
+}
+
 test {
     useJUnitPlatform()
 }
@@ -64,7 +74,9 @@ intellij {
 // Bundle the standalone ZUL rendering core (zk-preview-launcher.jar) inside this
 // plugin's distribution so ZulPreviewServerService can spawn it as a helper JVM at
 // runtime. Landing spot: "<pluginName>/lib/zk-preview-launcher.jar", read back at
-// runtime via PluginManagerCore.getPlugin(...).getPluginPath(). buildPlugin packages
+// runtime as a sibling of this plugin's own jar (ZulPreviewServerService#launcherJarNextTo,
+// via PathManager.getJarForClass -- do NOT move it out of this plugin's lib dir).
+// buildPlugin packages
 // prepareSandbox's own output directory, so wiring it here covers both `runIde`'s
 // sandbox and the `buildPlugin` distribution zip.
 // (evaluationDependsOn is required so ':zk-preview-launcher's `jar` task already
@@ -83,4 +95,7 @@ tasks.named('test') {
     dependsOn ':zk-preview-launcher:jar'
     systemProperty 'zkpreview.launcherJar',
             project(':zk-preview-launcher').tasks.named('jar').get().archiveFile.get().asFile.absolutePath
+    // PreviewIssueReporterTest asserts the stamped version resource carries the version this
+    // build actually produced.
+    systemProperty 'zkidea.version', project.version.toString()
 }

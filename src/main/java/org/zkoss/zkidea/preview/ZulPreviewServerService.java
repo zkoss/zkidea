@@ -2,13 +2,11 @@ package org.zkoss.zkidea.preview;
 
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.GeneralCommandLine;
-import com.intellij.ide.plugins.IdeaPluginDescriptor;
-import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.projectRoots.JavaSdk;
@@ -156,7 +154,7 @@ public final class ZulPreviewServerService implements Disposable {
 
     private ManagedPreviewServer startServer(PreviewTarget target) {
         // Build the command line INSIDE the guarded supplier: resolveLauncherJar() throws when the
-        // plugin descriptor is missing, and resolveJavaExecutable()/PreviewIssueReporter also touch
+        // plugin installation directory can't be located, and resolveJavaExecutable() also touches
         // platform lookups. Any throw here must become a failed server (surfaced as an error+Report
         // card), never an escape that leaves the pane stuck on "loading" forever (U2).
         return startGuarded(() -> {
@@ -194,7 +192,7 @@ public final class ZulPreviewServerService implements Disposable {
 
     /**
      * Builds and starts a helper server, converting ANY failure -- a throw from {@code
-     * commandLineSupplier} (e.g. {@link #resolveLauncherJar()} when the plugin descriptor is null) or
+     * commandLineSupplier} (e.g. {@link #resolveLauncherJar()} when our own jar can't be located) or
      * an {@link ExecutionException} from process creation -- into a "failed" server whose {@code
      * portFuture} completes exceptionally. This guarantees {@link #deliver} always reaches {@code
      * onReady} with an error/Report outcome instead of the escape that used to leave the pane stuck on
@@ -332,12 +330,33 @@ public final class ZulPreviewServerService implements Disposable {
         return version != null && version.isAtLeast(MINIMUM_LAUNCHER_SDK);
     }
 
-    private Path resolveLauncherJar() {
-        IdeaPluginDescriptor descriptor = PluginManagerCore.getPlugin(PluginId.getId(PLUGIN_ID));
-        if (descriptor == null) {
-            throw new IllegalStateException("Could not locate the '" + PLUGIN_ID + "' plugin descriptor");
+    private static Path resolveLauncherJar() {
+        return launcherJarNextTo(PathManager.getJarForClass(ZulPreviewServerService.class));
+    }
+
+    /**
+     * The bundled {@link #LAUNCHER_JAR_NAME}, given the jar this class runs from.
+     *
+     * <p>This used to ask the platform for our own descriptor
+     * ({@code PluginManagerCore.getPlugin(...).getPluginPath()}), but that method became
+     * {@code @ApiStatus.Internal} in the 2026.2 platform and the Marketplace compatibility check
+     * rejects it -- and every drop-in descriptor lookup is internal too, so there is no supported way
+     * to obtain it (see {@code tasks/internal-api-fix-plan.md}). Deriving the location from our own
+     * jar needs no descriptor: {@code prepareSandbox} packages the launcher jar into the very same
+     * {@code <plugin>/lib} directory this class is loaded from, so it is always a sibling.
+     *
+     * <p>Package-visible, static and platform-free so {@code LauncherJarLocationTest} can lock it.
+     * The throw on an unlocatable jar keeps the previous contract: it happens inside the guarded
+     * {@code commandLineSupplier}, so it surfaces as the preview error+Report card (see
+     * {@link #startGuarded}).
+     */
+    static Path launcherJarNextTo(Path ownJar) {
+        Path libDir = ownJar == null ? null : ownJar.getParent();
+        if (libDir == null) {
+            throw new IllegalStateException(
+                    "Could not locate the '" + PLUGIN_ID + "' plugin installation directory");
         }
-        return descriptor.getPluginPath().resolve("lib").resolve(LAUNCHER_JAR_NAME);
+        return libDir.resolve(LAUNCHER_JAR_NAME);
     }
 
     private static String joinClasspath(List<File> jars) {

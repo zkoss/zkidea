@@ -160,6 +160,19 @@ class PreviewIssueReporterTest {
     }
 
     @Test
+    void pluginVersion_readsTheBuildStampedVersion_notThePlatformDescriptor() {
+        // Was PluginManagerCore.getPlugin(...).getVersion() -- an internal API the Marketplace
+        // rejects (see LauncherJarLocationTest). The version is a build-time constant, so it is
+        // stamped into a generated resource by processResources instead; that also makes it correct
+        // here, where no Application (and no plugin descriptor) exists at all.
+        String buildVersion = System.getProperty("zkidea.version");
+        assertNotNull(buildVersion, "the test task must pass -Dzkidea.version=<project.version>");
+
+        assertEquals(buildVersion, PreviewIssueReporter.pluginVersion(),
+                "the reported version must be the version this build produced");
+    }
+
+    @Test
     void renderEnvironment_putsEachFactOnItsOwnLine() {
         // GitHub renders single newlines as line breaks, so one fact per line stays readable.
         String env = PreviewIssueReporter.renderEnvironment("p", "i", "o", "j", "b", "l", "s", "z");
