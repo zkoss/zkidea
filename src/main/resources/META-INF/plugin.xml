@@ -4,6 +4,18 @@
      <vendor email="info@zkoss.org" url="https://www.zkoss.org">ZK Framework</vendor>
      <depends>org.jetbrains.idea.maven</depends>
      <depends>com.intellij.modules.java</depends>
+     <!-- The Layout Preview's embedded browser (JCEF). From IntelliJ 2026.2 (build 262) JCEF is no
+          longer part of the JetBrains Runtime: it ships as this bundled plugin ("Web Browser
+          (JCEF)"), and its classes are visible only to plugins that declare it - without this,
+          org.cef.* cannot be resolved and .zul files fail to open at all (issue #66).
+          Optional on purpose: the id does not exist in 2023.3-2025.2 (where JCEF came from the boot
+          runtime and was visible to everyone), and a hard <depends> would stop this plugin loading
+          on every IDE in that range, which since-build 233.2 still supports.
+          The config file it points at is deliberately empty: this dependency exists only to widen
+          the classloader. The preview's own registration stays below in this descriptor, so that
+          disabling JCEF leaves the pane in place to explain itself (JcefAvailability) instead of
+          silently dropping the split editor. -->
+     <depends optional="true" config-file="zkidea-jcef.xml">com.intellij.modules.jcef</depends>
 
      <description><![CDATA[
       <p>A ZK framework plugin for IntelliJ IDEA that helps developers work with the ZK Java Web Framework. The plugin provides powerful, schema-aware code completion and validation to accelerate development.</p>
@@ -67,6 +79,11 @@
     ]]></description>
 
      <change-notes><![CDATA[
+      <p>1.0.1</p>
+      <ul>
+          <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/66">#66 Cannot open a .zul file on IntelliJ IDEA 2026.2 (NoClassDefFoundError: org/cef/handler/CefRequestHandler)</a> — IntelliJ 2026.2 moved JCEF out of the IDE runtime into the bundled "Web Browser (JCEF)" plugin, whose classes are visible only to plugins that declare it. The plugin now declares that dependency, so the Layout Preview renders again.</li>
+          <li>[bug] A missing or disabled JCEF no longer costs more than the preview: the <code>.zul</code> editor always opens, and the preview pane explains which JCEF is missing and how to restore it — including the new "enable the bundled Web Browser (JCEF) plugin" case, and a browser that is present but fails to start.</li>
+      </ul>
       <p>1.0.0</p>
       <ul>
           <li>[feature] <b>Layout Preview</b> — a side-by-side preview for <code>.zul</code> files, refreshed on save. Rendered through your project's own ZK jars in an isolated helper process, so no server and no deploy are needed. Covers MVVM binding placeholders, model-bound data components (grid, listbox, tree), <code>&lt;apply&gt;</code>/<code>&lt;include&gt;</code>, ZK add-ons, and Spring Boot jar projects.</li>

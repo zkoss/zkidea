@@ -33,13 +33,17 @@ The preview pane is a card panel that shows exactly one of: *loading*, *browser*
 resolves to a live render only when **all** of the following hold; otherwise it shows an
 explanatory message with a "Report on GitHub" link (see FR-19).
 
-- **FR-3 (JCEF)** The embedded browser render requires `JBCefApp.isSupported()`. When JCEF is
-  unavailable, the pane does not merely fail — `JcefAvailability.diagnose(...)` names the cause
-  (`BOOT_JDK_NO_JCEF` — the boot runtime is not a JetBrains Runtime · `REGISTRY_DISABLED` —
-  `ide.browser.jcef.enabled` is off · `INCOMPATIBLE`) and the card offers an **"Open preview in
-  external browser"** link, so the preview server still works and only the *display* moves out of
+- **FR-3 (JCEF)** The embedded browser render requires JCEF. When JCEF is unavailable — for **any**
+  reason — the pane does not merely fail: `JcefAvailability` names the cause and the remedy
+  (`BOOT_JDK_NO_JCEF` — the boot runtime is not a JetBrains Runtime · `JCEF_PLUGIN_UNAVAILABLE` —
+  2026.2+ ships JCEF as the bundled *Web Browser (JCEF)* plugin and it is disabled or missing ·
+  `REGISTRY_DISABLED` — `ide.browser.jcef.enabled` is off · `INITIALIZATION_FAILED` — JCEF is
+  present but the browser would not start · `INCOMPATIBLE`) and the card offers an **"Open preview
+  in external browser"** link, so the preview server still works and only the *display* moves out of
   the IDE. There is no in-IDE non-JCEF renderer.
-  — `ZulPreviewFileEditor` ctor, `JcefAvailability`
+  Missing JCEF must never cost more than the preview: no class outside `JcefPreviewBrowser` may name
+  a JCEF type, or the `.zul` editor itself fails to link (issue #66).
+  — `ZulPreviewFileEditor` ctor, `JcefAvailability`, `PreviewBrowser`, `PreviewEditorLinkageTest`
 - **FR-4 (ZK present)** The previewed file's **IntelliJ module must have at least one ZK jar on
   its resolved runtime classpath**. `ZkClasspathFilter.detectZkPresence` classifies three states,
   and the message differs per state: `PRESENT` → render · `NONE` → `NO_ZK_JARS` ("declare ZK as a

@@ -19,16 +19,10 @@ import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.ui.EditorNotificationPanel;
 import com.intellij.ui.components.ActionLink;
 import com.intellij.ui.components.JBScrollPane;
-import com.intellij.ui.jcef.JBCefApp;
-import com.intellij.ui.jcef.JBCefBrowser;
 import com.intellij.util.Alarm;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.update.MergingUpdateQueue;
 import com.intellij.util.ui.update.Update;
-import org.cef.browser.CefBrowser;
-import org.cef.browser.CefFrame;
-import org.cef.handler.CefRequestHandlerAdapter;
-import org.cef.network.CefRequest;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -50,9 +44,18 @@ import java.util.List;
  * The preview half of the ZUL split editor (see {@link ZulPreviewFileEditorProvider}).
  *
  * <p>Renders the file through the helper JVM managed by {@link ZulPreviewServerService}
- * inside a {@link JBCefBrowser}, or shows an explanatory Swing panel when JCEF is
+ * inside a {@link PreviewBrowser}, or shows an explanatory Swing panel when JCEF is
  * unavailable (R5), no ZK jars were found on the module classpath (R7), or the preview
  * server failed to start.
+ *
+ * <p><b>This class must name no JCEF type</b> -- not in a field, a signature, or a method body.
+ * Since 2026.2 the JCEF classes belong to a bundled plugin that can be disabled, and before that
+ * they were absent from any non-JetBrains boot runtime; a class that mentions them fails
+ * <em>verification</em> where they are missing, which killed the whole {@code .zul} editor rather
+ * than just the preview (issue #66). Everything JCEF lives behind {@link PreviewBrowser}, reached
+ * only through {@link JcefPreviewBrowser#create} once {@link JcefAvailability#probe()} says JCEF is
+ * usable. {@code PreviewEditorLinkageTest} guards this by linking the class with the JCEF packages
+ * hidden.
  *
  * <p>Teardown: the browser, the refresh {@link MergingUpdateQueue}, and the VFS
  * message-bus connection are all registered with {@code this} as their parent
@@ -79,7 +82,7 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
     private final JcefAvailability.Diagnosis jcefDiagnosis;
     private final PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
 
-    private JBCefBrowser browser;
+    private PreviewBrowser browser;
     private volatile String previewUrl;
     private volatile boolean disposed;
     /** The render target (build tool / docroot layout / resolved ZK jars) of the last preview
@@ -118,7 +121,7 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
         // When JCEF is unavailable we don't stop here: the preview server still renders over
         // localhost, so we start it anyway and offer an external-browser fallback once it's READY
         // (see startPreview). The diagnosis explains *why* the in-pane browser is missing (P1).
-        this.jcefDiagnosis = JBCefApp.isSupported() ? null : JcefAvailability.diagnose();
+        this.jcefDiagnosis = JcefAvailability.probe();
 
         cardLayout.show(component, CARD_LOADING);
         MergingUpdateQueue refreshQueue = new MergingUpdateQueue(
@@ -138,26 +141,36 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
                 if (jcefDiagnosis != null) {
                     showExternalBrowserFallback(jcefDiagnosis, previewUrl);
                 } else {
-                    // setEnableOpenDevToolsMenuItem: adds IntelliJ's "Open DevTools" entry to the
-                    // context menu. For "the preview is blank" it is the only thing that shows the
-                    // actual cause -- a JS error, or a 404 on a /zkau/web/* resource -- which no
-                    // amount of source-reading reveals. It costs nothing until clicked; clicking it
-                    // spawns a second (DevTools frontend) browser in a dialog, parented to this
-                    // browser's Disposer, so it is torn down with the tab.
-                    browser = JBCefBrowser.createBuilder()
-                            .setUrl(previewUrl)
-                            .setEnableOpenDevToolsMenuItem(true)
-                            .build();
-                    Disposer.register(this, browser);
-                    installExternalLinkHandler(browser);
-                    installSourceViewer(browser);
-                    component.add(wrapWithHint(browser.getComponent()), CARD_BROWSER);
-                    cardLayout.show(component, CARD_BROWSER);
+                    showRender(previewUrl);
                 }
             } else {
                 showMessage(result.getMessage());
             }
         });
+    }
+
+    /**
+     * Puts the render in the pane. The browser is built through {@link JcefPreviewBrowser}'s
+     * factory, so this method -- and therefore this class -- carries no JCEF type of its own
+     * (issue #66; see the class comment).
+     *
+     * <p>Building it can still fail on an IDE where JCEF is present and reports itself supported:
+     * the native side may not start. Nothing catches a throw from here otherwise -- this runs in
+     * the {@code preparePreview} callback -- and the pane would sit on "Starting ZK preview
+     * server…" forever with no message and no Report link, the same dead end {@code
+     * wireResolveOutcome} closes for resolution failures. So a failure degrades to the same
+     * external-browser card the other JCEF reasons use, carrying what actually failed.
+     */
+    private void showRender(String url) {
+        try {
+            browser = JcefPreviewBrowser.create(url, this::showRenderedHtml);
+        } catch (Throwable failure) {
+            showExternalBrowserFallback(JcefAvailability.initializationFailed(failure), url);
+            return;
+        }
+        Disposer.register(this, browser);
+        component.add(wrapWithHint(browser.getComponent()), CARD_BROWSER);
+        cardLayout.show(component, CARD_BROWSER);
     }
 
     /**
@@ -188,44 +201,6 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
 
         component.add(panel, CARD_EXTERNAL);
         cardLayout.show(component, CARD_EXTERNAL);
-    }
-
-    /**
-     * Routes external links (e.g. the error page's "Report on GitHub" link, or any
-     * {@code <a href="http…">} in a rendered ZUL) to the system browser instead of letting
-     * them navigate inside the preview pane, which would replace the render with a web page
-     * and no way back. Localhost URLs (the preview itself and its {@code /zkau} resources)
-     * are left to load in-pane. {@code onBeforeBrowse} fires only for navigations, not
-     * sub-resource loads, so JS/CSS are unaffected.
-     */
-    private void installExternalLinkHandler(JBCefBrowser browser) {
-        browser.getJBCefClient().addRequestHandler(new CefRequestHandlerAdapter() {
-            @Override
-            public boolean onBeforeBrowse(CefBrowser cefBrowser, CefFrame frame, CefRequest request,
-                                          boolean userGesture, boolean isRedirect) {
-                String url = request.getURL();
-                if (userGesture && url != null && (url.startsWith("http://") || url.startsWith("https://"))
-                        && !isLoopbackPreviewUrl(url)) {
-                    BrowserUtil.browse(url);
-                    return true; // cancel in-pane navigation
-                }
-                return false;
-            }
-        }, browser.getCefBrowser());
-    }
-
-    /**
-     * Replaces CEF's dead built-in "View Source" item with one that works -- see
-     * {@link PreviewContextMenu} for why the built-in one silently does nothing here.
-     *
-     * <p>{@code getSource} calls the visitor back on a CEF thread, so the hop to the EDT happens
-     * here rather than inside the handler.
-     */
-    private void installSourceViewer(JBCefBrowser browser) {
-        browser.getJBCefClient().addContextMenuHandler(
-                new PreviewContextMenu(html -> ApplicationManager.getApplication().invokeLater(
-                        () -> showRenderedHtml(html))),
-                browser.getCefBrowser());
     }
 
     /**
@@ -299,7 +274,7 @@ final class ZulPreviewFileEditor extends UserDataHolderBase implements FileEdito
                         refreshQueue.queue(Update.create("zul-preview-reload", () ->
                                 ApplicationManager.getApplication().invokeLater(() -> {
                                     if (browser != null && previewUrl != null) {
-                                        browser.getCefBrowser().reload();
+                                        browser.reload();
                                     }
                                 })));
                         return;

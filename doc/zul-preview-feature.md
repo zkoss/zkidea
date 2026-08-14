@@ -147,9 +147,15 @@ instead.
 If the embedded browser can't run, the preview **diagnoses why and offers a way through**
 instead of just failing:
 
-- **Reason.** It tells you the specific cause — the IDE's boot runtime lacks JCEF (switch
-  the Boot Java Runtime to a JetBrains Runtime via *Find Action ▸ Choose Boot Java Runtime
-  for the IDE*), or JCEF is disabled in the registry (`ide.browser.jcef.enabled`).
+- **Reason.** It tells you the specific cause and the remedy that fits it:
+  - **The bundled JCEF plugin is off or missing** (IntelliJ 2026.2 and newer, where JCEF is no
+    longer part of the IDE runtime) — enable **Web Browser (JCEF)** in *Settings ▸ Plugins ▸
+    Installed* and restart.
+  - **The IDE's boot runtime lacks JCEF** (up to 2025.2, on an alternative JDK) — switch the Boot
+    Java Runtime to a JetBrains Runtime via *Find Action ▸ Choose Boot Java Runtime for the IDE*.
+  - **JCEF is disabled in the registry** (`ide.browser.jcef.enabled`).
+  - **The browser is there but wouldn't start** — the card carries the failure itself, and the
+    *Report on GitHub* link sends it along.
 - **Fallback.** An **"Open preview in external browser ↗"** link renders the same page in
   your system browser — the preview server keeps working, only the *display* moves out of
   the IDE.
@@ -274,7 +280,7 @@ design decisions — are tracked in [§5](zul_preview_spec.md) of the same file.
 | *"Unable to access jarfile …/zkidea-1.0.0.jar/lib/zk-preview-launcher.jar"* | The plugin was installed as a **single jar** — that artifact is a build intermediate and carries no render helper | Install the distribution **`.zip`** (`build/distributions/zkidea-<version>.zip`) via Settings ▸ Plugins ▸ ⚙ ▸ Install Plugin from Disk. A single-jar install is broken by construction (no launcher, no jsoup, uninstrumented). |
 | Bound value shows as literal text (e.g. `vm.name`) | Expected — the ViewModel doesn't run in preview | Not an error. The same page on a real server shows the value. |
 | A button/click/sort does nothing | Expected — first paint only; server round-trips aren't simulated | Client-side `w:` listeners *do* work; server logic is out of scope. |
-| "Preview unavailable" / no browser | JCEF missing or disabled in this IDE runtime | Switch the Boot Java Runtime to a JetBrains Runtime, or enable `ide.browser.jcef.enabled`; meanwhile use the **Open in external browser** link. |
+| "Preview unavailable" / no browser | JCEF missing or disabled in this IDE | Follow the remedy the card names: enable the bundled **Web Browser (JCEF)** plugin (2026.2+), switch the Boot Java Runtime to a JetBrains Runtime, or enable `ide.browser.jcef.enabled`; meanwhile use the **Open in external browser** link. |
 | Spring Boot jar: *"Failed to bootstrap the ZK mock webapp"* / `NoClassDefFoundError: …zkex…CometServerPush` | An incomplete ZK jar set on the classpath — a ZK EE artifact (`zkex`/`zkmax`) didn't resolve | Ensure your build declares **all** the ZK repositories it needs (CE + EE-eval + EE) so `zkmax`'s transitive `zkex` resolves, then reimport. |
 | `~./page.zul`: *Page not found* in preview though it runs under a server | The resource directory holding `web/` wasn't a recognized resource root | Mark `src/main/resources` as a resource root and reimport so it's on the render classpath. *(handled automatically since 1.0.0 for standard layouts)* |
 | *"Unknown component `<x>`: no ZK jar on this module's classpath defines it"* | The jar that defines the component isn't on the module classpath — most often an add-on dependency that is commented out or failed to resolve | Add/uncomment the add-on dependency (e.g. `org.zkoss.zkforge:ckez` for `<ckeditor>`) and reimport. It is a classpath problem, not a typo in your ZUL. |

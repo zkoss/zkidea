@@ -1,0 +1,12 @@
+<!--
+  Loaded only when the bundled "Web Browser (JCEF)" plugin (com.intellij.modules.jcef) is present,
+  via the optional <depends> in plugin.xml. Intentionally contributes nothing: that dependency
+  exists purely so this plugin's classloader can see org.cef.* / com.intellij.ui.jcef.* on
+  IntelliJ 2026.2+ (issue #66), where JCEF moved out of the JetBrains Runtime into that plugin.
+
+  Do NOT move the preview's <fileEditorProvider> here. If the registration were conditional on
+  JCEF, disabling that plugin would drop the split editor entirely and .zul would open with no
+  preview pane and no explanation; keeping it in plugin.xml lets the pane show the JcefAvailability
+  card that tells the user which plugin to re-enable.
+-->
+<idea-plugin/>
