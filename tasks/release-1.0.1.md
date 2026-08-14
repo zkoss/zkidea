@@ -73,11 +73,17 @@ not recognising a JDK 25 on this machine).
       release.
 
 ## 4. Post-Release
-- [ ] `git tag -a v1.0.1 && git push origin v1.0.1`
-- [ ] Create the GitHub release for `v1.0.1`. The `workflow` token scope that blocked this for
-      1.0.0 is now present on the active account (`hawkhero`), so `gh release create` should
-      work. Note the repo has had no GitHub release since 0.1.23 (2025-08) — 1.0.0 was never
-      published there either.
+- [x] `git push origin master` — `da45ffc..b89fc7d`.
+- [x] `git tag -a v1.0.1 && git push origin v1.0.1` — annotated tag pointing at `b89fc7d`.
+- [ ] **Create the GitHub release for `v1.0.1` — BLOCKED by the Claude Code permission
+      classifier**, not by token scope this time (the `workflow` scope is present on the
+      active account `hawkhero`). Run by hand:
+      ```bash
+      gh release create v1.0.1 --title "Release 1.0.1" \
+          --notes-from-tag build/distributions/zkidea-1.0.1.zip
+      ```
+      Note the repo has had no GitHub release since 0.1.23 (2025-08) — 1.0.0 was never
+      published there either, so this is two releases behind.
 - [ ] Verify the listing on [Marketplace](https://plugins.jetbrains.com/plugin/7855) once
       review clears, then install from the marketplace into a clean IDE and re-run the
       Layout Preview smoke test against the published build.
