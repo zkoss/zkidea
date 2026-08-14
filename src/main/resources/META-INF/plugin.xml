@@ -26,7 +26,7 @@
               <b>Layout Preview</b>
               <ul>
                   <li>A side-by-side layout preview for <code>.zul</code> files — see how a page lays out while you edit, refreshed on save</li>
-                  <li>Rendered through your project's own ZK jars in an isolated helper process; your own code is never loaded (ViewModels, Composers, and converters do not run), so bound values appear as placeholders rather than real data</li>
+                  <li>Rendered through your project's own ZK jars in a separate helper process; your application never runs (ViewModels, Composers, and converters are never instantiated), so bound values appear as placeholders rather than real data</li>
                   <li>A first-paint layout view, not a live application preview</li>
               </ul>
           </li>
@@ -83,6 +83,7 @@
       <ul>
           <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/66">#66 Cannot open a .zul file on IntelliJ IDEA 2026.2 (NoClassDefFoundError: org/cef/handler/CefRequestHandler)</a> — IntelliJ 2026.2 moved JCEF out of the IDE runtime into the bundled "Web Browser (JCEF)" plugin, whose classes are visible only to plugins that declare it. The plugin now declares that dependency, so the Layout Preview renders again.</li>
           <li>[bug] A missing or disabled JCEF no longer costs more than the preview: the <code>.zul</code> editor always opens, and the preview pane explains which JCEF is missing and how to restore it — including the new "enable the bundled Web Browser (JCEF) plugin" case, and a browser that is present but fails to start.</li>
+          <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/67">#67 Layout Preview: a &lt;zscript&gt; naming one of the project's own classes fails to render (Class or variable not found)</a> — the preview now hands the render process your module's compiled output, so a page whose <code>&lt;zscript&gt;</code>, <code>use="…"</code> or custom EL function names one of your own classes renders instead of failing. ViewModels and Composers are still never instantiated, so bound values remain placeholders.</li>
       </ul>
       <p>1.0.0</p>
       <ul>

@@ -231,28 +231,23 @@ public final class ZulPreviewServerService implements Disposable {
         String zkJarSummary = ZkClasspathFilter.classpathSummary(classpathEntries);
         String buildSystem = BuildSystemDetector.detect(module);
 
-        // ZK presence gate, three-way: NONE ("add a ZK dependency"), DECLARED_BUT_MISSING
-        // (declared but not on disk -> "re-import/re-sync"), or PRESENT.
-        // Only PRESENT proceeds to a launcher. The actual handoff classpath below is deliberately
-        // wider than just ZK jars (see filterLibraryJars' javadoc): ZK's own runtime deps (e.g.
-        // slf4j-api) are not ZK-prefixed, so a ZK-only allowlist starves the bootstrap.
-        ZkClasspathFilter.ZkPresence presence = ZkClasspathFilter.detectZkPresence(classpathEntries);
-        boolean hasZkJars = presence == ZkClasspathFilter.ZkPresence.PRESENT;
-        List<File> libraryJars = hasZkJars
-                ? ZkClasspathFilter.filterLibraryJars(classpathEntries)
-                : List.of();
+        // The same enumeration again, production-only: this one supplies the compiled-output
+        // roots (target/classes, ...) the launcher needs to resolve the project's own classes.
+        // Enumerated separately rather than reusing the list above, because the two views must
+        // differ in both directions: productionOnly() drops provided-scope jars, which the
+        // handoff still needs, and the wider view carries test output roots, which it must not
+        // have (see ZkClasspathFilter.filterOutputDirectories).
+        List<String> productionClassEntries = (module != null)
+                ? OrderEnumerator.orderEntries(module).recursively().runtimeOnly().productionOnly()
+                        .withoutSdk().classes().getPathsList().getPathList()
+                : OrderEnumerator.orderEntries(project).runtimeOnly().productionOnly()
+                        .withoutSdk().classes().getPathsList().getPathList();
 
-        // Resource roots (e.g. src/main/resources): where a user's own ~./ ClassWebResource
-        // pages (web/*.zul) live. ZK resolves ~./x from the classpath at /web/x, so these
-        // directories must be on the launcher's classpath for a user's ~./ page to render --
-        // it works in a real container because WEB-INF/classes/web/ is on the classpath there.
-        // This is NOT the module *output* dir (AC-4(i)/filterLibraryJars still exclude that):
-        // a resource root holds resources, not compiled user classes, so isolation (the
-        // UiFactory hook) is unaffected. Only meaningful when the module has ZK at all.
         // The module's RESOURCE source roots (e.g. src/main/resources), computed once and used
-        // for two things: (a) the launcher classpath below (the ~./ fix), and (b) docroot
-        // resolution -- a Spring-Boot-jar page under <resourceRoot>/web has no webapp/WEB-INF,
-        // so DocrootResolver needs these roots to recognise its classpath web root.
+        // for two things: (a) the launcher classpath below (where a user's own ~./
+        // ClassWebResource pages live -- ZK resolves ~./x from the classpath at /web/x), and
+        // (b) docroot resolution -- a Spring-Boot-jar page under <resourceRoot>/web has no
+        // webapp/WEB-INF, so DocrootResolver needs these roots to recognise its classpath web root.
         List<String> resourceRootPaths = (module != null)
                 ? ModuleRootManager.getInstance(module)
                         .getSourceRoots(JavaResourceRootType.RESOURCE).stream()
@@ -260,13 +255,16 @@ public final class ZulPreviewServerService implements Disposable {
                         .collect(Collectors.toList())
                 : List.of();
 
-        List<File> resourceRoots = (module != null && hasZkJars)
-                ? ZkClasspathFilter.filterResourceRoots(resourceRootPaths)
+        // ZK presence gate, three-way: NONE ("add a ZK dependency"), DECLARED_BUT_MISSING
+        // (declared but not on disk -> "re-import/re-sync"), or PRESENT.
+        // Only PRESENT proceeds to a launcher. The actual handoff classpath is deliberately
+        // wider than just ZK jars (see filterLibraryJars' javadoc): ZK's own runtime deps (e.g.
+        // slf4j-api) are not ZK-prefixed, so a ZK-only allowlist starves the bootstrap.
+        ZkClasspathFilter.ZkPresence presence = ZkClasspathFilter.detectZkPresence(classpathEntries);
+        boolean hasZkJars = presence == ZkClasspathFilter.ZkPresence.PRESENT;
+        List<File> launcherClasspath = hasZkJars
+                ? launcherClasspath(classpathEntries, productionClassEntries, resourceRootPaths)
                 : List.of();
-
-        // Jars first so ZK's own bundled web/ resources win over any user name collision.
-        List<File> launcherClasspath = new ArrayList<>(libraryJars);
-        launcherClasspath.addAll(resourceRoots);
         String signature = ZkClasspathFilter.signature(launcherClasspath);
 
         List<Path> contentRoots = module == null ? List.of()
@@ -282,6 +280,34 @@ public final class ZulPreviewServerService implements Disposable {
         String relative = docroot.relativize(zulPath).toString().replace(File.separatorChar, '/');
         return new PreviewTarget(presence, docroot, launcherClasspath, signature, "/" + relative,
                 buildSystem, resolution.getLayout().getLabel(), zkJarSummary);
+    }
+
+    /**
+     * What the helper JVM gets on {@code --classpath}, in this order: every resolved runtime
+     * <b>library jar</b>, then the <b>compiled-output roots</b> of the previewed module and its
+     * module dependencies, then the module's <b>resource roots</b>.
+     *
+     * <p>Order is the contract. Jars first so ZK's own bundled {@code web/} resources win over a
+     * user name collision; compiled output before the resource roots, mirroring a real container
+     * where {@code WEB-INF/classes} <em>is</em> the compiled output with the resources already
+     * copied into it.
+     *
+     * <p>{@code classpathEntries} is the full runtime enumeration (keeps provided-scope jars);
+     * {@code productionClassEntries} is the production-only one and is the only source of
+     * directories, so {@code target/test-classes} never reaches the render. The two lists cannot
+     * produce duplicates: only files are taken from the first, only directories from the second.
+     *
+     * <p>Package-visible, static and platform-free so {@code LauncherClasspathTest} and the
+     * plugin&lt;-&gt;launcher {@code ZulPreviewLauncherSeamTest} can build the real thing without
+     * an {@code Application}.
+     */
+    static List<File> launcherClasspath(List<String> classpathEntries,
+                                        List<String> productionClassEntries,
+                                        List<String> resourceRootPaths) {
+        List<File> classpath = new ArrayList<>(ZkClasspathFilter.filterLibraryJars(classpathEntries));
+        classpath.addAll(ZkClasspathFilter.filterOutputDirectories(productionClassEntries));
+        classpath.addAll(ZkClasspathFilter.filterResourceRoots(resourceRootPaths));
+        return classpath;
     }
 
     private String resolveJavaExecutable() {
@@ -317,11 +343,12 @@ public final class ZulPreviewServerService implements Disposable {
      * card. A {@code null} version (an SDK whose version string {@code JavaSdk#getVersion} cannot
      * parse) is treated as too old: unknown is not worth gambling a hard crash on.
      *
-     * <p>Falling back costs nothing in fidelity. The helper JVM never receives the module's compiled
-     * output on {@code --classpath} (see {@link #resolveTarget}) -- only ZK library jars and resource
-     * roots -- so no user bytecode runs in it, and the IDE's own runtime is at least Java 17 for
-     * every build this plugin supports ({@code sinceBuild} 233.2 / IntelliJ 2023.3). Matching the
-     * project's JDK is a preference, not a requirement, and this keeps it whenever it is viable.
+     * <p>Falling back is always available -- the IDE's own runtime is at least Java 17 for every
+     * build this plugin supports ({@code sinceBuild} 233.2 / IntelliJ 2023.3) -- and it is safe for
+     * the module's compiled classes, which the helper JVM does load ({@link #launcherClasspath}):
+     * the fallback only happens when the project SDK is <em>older</em> than 17, and bytecode that
+     * SDK produced loads on a 17+ runtime. Matching the project's JDK is a preference, not a
+     * requirement, and this keeps it whenever it is viable.
      *
      * <p>Package-visible and platform-free (it touches only the version enum) so
      * {@code LauncherJvmVersionGateTest} can exercise it without an {@code Application}.
@@ -385,7 +412,7 @@ public final class ZulPreviewServerService implements Disposable {
         /** Whether the module has usable ZK jars -- drives the R7/U3 gate in {@link #onTargetResolved}. */
         final ZkClasspathFilter.ZkPresence presence;
         final Path docroot;
-        /** What the launcher gets on {@code --classpath}: the runtime library jars plus resource-root dirs. */
+        /** What the launcher gets on {@code --classpath} -- see {@link #launcherClasspath}. */
         final List<File> launcherClasspath;
         final String classpathSignature;
         final String requestPath;

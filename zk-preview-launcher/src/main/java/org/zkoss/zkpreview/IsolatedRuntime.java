@@ -25,9 +25,12 @@ import java.util.List;
  * the ZK servlet fail with e.g. {@code NoSuchMethodException} due to classloader
  * identity mismatch (verified empirically while building this engine).
  *
- * <p>AC-4(i): {@code ScopedZkClassLoader}'s own URL list is exactly the caller-supplied
- * ZK jars plus the small isolation-hooks jar -- never a user project's output dir.
- * AC-4(ii)/(iii): true parent-narrowness (no user/test classes reachable at all) is
+ * <p>AC-4(i): {@code ScopedZkClassLoader}'s own URL list is exactly what the caller supplies
+ * plus the small isolation-hooks jar -- nothing is added here. What the plugin supplies now
+ * includes the previewed module's compiled-output roots, so a page's own {@code <zscript>} /
+ * {@code use="..."} code can resolve the project's classes; ViewModels and Composers are
+ * blocked by the {@code UiFactory} hook, which never resolves their class name.
+ * AC-4(ii)/(iii): true parent-narrowness (no unrelated classes reachable at all) is
  * proven by the CLI child-process tests, which invoke the packaged jar as a separate
  * OS process whose classpath is exactly {@code zk-preview-launcher.jar} plus the
  * caller-supplied {@code --classpath} -- see IsolationChildProcessTest.

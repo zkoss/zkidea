@@ -22,16 +22,15 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Plugin&lt;-&gt;launcher seam test. Builds a classpath the exact same way
- * {@link ZulPreviewServerService} does (by calling {@link ZkClasspathFilter}'s real
- * filtering logic on manual-test's real Maven-resolved runtime classpath, including a
- * fake module-output directory the way {@code OrderEnumerator} would report one), then
- * spawns the REAL packaged {@code zk-preview-launcher.jar} with that classpath and
- * asserts it actually boots and serves a page.
+ * {@link ZulPreviewServerService} does (by calling its real
+ * {@link ZulPreviewServerService#launcherClasspath} on manual-test's real Maven-resolved
+ * runtime classpath plus a stand-in module-output directory the way {@code OrderEnumerator}
+ * would report one), then spawns the REAL packaged {@code zk-preview-launcher.jar} with that
+ * classpath and asserts it actually boots and serves a page.
  *
  * <p>This is the seam E1's own tests never exercised: E1's {@code IsolationChildProcessTest}
  * fed the launcher the FULL {@code mvn dependency:build-classpath} output directly, never
@@ -44,6 +43,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * manual-test's dependencies isn't available in this environment.
  */
 class ZulPreviewLauncherSeamTest {
+
+    /**
+     * What the probe class returns and {@code preview/zscript-user-class.zul} renders. Kept
+     * alphanumeric: ZK's JS encoder escapes a hyphen as {@code \-} in the emitted widget JSON,
+     * so a hyphenated value would never match the response verbatim.
+     */
+    private static final String PROBE_TEXT = "compiledOutputReachedTheRender";
 
     private static List<String> cachedManualTestClasspath;
     private static String cachedSkipReason;
@@ -71,31 +77,35 @@ class ZulPreviewLauncherSeamTest {
         Assumptions.assumeTrue(launcherJar.isFile(),
                 "skip: " + launcherJar.getAbsolutePath() + " not built (run :zk-preview-launcher:jar first)");
 
-        // A fake module-output directory, exactly like OrderEnumerator would report for
-        // the previewed module's own compiled classes -- must never reach the launcher
-        // (AC-4(i): no output dirs on the render classpath, ever).
-        Path fakeModuleOutputDir = Files.createDirectory(tempDir.resolve("fake-module-output"));
-        Files.writeString(fakeModuleOutputDir.resolve("UserViewModel.class"), "not a real class file");
+        // A stand-in module-output directory, exactly like OrderEnumerator would report for the
+        // previewed module's own compiled classes -- holding a REAL compiled class, so this test
+        // proves the whole chain: plugin classpath assembly -> --classpath -> ScopedZkClassLoader
+        // -> BeanShell resolving one of the project's own classes (tasks/class-not-found.md).
+        Path moduleOutputDir = Files.createDirectory(tempDir.resolve("module-output"));
+        compileProbeClassInto(moduleOutputDir);
 
         List<String> entriesAsOrderEnumeratorWouldReportThem = new ArrayList<>(rawClasspath);
-        entriesAsOrderEnumeratorWouldReportThem.add(fakeModuleOutputDir.toString());
+        entriesAsOrderEnumeratorWouldReportThem.add(moduleOutputDir.toString());
 
         // NOTE: production code (ZulPreviewServerService#resolveTarget) calls
-        // ZkClasspathFilter.filterLibraryJars -- the SAME call this test makes -- to build the
-        // handoff classpath. An earlier version called filterZkJars, which dropped every
-        // non-org.zkoss jar (including slf4j-api). Running this test against filterZkJars
-        // reproduces that shipped crash exactly: NoClassDefFoundError org.slf4j.LoggerFactory
-        // raised from WebManager.<clinit> during the launcher's ZK bootstrap. That is the RED
-        // this test was written against, and re-pointing it at filterZkJars reproduces it.
-        List<File> libraryJars = ZkClasspathFilter.filterLibraryJars(entriesAsOrderEnumeratorWouldReportThem);
+        // ZulPreviewServerService.launcherClasspath -- the SAME call this test makes -- to build
+        // the handoff classpath. Two shipped defects are reproducible by weakening it here:
+        // filterZkJars alone dropped every non-org.zkoss jar (including slf4j-api, which ZK's
+        // WebManager requires at class-init time) -> NoClassDefFoundError during ZK bootstrap;
+        // filterLibraryJars alone dropped every directory, i.e. the module's compiled output
+        // -> the zscript page below fails with "Missing class: preview.probe.ClasspathProbe".
+        List<File> launcherClasspath = ZulPreviewServerService.launcherClasspath(
+                entriesAsOrderEnumeratorWouldReportThem,
+                entriesAsOrderEnumeratorWouldReportThem,
+                List.of());
 
-        assertFalse(libraryJars.stream().anyMatch(f -> f.getAbsolutePath().equals(fakeModuleOutputDir.toString())),
-                "the fake module-output directory must be excluded from the launcher handoff");
-        assertTrue(libraryJars.stream().anyMatch(f -> f.getName().startsWith("slf4j-api-")),
+        assertTrue(launcherClasspath.contains(moduleOutputDir.toFile()),
+                "the module-output directory must reach the launcher handoff");
+        assertTrue(launcherClasspath.stream().anyMatch(f -> f.getName().startsWith("slf4j-api-")),
                 "slf4j-api (a non-ZK-prefixed transitive dependency ZK's WebManager requires at bootstrap) "
                         + "must be included -- this is exactly what D1 got wrong");
 
-        String classpathArg = libraryJars.stream().map(File::getAbsolutePath)
+        String classpathArg = launcherClasspath.stream().map(File::getAbsolutePath)
                 .reduce((a, b) -> a + File.pathSeparator + b).orElse("");
 
         Path webapp = Path.of("manual-test/src/main/webapp").toAbsolutePath();
@@ -109,13 +119,58 @@ class ZulPreviewLauncherSeamTest {
         assertTrue(port > 0, "zk-preview-launcher exited before it reported a port -- see stderr above");
 
         HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
-        HttpResponse<String> response = client.send(
-                HttpRequest.newBuilder().uri(URI.create("http://127.0.0.1:" + port + "/preview/button.zul"))
-                        .timeout(Duration.ofSeconds(15)).GET().build(),
-                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        HttpResponse<String> response = get(client, port, "/preview/button.zul");
 
         assertEquals(200, response.statusCode(), response.body());
         assertTrue(response.body().contains("zkmx("), "expected a ZK bootstrap marker in the response: " + response.body());
+
+        // The reported failure (tasks/class-not-found.md): a <zscript> instantiating one of the
+        // project's own classes used to abort the render with
+        // "Class or variable not found: ...". It renders once the compiled output is handed over.
+        HttpResponse<String> zscriptResponse = get(client, port, "/preview/zscript-user-class.zul");
+
+        assertEquals(200, zscriptResponse.statusCode(), zscriptResponse.body());
+        assertTrue(zscriptResponse.body().contains(PROBE_TEXT),
+                "the zscript's value from the module's own compiled class must reach the page: "
+                        + zscriptResponse.body());
+    }
+
+    private static HttpResponse<String> get(HttpClient client, int port, String path) throws Exception {
+        return client.send(
+                HttpRequest.newBuilder().uri(URI.create("http://127.0.0.1:" + port + path))
+                        .timeout(Duration.ofSeconds(15)).GET().build(),
+                HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Compiles the class {@code preview/zscript-user-class.zul}'s {@code <zscript>} instantiates
+     * into {@code outputDir}, standing in for the previewed module's own compiled output. Compiled
+     * here rather than checked in as a {@code .class} so it stays readable and can't go stale
+     * against the JDK the tests run on.
+     *
+     * <p>Uses the {@code javac} binary rather than {@code ToolProvider.getSystemJavaCompiler()}:
+     * the latter returns {@code null} in this test JVM, whose system classloader the IntelliJ test
+     * framework replaces with {@code com.intellij.util.lang.PathClassLoader}, so the tool's
+     * {@code ServiceLoader} lookup finds no provider.
+     */
+    private static void compileProbeClassInto(Path outputDir) throws IOException, InterruptedException {
+        Path source = Files.createDirectories(outputDir.resolve("src")).resolve("ClasspathProbe.java");
+        Files.writeString(source, "package preview.probe;\n"
+                + "public class ClasspathProbe {\n"
+                + "    public String text() { return \"" + PROBE_TEXT + "\"; }\n"
+                + "}\n", StandardCharsets.UTF_8);
+
+        Path javac = Path.of(javaExecutable()).resolveSibling("javac");
+        Assumptions.assumeTrue(Files.isExecutable(javac),
+                "skip: no javac next to the test JVM (" + javac + ") -- running on a JRE?");
+
+        ProcessBuilder pb = new ProcessBuilder(javac.toString(),
+                "-d", outputDir.toString(), source.toString());
+        pb.redirectErrorStream(true);
+        Process javacProcess = pb.start();
+        String output = new String(javacProcess.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+        assertTrue(javacProcess.waitFor(60, TimeUnit.SECONDS), "javac timed out compiling the probe class");
+        assertEquals(0, javacProcess.exitValue(), "failed to compile the probe class: " + output);
     }
 
     private static synchronized List<String> resolveManualTestClasspath() {

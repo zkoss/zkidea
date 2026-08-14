@@ -7,11 +7,12 @@ the normal ZUL text editor, the right pane shows the **actual HTML ZK's own engi
 produces for the page's first paint**, refreshed when you save. It is a *layout* view —
 how the page composes and lays out — not a running application.
 
-> **Mental model.** The preview renders through your project's **own ZK jars** in an
-> isolated helper process. Your own code is **never loaded** — ViewModels, Composers,
-> converters and validators do not run. So a data-bound value shows as a **placeholder**
-> (the binding expression text), not real data. Think "see the skeleton of the page as I
-> type", not "run my app".
+> **Mental model.** The preview renders through your project's **own ZK jars** in a separate
+> helper process. Your **application** never runs — ViewModels, Composers, converters and
+> validators are never instantiated. So a data-bound value shows as a **placeholder** (the
+> binding expression text), not real data. Code the page itself invokes — a `<zscript>`, a
+> `use="…"` component — does run, against your module's compiled classes. Think "see the
+> skeleton of the page as I type", not "run my app".
 
 For the engineering contract and the full limitation list see
 [zul_preview_spec.md](zul_preview_spec.md); for the class-by-class implementation map see
@@ -47,11 +48,11 @@ XML editor.
 | `apply="a.MyComposer"` / auto MVVM `BindComposer` | **No-op** — user composers never run (that is the isolation guarantee) |
 | Client-side namespace `w:` (e.g. `w:onClick="…"` JS) | **Runs** — it is client JavaScript, executed in the preview browser |
 | Server-side event listeners (`onClick` → Java), AU round-trips (paging, sort, tree-expand) | **Not simulated** — first paint only; interactions are silent no-ops |
-| `<zscript>` (inline Java) | **Runs at compose time** — a missing class produces a formatted error, not a crash |
+| `<zscript>` (inline Java) | **Runs at compose time**, against your module's **compiled** classes — so `new demo.data.BigList(1000)` works if the module has been built; if the class isn't there, you get a formatted error, not a crash |
 
-This split is deliberate and permanent: implicit objects are part of *laying out the page*,
-while bound data is part of *running your application* — which the preview intentionally
-does not do.
+This split is deliberate and permanent: implicit objects and the page's own inline code are
+part of *laying out the page*, while bound data is part of *running your application* — which
+the preview intentionally does not do.
 
 ---
 
@@ -133,12 +134,14 @@ instead.
    attached in IntelliJ) is **not** enough — the pane will say the module has no ZK.
 3. **No build tool needed at render time.** The preview never runs `mvn`/`gradle` and never
    reads `pom.xml`/`build.gradle`; it reads only IntelliJ's resolved project model. The
-   render helper is bundled inside the plugin.
+   render helper is bundled inside the plugin. One caveat: a page that names your own classes
+   (`<zscript>`, `use="…"`, a custom EL function) is rendered against your module's **compiled
+   output**, so that module has to have been built — nothing builds it for you, and a class that
+   isn't compiled yet shows up as a render error naming it.
 4. **No particular project JDK.** The render helper needs Java 17, and it uses your project SDK
    when that SDK is 17 or newer — otherwise it quietly runs on the IDE's own runtime instead.
    A project on JDK 8 or 11 previews normally; you do not need to change its SDK, and doing so
-   would not affect what the preview shows. (Your own code never runs in that JVM, so its Java
-   version has no bearing on the render.)
+   would not affect what the preview shows.
 
 ---
 
@@ -241,10 +244,11 @@ preview" cards report everything else.
   (`zk-preview-launcher`) with zero IntelliJ dependencies — driving *your* ZK jars through
   ZK's real `DHtmlLayoutServlet`. Both `javax` and `jakarta` servlet variants are
   auto-detected and supported.
-- **Isolation** rests on a scoped classloader (only ZK jars + isolation hooks; your
-  compiled output is never on it) and a `UiFactory` hook that turns every composer/ViewModel
-  resolution into a no-op. That is *why* bound values are placeholders — by design, not a
-  bug.
+- **Isolation** rests on a `UiFactory` hook that turns every composer/ViewModel resolution
+  into a no-op — it never even asks for the class. That is *why* bound values are
+  placeholders — by design, not a bug. The scoped classloader carries your ZK jars, the
+  isolation hooks and your module's compiled output, so the page's own inline code resolves
+  your classes.
 - **One helper JVM per `(docroot, classpath)` pair**, shared by every preview tab that
   resolves to it, kept alive for the project session and killed when the project closes (no
   orphan processes).
@@ -258,14 +262,16 @@ Full details: [feature_overview.md §10](feature_overview.md) and
 
 - **First paint only** — no server round-trips; server-side listeners and AU updates
   (paging, sorting, tree expansion) are not simulated.
-- **No user-class fidelity** — ViewModels/Composers/converters never load, so MVVM values
-  are placeholders and `@command` is unwired. This will not change; it is the isolation
+- **No user-class fidelity** — ViewModels/Composers/converters are never instantiated, so MVVM
+  values are placeholders and `@command` is unwired. This will not change; it is the isolation
   guarantee.
+- **Compiled classes are read once per helper process** — a page rendered before you rebuild
+  keeps the classes it started with; restart the IDE to pick up a rebuild.
 - **Refresh on save**, not on keystroke (≈300 ms after the file is written).
 - **Idle helper JVMs** — one per distinct `(docroot, classpath)` stays up until the project
   closes (no idle timeout).
 
-The full, itemized limitation list (L-1 … L-14) lives in
+The full, itemized limitation list (L-1 … L-15) lives in
 [zul_preview_spec.md §4](zul_preview_spec.md); the still-open review findings — bugs, not
 design decisions — are tracked in [§5](zul_preview_spec.md) of the same file.
 

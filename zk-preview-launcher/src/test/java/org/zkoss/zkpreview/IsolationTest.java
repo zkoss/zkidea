@@ -38,10 +38,12 @@ class IsolationTest {
         System.clearProperty(IsolationMode.SYSTEM_PROPERTY);
     }
 
-    // AC-4(i): the scoped classloader's own URL allowlist is exactly the resolved
-    // ZK jars (+ the tiny injected hooks jar) -- never this module's own build
-    // output (which is where a "user project's output dir" would show up if the
-    // isolation boundary were broken).
+    // AC-4(i): the scoped classloader's URL list is exactly what the caller passed (+ the
+    // tiny injected hooks jar) and nothing else -- in particular the launcher never adds
+    // this module's own build output behind the caller's back. It is NOT a claim that a
+    // previewed project's output dir stays off the render classpath: the plugin passes
+    // that deliberately (ZulPreviewServerService.launcherClasspath), and isolation from
+    // ViewModels/Composers is the UiFactory hook, exercised by (iii)/(iv) below.
     @ParameterizedTest(name = "[{0}]")
     @MethodSource("variants")
     void classpathAllowlistContainsOnlyZkJarsAndHooksJar(Variants.Named variant) throws Exception {

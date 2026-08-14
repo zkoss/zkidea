@@ -123,6 +123,40 @@ class ZkClasspathFilterTest {
     }
 
     @Test
+    void filterOutputDirectoriesKeepsCompiledOutputRootsAndDropsJarsAndMissingPaths() throws IOException {
+        // The complement of filterLibraryJars over the SAME list: a compiled-output root is a
+        // directory, so it is exactly what filterLibraryJars drops. It is on the render classpath
+        // so a <zscript>/use="..."/EL function naming one of the project's own classes resolves
+        // (tasks/class-not-found.md); a jar there is filterLibraryJars' job, and a path that does
+        // not exist (an un-built module) is dropped rather than handed to the launcher.
+        File outputDir = tempDir.resolve("target/classes").toFile();
+        assertTrue(outputDir.mkdirs(), "test precondition: create a module-output dir");
+        File jar = newJar("zk-10.1.0-jakarta.jar");
+        String neverBuilt = tempDir.resolve("other-module/target/classes").toString();
+
+        List<File> outputRoots = ZkClasspathFilter.filterOutputDirectories(
+                List.of(jar.getAbsolutePath(), outputDir.getAbsolutePath(), neverBuilt));
+
+        assertEquals(1, outputRoots.size());
+        assertEquals(outputDir.getAbsolutePath(), outputRoots.get(0).getAbsolutePath());
+    }
+
+    @Test
+    void filterOutputDirectoriesPreservesClasspathOrder() throws IOException {
+        // Order is the module's own output before its dependencies' -- OrderEnumerator's order,
+        // which is the shadowing order a real container would apply.
+        File own = tempDir.resolve("app/target/classes").toFile();
+        File dependency = tempDir.resolve("lib/target/classes").toFile();
+        assertTrue(own.mkdirs() && dependency.mkdirs(), "test precondition: create two output dirs");
+
+        List<File> outputRoots = ZkClasspathFilter.filterOutputDirectories(
+                List.of(own.getAbsolutePath(), dependency.getAbsolutePath()));
+
+        assertEquals(List.of(own.getAbsolutePath(), dependency.getAbsolutePath()),
+                outputRoots.stream().map(File::getAbsolutePath).toList());
+    }
+
+    @Test
     void filterLibraryJarsExcludesSdkPseudoEntriesAndNonexistentPaths() throws IOException {
         File zk = newJar("zk-10.1.0-jakarta.jar");
         // Regression guard from a real observation: a live launcher process spawned by the

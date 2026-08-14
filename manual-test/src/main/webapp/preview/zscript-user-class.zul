@@ -1,0 +1,10 @@
+<!-- The ZK demo's own pattern (tasks/class-not-found.md): a <zscript> that builds page data
+     from one of the project's OWN compiled classes. Renders only when the module's compiled
+     output reaches the launcher on its classpath. Driven by ZulPreviewLauncherSeamTest, which
+     compiles preview.probe.ClasspathProbe into a stand-in module-output directory. -->
+<zk>
+    <zscript><![CDATA[
+        String probe = new preview.probe.ClasspathProbe().text();
+    ]]></zscript>
+    <label id="probe" value="${probe}"/>
+</zk>

@@ -85,15 +85,14 @@ public final class ZkClasspathFilter {
     }
 
     /**
-     * Returns every classpath entry that is a library jar -- i.e. not a directory.
-     * Module output directories (where the previewed module's own compiled classes,
-     * including any ViewModel/Composer, live) are always excluded; everything else
-     * (every resolved runtime dependency, ZK or not) is handed to the preview launcher
-     * so it has the full runtime environment ZK actually needs to bootstrap (e.g.
-     * ZK's {@code WebManager} requires {@code slf4j-api}, which is not a ZK-prefixed
-     * jar). Isolation from user classes is guaranteed by the launcher's {@code UiFactory}
-     * hook, not by classpath narrowness: this method's only isolation contract is
-     * "never a directory".
+     * Returns every classpath entry that is a library jar -- i.e. not a directory. Every
+     * resolved runtime dependency is kept, ZK or not, so the launcher has the full runtime
+     * environment ZK actually needs to bootstrap (e.g. ZK's {@code WebManager} requires
+     * {@code slf4j-api}, which is not a ZK-prefixed jar). This method's only contract is
+     * "never a directory"; the directories on the classpath -- the compiled-output roots --
+     * are picked up separately by {@link #filterOutputDirectories}, and isolation from user
+     * <em>classes</em> is guaranteed by the launcher's {@code UiFactory} hook (which returns
+     * a no-op composer for every ViewModel/Composer), not by classpath narrowness.
      *
      * <p><b>Do not narrow this to ZK-named jars.</b> An earlier version did exactly that
      * and every preview died at ZK bootstrap with
@@ -123,19 +122,49 @@ public final class ZkClasspathFilter {
      * Returns every entry that is an existing directory -- the module's resource roots
      * (e.g. {@code src/main/resources}), where a user's own {@code ~./} pages live
      * ({@code web/*.zul}, served by ZK's {@code ClassWebResource} from the classpath at
-     * {@code /web/}). These ARE handed to the launcher, unlike the module <em>output</em>
-     * directory (which {@link #filterLibraryJars} still excludes, AC-4(i)): a resource root
-     * contains resources, not compiled user classes, so class-isolation -- guaranteed by the
-     * launcher's {@code UiFactory} hook, not by classpath narrowness -- is unaffected, while
-     * ZK's {@code ClassWebResource} can now resolve a user's {@code ~./} pages exactly as a
-     * real servlet container does (where {@code WEB-INF/classes/web/} is on the classpath).
+     * {@code /web/}). ZK's {@code ClassWebResource} can then resolve a user's {@code ~./}
+     * pages exactly as a real servlet container does (where {@code WEB-INF/classes/web/}
+     * is on the classpath).
      *
      * <p>Mirror image of {@link #filterLibraryJars} (which keeps files and drops directories):
      * this keeps directories and drops files / non-existent paths.
      */
     public static List<File> filterResourceRoots(List<String> resourceRootPaths) {
+        return existingDirectories(resourceRootPaths);
+    }
+
+    /**
+     * Returns every classpath entry that is an existing directory -- the compiled-output roots
+     * of the previewed module and of the modules it depends on ({@code target/classes},
+     * {@code build/classes/java/main}, ...). Same rule as {@link #filterResourceRoots}, applied
+     * to the resolved classpath rather than to the source roots, and therefore the exact
+     * complement of {@link #filterLibraryJars} over that list.
+     *
+     * <p>These roots are handed to the launcher so the project's own classes resolve where the
+     * page itself names them: a {@code <zscript>} (the ZK demo's
+     * {@code new demo.data.BigList(1000)}), a {@code use="user.MyDiv"} component, or a custom EL
+     * function. Without them BeanShell cannot resolve the class and ZK aborts the whole render
+     * (tasks/class-not-found.md) -- a page that renders fine in a real container.
+     *
+     * <p>This does <em>not</em> weaken the isolation that matters: ViewModels and Composers are
+     * blocked by the launcher's no-op {@code UiFactory} hook, which never resolves their class
+     * name at all, so bound values still render as placeholders whether or not the class is
+     * reachable. What it does widen is executable page code -- {@code <zscript>}, custom
+     * components, EL functions, and any class a {@code metainfo/zk/config.xml} names -- which now
+     * runs the project's own bytecode in the helper JVM.
+     *
+     * <p>The caller must pass a <b>production-only</b> classpath enumeration: test output roots
+     * ({@code target/test-classes}) are not part of what the page would see in a container, and
+     * their resources (a {@code logback-test.xml}, a test-only {@code metainfo/zk/config.xml})
+     * would reconfigure the helper JVM's ZK bootstrap.
+     */
+    public static List<File> filterOutputDirectories(List<String> classpathEntries) {
+        return existingDirectories(classpathEntries);
+    }
+
+    private static List<File> existingDirectories(List<String> paths) {
         List<File> result = new ArrayList<>();
-        for (String entry : resourceRootPaths) {
+        for (String entry : paths) {
             File file = new File(entry);
             if (file.isDirectory()) {
                 result.add(file);

@@ -210,8 +210,8 @@ Defined in `plugin.xml` as an action group `ZK_Feedback_Group` added to `HelpMen
 ### What it does
 Adds a side-by-side **Layout Preview** to the ZUL editor (Markdown-editor style): the
 left pane is the normal text editor, the right pane renders the actual HTML ZK's own
-engine would produce, refreshed on save. Rendering never loads the project's own compiled
-classes (ViewModels, Composers, converters, ...) — it is a **first-paint-only** layout
+engine would produce, refreshed on save. Rendering never instantiates the project's own
+ViewModels, Composers or converters — it is a **first-paint-only** layout
 view: bound values render as dimmed placeholders (the binding expression text) rather than
 their real values, and model-bound grids/listboxes/trees get synthesized placeholder rows
 so they keep their real geometry.
@@ -230,7 +230,7 @@ independently runnable as a CLI.
 | `ZulPreviewServerService` | Project-level `Disposable` service that owns the helper JVMs. `preparePreview()` resolves the previewed file's module classpath and docroot off the EDT (`ReadAction.nonBlocking`, both outcomes routed through the `wireResolveOutcome` seam so a resolve failure ends in an error card rather than a pane stuck on "loading"), then looks up or starts a `ManagedPreviewServer` keyed by `docroot + "#" + classpathSignature` — **one helper JVM per distinct (docroot, classpath) pair**, shared across every open preview tab that resolves to the same pair, kept alive for the project session. Process creation runs on the pooled executor, not the EDT, and is wrapped by the `startGuarded` seam so any throw becomes a failed server (not a lost callback). `reportArguments(...)` passes the render-target facts to the launcher as `--report-*`. `dispose()` kills every server this service started (no orphan JVMs left on project close). |
 | `ManagedPreviewServer` | Owns one spawned `zk-preview-launcher` process via IntelliJ's `KillableProcessHandler`. Parses the `PREVIEW_PORT=<n>` line the launcher prints on stdout once its HTTP server is up; keeps a **bounded** stderr tail (trimmed on append) for the "died before reporting a port" message; `destroy()` kills the OS process. Has no dependency on `Project`/platform APIs so its start/kill contract can be unit-tested with a lightweight stand-in process. |
 | `DocrootResolver` | Pure logic: resolves the `--webapp` docroot **and reports which rule matched** (`Layout` enum → `WAR_WEBAPP` / `SPRING_BOOT_CLASSPATH` / `CONTENT_ROOT` / `FILE_PARENT`, used in failure reports). The `WEB-INF`/`webapp` ancestor scan is clipped to the module's content roots so an unrelated ancestor named `webapp` can't hijack it; a file under `<resource-root>/web/` resolves to the classpath `web` root (Spring Boot jar layout); otherwise nearest content root, then the file's own parent. |
-| `ZkClasspathFilter` | Pure logic over a module's resolved runtime classpath. `detectZkPresence` classifies `PRESENT` / `NONE` / `DECLARED_BUT_MISSING` (ZK named on the classpath but absent from disk — a wiped repo cache) so the pane's message can differ; `isZkJar` recognizes ZK and ZK-addon artifact-name prefixes (`zkcharts-`, `keikai-`, …). `filterLibraryJars` keeps every non-directory, existing-regular-file classpath entry regardless of name (ZK's own transitive deps like `slf4j-api` aren't ZK-prefixed) and is what actually gets handed to the launcher's `--classpath`; `classpathSummary` renders the ZK-jar line for a failure report (file names only, capped). Also computes a stable SHA-256 `signature()` over a jar set (path+size+mtime) so `ZulPreviewServerService` can tell whether an existing helper JVM can be reused. |
+| `ZkClasspathFilter` | Pure logic over a module's resolved runtime classpath. `detectZkPresence` classifies `PRESENT` / `NONE` / `DECLARED_BUT_MISSING` (ZK named on the classpath but absent from disk — a wiped repo cache) so the pane's message can differ; `isZkJar` recognizes ZK and ZK-addon artifact-name prefixes (`zkcharts-`, `keikai-`, …). `filterLibraryJars` keeps every non-directory, existing-regular-file classpath entry regardless of name (ZK's own transitive deps like `slf4j-api` aren't ZK-prefixed); `filterOutputDirectories` keeps the existing *directories* of a production-only enumeration — the compiled-output roots, so a `<zscript>`/`use="…"`/EL function naming one of the project's own classes resolves; `filterResourceRoots` keeps the source-side resource roots for `~./` pages. `ZulPreviewServerService.launcherClasspath` concatenates the three, in that order, into the launcher's `--classpath`. `classpathSummary` renders the ZK-jar line for a failure report (file names only, capped). Also computes a stable SHA-256 `signature()` over a jar set (path+size+mtime) so `ZulPreviewServerService` can tell whether an existing helper JVM can be reused. |
 | `PreviewResult` | Outcome of `preparePreview()`: `READY` (port + request path), `NO_ZK_JARS` (module has no ZK dependency), `STALE_CLASSPATH` (declared but not on disk → "re-import"), or `ERROR` (carries the root-cause message). |
 | `LayoutPreviewHint` | In-pane hint copy + dismissal state. Holds the canonical banner text ("binding values are placeholders — your ViewModel doesn't run here") and an application-wide dismissed flag (`PropertiesComponent`), so `ZulPreviewFileEditor` shows a dismissible `EditorNotificationPanel` above the render until the user clicks "Got it" once. |
 | `PreviewBrowser` / `JcefPreviewBrowser` | The embedded browser behind a JCEF-free seam, and its only implementation. `JcefPreviewBrowser` is the single class in the package that names `org.cef.*` / `com.intellij.ui.jcef.*`: it builds the `JBCefBrowser` (with `setEnableOpenDevToolsMenuItem(true)`, so the context menu offers **Open DevTools** — the only in-IDE way to see a JS error or a failed `/zkau/web/*` fetch behind a blank render), installs the `onBeforeBrowse` handler that keeps non-loopback http(s) navigation out of the pane, and installs `PreviewContextMenu` (hopping to the EDT before handing the `getSource()` dump back). Reached only via `JcefPreviewBrowser.create`, whose declared return type is `PreviewBrowser` — an `invokestatic` loads nothing at verification time, so the editor stays linkable where JCEF is absent. Disposed by the editor (`Disposer.register(editor, browser)`), which in turn disposes the `JBCefBrowser`. |
@@ -291,10 +291,12 @@ classpath allowlist; it was abandoned because ZK's own transitive deps, e.g.
 `slf4j-api`, aren't ZK-prefixed and would starve the launcher's own bootstrap — see
 `ZkClasspathFilter`'s javadoc):
 
-1. `ScopedZkClassLoader` — the isolation-hook classes and the caller-supplied ZK jars
-   are the *only* jars on the classloader that renders the page; a user project's own
-   compiled output directories are never included (`ZulPreviewServerService.resolveTarget`
-   filters directories out and excludes the project SDK).
+1. `ScopedZkClassLoader` — child-first for `org.zkoss.*` over exactly what the plugin hands
+   over on `--classpath`: the isolation-hook classes, the module's resolved library jars, its
+   compiled-output roots and its resource roots (`ZulPreviewServerService.launcherClasspath`;
+   the project SDK is excluded). The compiled output is there so a `<zscript>`/`use="…"`/EL
+   function naming one of the project's own classes resolves — isolation from ViewModels and
+   Composers is the `UiFactory` hook below, not classpath narrowness.
 2. `PreviewUiFactory` (`zk-preview-launcher/src/hooks/java/org/zkoss/zkpreview/hooks/PreviewUiFactory.java`),
    registered via `zk.xml`'s `<ui-factory-class>` and compiled in a dedicated `hooks`
    Gradle sourceSet against an old ZK version for maximum binary compatibility:
@@ -344,9 +346,10 @@ surface for any future consumer.
   a server round-trip (e.g. a button's `onClick` reaching a real Java handler) are not
   simulated.
 - **No user-class fidelity**: ViewModels/Composers/converters/validators are never
-  loaded, so MVVM-bound values always render as placeholders rather than their real
-  runtime values — this is intentional (the isolation guarantee), not a fidelity bug to
-  fix later.
+  instantiated (the `UiFactory` hook), so MVVM-bound values always render as placeholders
+  rather than their real runtime values — this is intentional, not a fidelity bug to fix
+  later. Code the page invokes directly — `<zscript>`, `use="…"`, EL functions — *does*
+  run, against the module's compiled output, so those pages need a built module.
 - **JCEF required for the embedded browser render**: if `JBCefApp.isSupported()` is
   false (e.g. some remote-dev/headless/alternative-JDK IDE runtimes), the pane shows the
   diagnosed reason plus an "open in external browser" fallback; there is no in-IDE
@@ -357,7 +360,7 @@ surface for any future consumer.
 - **Refresh on save**, not on keystroke; one idle helper JVM per `(docroot, classpath)`
   pair until the project closes.
 
-The itemized limitation list (L-1 … L-14) and the still-open review findings live in
+The itemized limitation list (L-1 … L-15) and the still-open review findings live in
 [zul_preview_spec.md](zul_preview_spec.md) §4 and §5.
 
 ---

@@ -14,8 +14,8 @@
 
 Add a side-by-side preview to the `.zul` editor (Markdown-editor style): the left pane is the
 normal ZUL text editor, the right pane shows the **actual HTML that ZK's own engine produces for
-the page's first paint**, refreshed on save. The render runs in an isolated helper JVM that drives
-the *project's own ZK jars* and never loads the project's compiled application classes.
+the page's first paint**, refreshed on save. The render runs in a separate helper JVM that drives
+the *project's own ZK jars* and never instantiates the project's ViewModels or Composers.
 
 ---
 
@@ -59,14 +59,25 @@ explanatory message with a "Report on GitHub" link (see FR-19).
 
 ### 2.3 Target resolution (off the EDT, inside a read action)
 - **FR-6 (module)** The module is found via `ProjectFileIndex.getModuleForFile(zulFile)`.
-- **FR-7 (classpath)** The handoff classpath is
-  `OrderEnumerator.orderEntries(module).recursively().runtimeOnly().withoutSdk().classes()`
-  filtered to **existing regular files** (`filterLibraryJars`): every resolved runtime **library
-  jar**, ZK or not (ZK needs non-ZK-prefixed deps such as `slf4j-api`). Directories (the module's
-  own compiled output) and the project SDK are **excluded** — this is the isolation boundary
-  against user classes. The module's **resource roots** are added so ZK's `ClassWebResource` can
-  resolve the project's own `~./` pages from `web/` on the classpath. If `module == null`, it
-  falls back to project-level order entries.
+- **FR-7 (classpath)** The handoff classpath is assembled by
+  `ZulPreviewServerService.launcherClasspath` in this order, from
+  `OrderEnumerator.orderEntries(module).recursively().runtimeOnly().withoutSdk().classes()`:
+  1. every **library jar** — that enumeration filtered to existing regular *files*
+     (`filterLibraryJars`), ZK or not (ZK needs non-ZK-prefixed deps such as `slf4j-api`);
+  2. every **compiled-output root** — the *directories* of the same enumeration re-run with
+     `.productionOnly()` (`filterOutputDirectories`), so the project's own classes resolve where
+     the page itself names them: `<zscript>`, `use="user.X"`, custom EL functions. `productionOnly`
+     is what keeps `target/test-classes` off the render classpath; the wider enumeration is kept
+     for the jars because `productionOnly` would also drop `provided`-scope ones;
+  3. the module's **resource roots**, so ZK's `ClassWebResource` can resolve the project's own
+     `~./` pages from `web/` on the classpath.
+
+  The project SDK is excluded (`withoutSdk`), as is any entry that is neither an existing file nor
+  an existing directory. If `module == null`, both enumerations fall back to project-level order
+  entries. Isolation against user classes is **not** the classpath — it is the `UiFactory` hook
+  (FR-16), which never resolves a ViewModel/Composer class name at all. Compiled output used to be
+  excluded here as a second boundary; it made every `<zscript>` that names a project class abort
+  the render (`tasks/class-not-found.md`), for no guarantee the hook does not already give.
 - **FR-8 (docroot)** `DocrootResolver.resolveWithLayout` returns the docroot **and which rule
   matched** (`DocrootResolver.Layout`), in this order:
 
@@ -94,9 +105,9 @@ explanatory message with a "Report on GitHub" link (see FR-19).
   older project SDK it dies at main-class load with `UnsupportedClassVersionError`, *before* it can
   print a port, so the only symptom was the generic "exited before it reported a port" card. Any
   project whose SDK is below 17 hit this on its first preview regardless of ZUL content.
-  Falling back costs nothing in fidelity — no user bytecode ever runs in the helper (FR-7), so
-  matching the project's JDK was a preference, not a requirement — and it is always viable, because
-  every IDE in the supported range (`sinceBuild` 233.2) runs on JBR 17+.
+  Falling back is always viable, because every IDE in the supported range (`sinceBuild` 233.2) runs
+  on JBR 17+, and it is safe for the project's own classes (FR-7): the fallback only happens when
+  the project SDK is *older* than 17, and bytecode that SDK produced loads on a 17+ runtime.
   **Maintenance:** the launcher's `targetCompatibility` and `MINIMUM_LAUNCHER_SDK` must move
   together; `LauncherJvmVersionGateTest` locks that by reading the packaged jar's real
   `major_version` and asserting it equals `44 + MINIMUM_LAUNCHER_SDK`. Note that *lowering* the
@@ -274,6 +285,11 @@ What the feature actually requires is two model facts, regardless of how they go
 2. that module's **resolved runtime classpath contains the ZK jars** (as IntelliJ library
    entries), plus a filesystem **docroot** (FR-8).
 
+A page that names the project's own classes (`<zscript>`, `use="…"`, a custom EL function) needs
+one more thing that is *not* required for a plain layout: the module must have been **compiled**,
+because FR-7 hands the helper JVM the compiled-output roots, not the sources. Nothing compiles it
+for you — a never-built module renders such a page as a COMPOSE failure naming the class (L-3).
+
 | Project type | Works? | Why |
 |---|---|---|
 | **Maven** | ✅ Yes | IntelliJ's Maven import creates the module and attaches ZK (and transitive deps) as libraries from the local repo → `OrderEnumerator` sees them. `src/main/webapp/WEB-INF` satisfies the docroot rule. |
@@ -299,10 +315,13 @@ resolved and is kept here only so the ID does not get reused.
   needing a server round-trip (button `onClick` → Java handler, paging, sorting, tree expansion)
   are not simulated. Client-side `w:` handlers *do* run — they are browser JavaScript.
 - **L-2 No user-class fidelity.** ViewModels / Composers / converters / validators are never
-  loaded (the isolation guarantee), so MVVM-bound values render as **dimmed placeholders** (the
-  expression text — FR-16) and `@command` is unwired. Intentional; it will not "improve" later.
-- **L-3 zscript.** Left enabled; a `<zscript>` referencing a missing class produces a structured
-  COMPOSE failure rather than rendering.
+  instantiated (the `UiFactory` hook, FR-16 — not the classpath), so MVVM-bound values render as
+  **dimmed placeholders** (the expression text) and `@command` is unwired. Intentional; it will
+  not "improve" later. Unchanged by FR-7 handing over the compiled output: the hook returns a
+  no-op composer without ever resolving the class name.
+- **L-3 zscript.** Left enabled, and since FR-7 hands over the module's compiled output it can
+  resolve the project's own classes. A class that is genuinely absent — the module was never
+  built, or the build is stale — still produces a structured COMPOSE failure rather than a render.
 
 ### 4.2 Environment / platform
 - **L-4 JCEF required** for the in-IDE render. Mitigated, not removed: the card diagnoses the
@@ -317,6 +336,14 @@ resolved and is kept here only so the ID does not get reused.
 ### 4.3 Behavior / lifecycle
 - **L-8 Idle JVMs.** One helper JVM per distinct `(docroot, classpath)` pair stays alive until the
   project closes (no idle timeout).
+- **L-15 Compiled classes are loaded once per helper JVM.** The `ScopedZkClassLoader` lives as long
+  as the process, and the classpath `signature()` hashes each *entry's* own size/mtime — editing a
+  `.class` in place does not change its parent directory's mtime, so a rebuild usually neither
+  reloads the class nor forces a new helper JVM. A preview open across a rebuild keeps rendering
+  with the classes as of its first render; restarting the IDE (or changing a dependency, which does
+  move the signature) picks them up. Deliberately not fixed by hashing the output tree: L-8 keeps
+  every distinct-signature JVM alive until the project closes, so a signature that moved on every
+  rebuild would accumulate idle JVMs.
 - **L-9 Refresh on save only.** Unsaved edits don't update the preview (300 ms debounce after the
   VFS write).
 - **L-10 Raw error body — *shipped*.** v1 showed the raw HTTP-500 JSON; 1.0.0 renders the
@@ -405,18 +432,24 @@ Open items left behind by shipped bug fixes — the defect itself is fixed, thes
 ## 6. Deliberate non-goals & won't-fix
 
 - **AU round-trips / interactivity (L-1) and real bound values (L-2)** — permanent. They keep the
-  security story clean ("your code never runs in the IDE") and the maintenance surface small.
-  Placeholder rendering (FR-16) is the intended ceiling.
+  maintenance surface small and the ViewModel/Composer story clean ("your application does not run
+  in the IDE"). Placeholder rendering (FR-16) is the intended ceiling.
+  Note the story is about *application lifecycle code*, not about bytecode in general: since FR-7
+  hands over the compiled output, code the page itself invokes — `<zscript>`, a `use="user.X"`
+  component, a custom EL function, a class named by the project's `metainfo/zk/config.xml` — does
+  execute in the helper JVM. `<zscript>` always could execute arbitrary code (R2-MIN7); what
+  changed is which classes it can reach.
 - **`ForbiddenLoadTracker` is a no-op in production** — by design. `Main` calls the 2-arg
-  `RenderEngineFactory.create` (tracker `null`); the real guarantee is that the module's output
-  directory is off the classloader plus the `UiFactory` no-op hook. The tracker is a **test-only
-  lock** on that invariant. A production blocklist would change the isolation model for no
-  additional guarantee.
+  `RenderEngineFactory.create` (tracker `null`); the real guarantee is the `UiFactory` no-op hook,
+  which returns a no-op composer without ever resolving the ViewModel/Composer class name. The
+  tracker is a **test-only lock** on that invariant, and the launcher's own AC-4(i) allowlist
+  assertion is about the *launcher's* test classpath, not about what the plugin hands over.
+  A production blocklist would change the isolation model for no additional guarantee.
 - **The render classpath entry is the whole resource root, not just `web/`** — cannot be narrowed.
   ZK's `ClassWebResource` resolves `~./foo.zul` to the classpath resource `/web/foo.zul`, so the
   entry must be the directory that *contains* `web/`. Narrowing it would break `~./` resolution.
-  The residual ("a user's `metainfo/zk/config.xml` could be scanned") is bounded: any class it
-  names lives in the excluded output dir → `ClassNotFoundException`, not silent execution.
+  The residual — a user's `metainfo/zk/config.xml` is scanned, and since FR-7 the classes it names
+  are now reachable, so a configured listener does run at the helper JVM's ZK bootstrap.
 - **jakarta/javax duplication is reduced, not eliminated.** The drift-prone *logic* lives once
   (Bridge over `mockcore/*Core` for the mocks, Template Method via `AbstractRenderEngine` for the
   engines; verified 0 semantic divergence). The remaining `@Override` interface shells cannot be
