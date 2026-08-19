@@ -79,6 +79,10 @@
     ]]></description>
 
      <change-notes><![CDATA[
+      <p>1.0.2</p>
+      <ul>
+          <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/69">#69 Layout Preview: an &lt;include&gt; whose <code>src</code> is a data binding fails to load ("No dispatcher available to include …")</a> — a bound <code>src</code> is no longer written into the page as raw expression text. When the binding names a constant path (<code>src="@load('~./page.zul')"</code>) the page is now included for real; when the path comes from the ViewModel (which never runs in the preview) the include simply contributes nothing, instead of leaving an error box in the middle of the layout.</li>
+      </ul>
       <p>1.0.1</p>
       <ul>
           <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/66">#66 Cannot open a .zul file on IntelliJ IDEA 2026.2 (NoClassDefFoundError: org/cef/handler/CefRequestHandler)</a> — IntelliJ 2026.2 moved JCEF out of the IDE runtime into the bundled "Web Browser (JCEF)" plugin, whose classes are visible only to plugins that declare it. The plugin now declares that dependency, so the Layout Preview renders again.</li>

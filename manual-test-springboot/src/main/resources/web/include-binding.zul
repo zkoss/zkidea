@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Manual test for issue #69: an <include> whose src is a DATA BINDING, in a Spring Boot jar
+  project (pages on the classpath, reached with ZK's ~./ notation).
+
+  Before the fix the preview wrote the binding's raw text into src, so ZK looked for a page
+  literally named "'~./zul/pop-listbox.zul'" (quotes and all), could not treat it as an
+  instant ZUL include, and fell through to a RequestDispatcher the headless preview has none
+  of: a red "Failed to load ... No dispatcher available to include ..." box replaced the
+  included page.
+
+  See ../README.md ("Include with a bound src") for what to check in the preview pane.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Spring Boot jar preview: include with a bound src" border="normal" width="560px"
+            viewModel="@id('vm') @init('com.example.springbootjar.IncludeViewModel')">
+        <vlayout spacing="4px">
+            <label style="font-weight:bold" value="Case 1: constant path literal in the binding"/>
+            <label value="src=&quot;@load('~./zul/pop-listbox.zul')&quot; must include the page for real"/>
+            <include src="@load('~./zul/pop-listbox.zul')"/>
+            <separator bar="true"/>
+            <label style="font-weight:bold" value="Case 2: the path comes from the ViewModel"/>
+            <label value="src=&quot;@load(vm.popupSrc)&quot; must contribute nothing (the ViewModel never runs here)"/>
+            <include src="@load(vm.popupSrc)"/>
+            <separator bar="true"/>
+            <label value="host page marker: this label must always render"/>
+        </vlayout>
+    </window>
+</zk>

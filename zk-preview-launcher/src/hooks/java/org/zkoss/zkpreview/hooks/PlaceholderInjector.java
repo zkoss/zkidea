@@ -49,6 +49,21 @@ public class PlaceholderInjector implements UiLifeCycle {
     /** Binding kinds that supply a collection to a {@code model} attribute. */
     private static final List<String> MODEL_BINDINGS = Arrays.asList("load", "bind", "save", "init");
 
+    /**
+     * The one property ZK <em>loads</em> as a URI rather than showing as text
+     * ({@code include}/{@code iframe}/{@code image}/{@code audio}). A placeholder is display
+     * text, so writing binding text here does not read as a placeholder at all: ZK takes the
+     * text for a path. On {@code <include src>} that is a hard failure -- a path not ending in
+     * ".zul" is not an instant ZUL include, so ZK routes it through {@code Execution.include}
+     * to the mock context's (deliberately) null {@code RequestDispatcher}, leaving a red
+     * "No dispatcher available to include ..." box inside the previewed page (issue #69).
+     *
+     * <p>Deliberately just {@code src}: other URI-ish properties ({@code href} on a link,
+     * {@code image} on a button) are resolved by the browser, not by ZK, so a bound one
+     * degrades to a dead link or a broken-image icon -- never a failed render.
+     */
+    private static final String URI_PROPERTY = "src";
+
     private static final String DIM_STYLE = "color:#9aa0a6;font-style:italic";
 
     private static final int PLACEHOLDER_ROW_COUNT = 3;
@@ -85,7 +100,14 @@ public class PlaceholderInjector implements UiLifeCycle {
                 continue;
             }
             String expr = bindingExpression(ctrl, prop, DISPLAY_BINDINGS);
-            if (expr != null && applyPlaceholder(comp, prop, expr)) {
+            if (expr == null) {
+                continue;
+            }
+            if (URI_PROPERTY.equalsIgnoreCase(prop)) {
+                applyBoundUri(comp, prop, expr);
+                continue;
+            }
+            if (applyPlaceholder(comp, prop, expr)) {
                 // Dimming is applied post-composition (dimPlaceholders), not here: a style set at
                 // attach time does not survive to the serialized page. Just mark the component.
                 comp.setAttribute(PLACEHOLDER_FLAG, Boolean.TRUE);
@@ -149,6 +171,40 @@ public class PlaceholderInjector implements UiLifeCycle {
             }
         }
         return null;
+    }
+
+    /**
+     * Resolves a bound {@link #URI_PROPERTY} without ever writing expression text into it.
+     * A constant string literal ({@code src="@load('~./page.zul')"}) is already the real path,
+     * fully known at parse time, so unquote it and let ZK load it for real -- exactly what the
+     * binder would do, and no user class is touched. Any other expression reads the ViewModel,
+     * which never runs under isolation: leave the property unset, which is also what the real
+     * binder produces for an unresolvable value (nothing is included, and the host page renders).
+     */
+    private static void applyBoundUri(Component comp, String prop, String expr) {
+        String path = constantStringLiteral(expr);
+        if (path != null) {
+            // A resolved path, not a placeholder: no PLACEHOLDER_FLAG, so it is never dimmed.
+            applyPlaceholder(comp, prop, path);
+        }
+    }
+
+    /**
+     * The text of a wholly quoted constant string expression, else null (a ViewModel reference,
+     * a concatenation, an empty literal). An inner occurrence of the same quote means the
+     * expression merely starts and ends with one -- {@code '/pages/'.concat(vm.name)} -- so it
+     * is not a constant.
+     */
+    private static String constantStringLiteral(String expr) {
+        if (expr.length() < 3) {
+            return null;
+        }
+        char quote = expr.charAt(0);
+        if ((quote != '\'' && quote != '"') || expr.charAt(expr.length() - 1) != quote) {
+            return null;
+        }
+        String inner = expr.substring(1, expr.length() - 1);
+        return inner.indexOf(quote) < 0 && !inner.trim().isEmpty() ? inner : null;
     }
 
     /** Reflectively invokes set<Prop>(String); true iff set. A missing String setter

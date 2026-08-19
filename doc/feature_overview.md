@@ -317,7 +317,9 @@ classpath allowlist; it was abandoned because ZK's own transitive deps, e.g.
    so a styled bound label doesn't render as undimmed literal content), and synthesizes a
    few placeholder rows/nodes for model-bound grids, listboxes and trees so they keep
    their real geometry. A flag attribute prevents double-injection where nested composer
-   subtrees overlap.
+   subtrees overlap. A bound `src` (`<include src="@load(...)">`) is the one exception: ZK
+   loads it as a path instead of showing it, so a constant literal is unquoted and included
+   for real and any other expression leaves `src` unset (issue #69).
 
 When rendering does fail (parse errors, missing zscript classes, invalid component
 hierarchies, ...), `ErrorMapper.map(zulPath, throwable)` turns the exception chain into

@@ -145,7 +145,11 @@ explanatory message with a "Report on GitHub" link (see FR-19).
   paths. `PlaceholderInjector` then renders each unresolvable binding as its **expression text in a
   dimmed style** (merged onto any existing inline style) and synthesizes placeholder rows/nodes for
   model-bound grids/listboxes/trees — so a bound page reads as a wireframe with field names, not as
-  a blank page.
+  a blank page. One property is excluded: a bound `src`, which ZK *loads* as a URI rather than
+  showing — a constant literal (`src="@load('~./page.zul')"`) is unquoted and included for real,
+  anything else leaves `src` unset (nothing is included), because expression text there made ZK
+  seek a page literally named `'~./page.zul'` and fall through to a `RequestDispatcher` the
+  headless preview has none of (issue #69).
 - **FR-17 (structured failure → formatted page)** A render exception is mapped to
   `RenderError { phase, message, zulFile, line, column }` (`phase ∈ {PARSE, COMPOSE, UNKNOWN}`;
   `CLASSPATH`/`RESOURCE` are reserved and unused). `RenderResult.toJson()` remains the structured

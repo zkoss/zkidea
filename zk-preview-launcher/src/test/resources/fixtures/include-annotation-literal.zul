@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The reported shape (issue #69): the include's src is a data binding whose expression is a
+  CONSTANT path literal. One uses ZK's ~./ classpath notation (a Spring-Boot-jar page), the
+  other is docroot-absolute. Both paths are real, so the preview must include them for real.
+
+  Writing the binding's raw text into src instead makes ZK treat "'~./classweb-fragment.zul'"
+  (quotes included) as the path: it no longer ends in ".zul", so it is not an instant ZUL
+  include and routes through a RequestDispatcher the headless preview does not have.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Include (annotation-valued literal src)" border="normal"
+            viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.CanaryViewModel')">
+        <include src="@load('~./classweb-fragment.zul')"/>
+        <include src="@load('/include-static-fragment.zul')"/>
+        <label value="include host marker"/>
+    </window>
+</zk>

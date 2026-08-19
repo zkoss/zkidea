@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Included page for include-binding.zul, reached as ~./zul/pop-listbox.zul (classpath
+  /web/zul/pop-listbox.zul). Named after the page in the report (zkPopListbox.zul) and
+  carries a listbox so the include is unmistakable in the preview pane.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <vlayout spacing="4px">
+        <label style="font-weight:bold" value="INCLUDED: src/main/resources/web/zul/pop-listbox.zul"/>
+        <listbox width="300px" rows="3">
+            <listhead>
+                <listheader label="Item"/>
+                <listheader label="Qty"/>
+            </listhead>
+            <listitem>
+                <listcell label="Apple"/>
+                <listcell label="3"/>
+            </listitem>
+            <listitem>
+                <listcell label="Banana"/>
+                <listcell label="7"/>
+            </listitem>
+        </listbox>
+    </vlayout>
+</zk>
