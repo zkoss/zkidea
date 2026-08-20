@@ -3,12 +3,14 @@ plugins {
 }
 
 group 'org.zkoss.zkpreview'
-// Versioned independently of the IntelliJ plugin (root build.gradle). External consumers
-// -- currently the `zul-writer` agent skill (zkoss-demo/agent-skill) -- pin an exact
-// version + SHA-256 of the released jar, so this moves only when this module's CLI
-// contract or render behaviour does, not when the plugin ships. Released under the tag
-// `launcher-v<this value>`; see README.md.
-version '1.0.0'
+// Tracks the IntelliJ plugin's own version (root build.gradle), because the release asset
+// built from this module is attached to the plugin's `v<this value>` GitHub Release rather
+// than to a launcher-specific tag. External consumers -- currently the `zul-writer` agent
+// skill (zkoss-demo/agent-skill) -- pin an exact version + SHA-256 and derive the download
+// URL from the tag name, so this number MUST equal the tag the asset is published under;
+// `.github/workflows/release-launcher.yml` refuses to publish when the two disagree.
+// See README.md.
+version '1.0.2'
 
 java.sourceCompatibility = JavaVersion.VERSION_17
 java.targetCompatibility = JavaVersion.VERSION_17

@@ -1,10 +1,16 @@
 name: Release zk-preview-launcher
 
-# Cuts a GitHub Release carrying the standalone ZUL render helper consumed by the
-# `zul-writer` agent skill (zkoss-demo/agent-skill), which pins an exact version +
-# SHA-256. Deliberately decoupled from the plugin's own `v*` tags: the launcher has its
-# own version line (zk-preview-launcher/build.gradle) that moves only when its CLI
-# contract or render behaviour does.
+# Attaches the standalone ZUL render helper consumed by the `zul-writer` agent skill
+# (zkoss-demo/agent-skill), which pins an exact version + SHA-256, to the plugin's own
+# `v*` Release. Launcher and plugin versions therefore move together: the consumer builds
+# the download URL out of the tag name, so zk-preview-launcher/build.gradle's `version`
+# has to be the tag. The "Refuse to publish if the tag and build.gradle disagree" step
+# below is what enforces that -- it is the guard, not a formality.
+#
+# The tag may already carry a Release (the plugin's own), so the publish step is
+# create-or-upload. `--clobber` there REPLACES the asset bytes at a URL a consumer may
+# already have pinned, so re-running this job for a tag that was released once is a
+# deliberate pin-breaker: bump the version instead of re-cutting the same tag.
 #
 # Publishing from Actions (github.token) rather than a maintainer's local `gh` is not
 # incidental: the local `gh` account historically lacked push on this repo, which is what
@@ -12,11 +18,11 @@ name: Release zk-preview-launcher
 on:
   push:
     tags:
-      - 'launcher-v*'
+      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing launcher-v* tag to build and release'
+        description: 'Existing v* tag to build and release'
         required: true
 
 permissions:
@@ -42,7 +48,7 @@ jobs:
         run: |
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
           echo "tag=$TAG"                  >> "$GITHUB_OUTPUT"
-          echo "version=${TAG#launcher-v}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}"          >> "$GITHUB_OUTPUT"
 
       # -x test on purpose: the launcher's own tests spawn mvn subprocesses and Playwright
       # browsers. They are a pre-tag local gate, not a release-path gate.
@@ -85,12 +91,21 @@ jobs:
 
           Verify with \`shasum -a 256 -c zk-preview-launcher-$V.jar.sha256\`.
           EOF
-          # --latest=false keeps the plugin's own release timeline readable: this tag
-          # sorts oddly against the v* tags and is not the plugin's newest build.
-          gh release create "${{ steps.v.outputs.tag }}" \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "zk-preview-launcher $V" \
-            --notes-file notes.md \
-            --latest=false \
-            "zk-preview-launcher-$V.jar" \
-            "zk-preview-launcher-$V.jar.sha256"
+          # The tag is the plugin's own, so a Release for it may already exist (cut by a
+          # maintainer, or by an earlier run of this job). Upload into it rather than
+          # failing; only create when there is nothing there yet.
+          TAG='${{ steps.v.outputs.tag }}'
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber \
+              "zk-preview-launcher-$V.jar" \
+              "zk-preview-launcher-$V.jar.sha256"
+          else
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "zk-preview-launcher $V" \
+              --notes-file notes.md \
+              "zk-preview-launcher-$V.jar" \
+              "zk-preview-launcher-$V.jar.sha256"
+          fi

@@ -102,7 +102,7 @@ A quick way to produce one for a Maven project:
 
 ```bash
 mvn -f pom.xml dependency:build-classpath -Dmdep.outputFile=/tmp/cp.txt -q
-java -jar zk-preview-launcher-1.0.0.jar \
+java -jar zk-preview-launcher-1.0.2.jar \
      --classpath "$(cat /tmp/cp.txt)" --webapp src/main/webapp --port 0
 ```
 
@@ -143,25 +143,34 @@ name; release assets are versioned *copies* under `build/release/`.
 
 ## Releasing
 
-Versioned independently of the IntelliJ plugin, because external consumers pin an exact version and
-the plugin's version moves for reasons that leave these bytes identical.
+The launcher version equals the IntelliJ plugin's version (root `build.gradle`): both release assets
+are attached to the plugin's own `v<version>` GitHub Release, not to a launcher-specific tag.
+External consumers pin an exact version and build the download URL out of the tag name, so the two
+numbers cannot drift — the workflow refuses to publish if they do.
+
+What the number still means:
 
 - **major** — a breaking change to the CLI or the stdout handshake
 - **minor** — new flags, or newly supported ZK/servlet combinations
 - **patch** — render fixes
 
-Tag `launcher-v<version>` (matching `version` in `build.gradle`) and push. The
+Tag `v<version>` (matching `version` in `zk-preview-launcher/build.gradle`) and push. The
 [release-launcher workflow](../.github/workflows/release-launcher.yml) builds and publishes both
-assets using the repository's own token.
+assets using the repository's own token, uploading into the tag's Release if one already exists.
 
 ```bash
 ./gradlew clean :zk-preview-launcher:releaseLauncher   # verify locally first
-git tag -a launcher-v1.0.0 -m "zk-preview-launcher 1.0.0"
-git push origin launcher-v1.0.0
+git tag -a v1.0.2 -m "zk-preview-launcher 1.0.2"
+git push origin v1.0.2
 ```
 
-The jar is built reproducibly (`preserveFileTimestamps = false`, `reproducibleFileOrder = true`), so
-rebuilding a tag yields the same SHA-256 that was published.
+The jar is built reproducibly (`preserveFileTimestamps = false`, `reproducibleFileOrder = true`) —
+but only for a **fixed JDK build**: Zulu 17 and Temurin 21 produce different digests from identical
+sources, because this module sets `sourceCompatibility` rather than `--release` and pins no Gradle
+toolchain. So a consumer's pin must be taken from the `.sha256` sidecar of the asset that was
+actually uploaded, never from an independent rebuild. Consequently the bytes uploaded must be the
+bytes that were digested: publish the jar and the sidecar from the same `build/release/` directory,
+and never re-digest after a rebuild.
 
 **Manual fallback**, if Actions is unavailable. Note the failure mode that stalled earlier releases:
 `gh` may be authenticated as an account without push rights on `zkoss/zkidea`, and its error message
@@ -172,9 +181,12 @@ regardless, because the remote is SSH and bypasses the `gh` token entirely.
 gh auth switch --hostname github.com --user <org-account>
 gh api repos/zkoss/zkidea --jq .permissions          # expect "push": true
 cd zk-preview-launcher/build/release
-gh release create launcher-v1.0.0 --repo zkoss/zkidea --latest=false \
-  --title "zk-preview-launcher 1.0.0" --notes "..." \
-  zk-preview-launcher-1.0.0.jar zk-preview-launcher-1.0.0.jar.sha256
+gh release create v1.0.2 --repo zkoss/zkidea \
+  --title "zk-preview-launcher 1.0.2" --notes "..." \
+  zk-preview-launcher-1.0.2.jar zk-preview-launcher-1.0.2.jar.sha256
+# ...or, if the plugin already cut a Release for that tag:
+gh release upload v1.0.2 --repo zkoss/zkidea --clobber \
+  zk-preview-launcher-1.0.2.jar zk-preview-launcher-1.0.2.jar.sha256
 ```
 
 ## Verifying a downloaded jar
