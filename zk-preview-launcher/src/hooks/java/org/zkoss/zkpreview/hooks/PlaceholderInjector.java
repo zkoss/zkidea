@@ -34,14 +34,16 @@ import java.util.List;
  *       per-cell text bindings above then fill each cell.</li>
  * </ul>
  *
- * <p>Registered via zk.xml {@code <listener>}. Gated by the same
- * {@code zkpreview.isolation} switch as {@link PreviewUiFactory}: when isolation is
- * off (canary mode) the real Binder runs and resolves real values, so this injector
- * stands down.
+ * <p>Registered via zk.xml {@code <listener>}. Gated by the same {@link IsolationScope} switch
+ * as {@link PreviewUiFactory}, at all three of its entry points. With isolation off -- the
+ * launcher's supported {@code --isolation off} mode, which {@code preview-zul.py} reaches through
+ * {@code --run-controllers} (P0-2), and also the AC-4 canary tests -- the project's real
+ * ViewModel/Composer runs and the real {@code Binder} resolves real values, so this injector
+ * stands down entirely: no placeholder text, no synthetic model rows, no dim styling. A blank
+ * field in that mode is therefore a genuine gap in the page or its controller, not a preview
+ * artefact.
  */
 public class PlaceholderInjector implements UiLifeCycle {
-
-    private static final String ISOLATION_PROPERTY = "zkpreview.isolation";
 
     /** Value-carrying display bindings (vs id/init/command/converter/validator/ref/template). */
     private static final List<String> DISPLAY_BINDINGS = Arrays.asList("load", "save", "bind");
@@ -77,13 +79,9 @@ public class PlaceholderInjector implements UiLifeCycle {
      * {@link #afterComponentAttached} is overwritten (or dropped) before the page is serialized. */
     private static final String PLACEHOLDER_FLAG = "zkpreview.placeholder";
 
-    private static boolean isolationEnabled() {
-        return !"false".equalsIgnoreCase(System.getProperty(ISOLATION_PROPERTY));
-    }
-
     @Override
     public void afterComponentAttached(Component comp, Page page) {
-        if (!isolationEnabled() || !(comp instanceof ComponentCtrl)) {
+        if (!IsolationScope.isEnabled() || !(comp instanceof ComponentCtrl)) {
             return;
         }
         ComponentCtrl ctrl = (ComponentCtrl) comp;
@@ -124,7 +122,7 @@ public class PlaceholderInjector implements UiLifeCycle {
      * text bindings are then filled by {@link #afterComponentAttached}.
      */
     public static void injectModels(Component root) {
-        if (root == null || !isolationEnabled()) {
+        if (root == null || !IsolationScope.isEnabled()) {
             return;
         }
         List<Component> targets = new ArrayList<>();
@@ -299,7 +297,7 @@ public class PlaceholderInjector implements UiLifeCycle {
      * -- and any model-template rows created by {@link #injectModels} -- exist, so the dim sticks.
      */
     public static void dimPlaceholders(Component root) {
-        if (root == null || !isolationEnabled()) {
+        if (root == null || !IsolationScope.isEnabled()) {
             return;
         }
         dimTree(root);

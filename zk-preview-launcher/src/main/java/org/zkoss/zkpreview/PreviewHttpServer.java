@@ -101,6 +101,7 @@ public final class PreviewHttpServer {
             if ("GET".equalsIgnoreCase(method) && path.endsWith(".zul")) {
                 RenderResult r = engine.renderZul(path);
                 noStore(exchange);
+                reportControllers(exchange, r);
                 if (r.isSuccess()) {
                     send(exchange, 200, "text/html;charset=UTF-8",
                             withCanvasBackground(r.getHtml()).getBytes(StandardCharsets.UTF_8));
@@ -123,6 +124,52 @@ public final class PreviewHttpServer {
             exchange.close();
         }
     }
+
+    /**
+     * States which controller mode produced this render, on every {@code .zul} response -- 200 and
+     * 500 alike (P0-2 item 4: the mode must be reported in success <em>and</em> error output).
+     *
+     * <p>A response header rather than stdout for two reasons: the launcher's stdout is the
+     * single-consumer {@code PREVIEW_PORT=} handshake channel {@code preview-zul.py}'s pump reads,
+     * and the mode is a property of one render -- a caller that renders several pages from one
+     * process (the IntelliJ plugin) gets the right answer per request this way.
+     */
+    private static void reportControllers(HttpExchange exchange, RenderResult r) {
+        ControllerOutcome outcome = r.getControllers() == null ? ControllerOutcome.SKIPPED : r.getControllers();
+        exchange.getResponseHeaders().set("X-ZK-Preview-Controllers", outcome.token());
+        String failure = headerSafe(r.getControllerFailure());
+        if (failure != null) {
+            exchange.getResponseHeaders().set("X-ZK-Preview-Controller-Failure", failure);
+        }
+    }
+
+    /**
+     * A controller's exception message is arbitrary text: a CR/LF would split the header (or be
+     * rejected by {@code com.sun.net.httpserver}), and a non-ASCII byte is not portable in a
+     * header value. Flatten, transliterate and cap; {@code null}/blank yields {@code null} so the
+     * header is simply omitted.
+     */
+    static String headerSafe(String text) {
+        if (text == null) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder(text.length());
+        for (int i = 0; i < text.length() && sb.length() < HEADER_VALUE_LIMIT; i++) {
+            char c = text.charAt(i);
+            if (c == '\r' || c == '\n' || c == '\t') {
+                sb.append(' ');
+            } else if (c < 0x20 || c > 0x7e) {
+                sb.append('?');
+            } else {
+                sb.append(c);
+            }
+        }
+        String value = sb.toString().trim();
+        return value.isEmpty() ? null : value;
+    }
+
+    /** Bound for the sanitized failure header; matches the engine's own one-line cap. */
+    private static final int HEADER_VALUE_LIMIT = 300;
 
     /** The failing {@code .zul}'s own source, for the error report's source block; {@code null}
      * if unavailable (no webapp dir, unreadable, or outside the docroot). */

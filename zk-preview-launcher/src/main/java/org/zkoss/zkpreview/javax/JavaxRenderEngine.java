@@ -6,6 +6,7 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 
 import org.zkoss.zkpreview.AbstractRenderEngine;
+import org.zkoss.zkpreview.ControllerPolicy;
 import org.zkoss.zkpreview.ForbiddenLoadTracker;
 import org.zkoss.zkpreview.javax.mock.MockHttpServletRequest;
 import org.zkoss.zkpreview.javax.mock.MockHttpServletResponse;
@@ -33,6 +34,12 @@ public class JavaxRenderEngine extends AbstractRenderEngine {
 
     public JavaxRenderEngine(List<File> zkJars, Path webappDir, ForbiddenLoadTracker forbiddenLoadTracker) {
         super(zkJars, webappDir, forbiddenLoadTracker);
+    }
+
+    /** Same engine, with an explicit controller policy ({@code --isolation off}, P0-2). */
+    public JavaxRenderEngine(List<File> zkJars, Path webappDir, ForbiddenLoadTracker forbiddenLoadTracker,
+            ControllerPolicy controllerPolicy) {
+        super(zkJars, webappDir, forbiddenLoadTracker, controllerPolicy);
     }
 
     @Override

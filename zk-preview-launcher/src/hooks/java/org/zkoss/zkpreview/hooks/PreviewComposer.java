@@ -16,6 +16,13 @@ import org.zkoss.zk.ui.util.GenericComposer;
  * the {@code PlaceholderInjector} UiLifeCycle listener as components attach, but their dim
  * styling is applied here -- post-composition -- because a style set at attach time does not
  * survive to the serialized page (see {@link PlaceholderInjector#dimPlaceholders}).
+ *
+ * <p>Installed only while isolation is on (see {@link IsolationScope}): under
+ * {@code --isolation off} / {@code --run-controllers} the {@link PreviewUiFactory} overrides
+ * delegate to the default resolution, so the project's own composer is constructed instead of
+ * this one and {@link PlaceholderInjector#injectModels}/{@link PlaceholderInjector#dimPlaceholders}
+ * never run. That is why the controllers-on column of the P0-2 placeholder matrix has no
+ * placeholder rows and no dimmed expression text at all.
  */
 public class PreviewComposer extends GenericComposer {
     private static final long serialVersionUID = 1L;

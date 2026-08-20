@@ -29,7 +29,10 @@ import java.util.List;
  * plus the small isolation-hooks jar -- nothing is added here. What the plugin supplies now
  * includes the previewed module's compiled-output roots, so a page's own {@code <zscript>} /
  * {@code use="..."} code can resolve the project's classes; ViewModels and Composers are
- * blocked by the {@code UiFactory} hook, which never resolves their class name.
+ * blocked by the {@code UiFactory} hook, which never resolves their class name -- while isolation
+ * is on, i.e. by default and always for the plugin. This class is mode-independent: it only
+ * assembles the URL list, and P0-2's {@code --isolation off} changes nothing here. What changes is
+ * that the hook then delegates, so the same reachable classes are resolved and run.
  * AC-4(ii)/(iii): true parent-narrowness (no unrelated classes reachable at all) is
  * proven by the CLI child-process tests, which invoke the packaged jar as a separate
  * OS process whose classpath is exactly {@code zk-preview-launcher.jar} plus the

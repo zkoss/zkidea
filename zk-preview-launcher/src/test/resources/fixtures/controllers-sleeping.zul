@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- P0-2 negative fixture: with controllers on, this ViewModel never returns (it sleeps for
+     60 s), so the launcher must abandon the attempt at the controller budget and fall back to an
+     isolated render of the same page. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Controllers sleeping" border="normal"
+            viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.SleepingViewModel')">
+        <label value="@load(vm.greeting)"/>
+        <label value="static sibling"/>
+    </window>
+</zk>

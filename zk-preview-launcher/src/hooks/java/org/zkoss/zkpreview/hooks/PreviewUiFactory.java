@@ -16,16 +16,21 @@ import java.util.regex.Pattern;
  * {@code apply="user.X"} AND the auto-applied MVVM composer (the FQCN stored by
  * the Parser for {@code viewModel=...}, defaulting to {@code org.zkoss.bind.BindComposer})
  * through this exact same {@code UiFactory.newComposer(Page, String)} call. Overriding
- * it to always return a no-op composer -- without ever delegating to the default
- * implementation, which resolves the class name via {@code Page.resolveClass} -- blocks
- * both paths from ever loading a user class, in one hook.
+ * it to return a no-op composer -- without delegating to the default implementation,
+ * which resolves the class name via {@code Page.resolveClass} -- blocks both paths from
+ * ever loading a user class, in one hook. The substitution is conditional on
+ * {@link IsolationScope}: it is what happens while isolation is on (the default, and the
+ * only mode the IntelliJ plugin uses).
  *
  * <p>Design alternative considered and ruled out: a {@code BindComposer} subclass overriding
  * {@code initViewModel} (installed via the {@code org.zkoss.bind.defaultComposer.class} library
  * property) would have preserved full binder fidelity against a stub ViewModel. It is not
  * possible -- {@code javap} against both zkbind-9.6.0.2.jar and zkbind-10.1.0-jakarta.jar shows
  * {@code BindComposer.initViewModel} is PRIVATE, so it cannot be overridden by subclassing.
- * This single {@code UiFactory} hook is therefore the whole isolation mechanism.
+ * This single {@code UiFactory} hook is therefore the whole isolation mechanism <em>while
+ * isolation is on</em>; with {@code --isolation off} (the launcher's {@code --run-controllers}
+ * mode, P0-2) both overrides delegate to the default resolution and the project's real
+ * Composer/ViewModel runs.
  *
  * <p>{@link #getPageDefinition} additionally guards a second leak path: a shadow element such
  * as {@code <apply templateURI="...">} resolves an
@@ -47,11 +52,6 @@ import java.util.regex.Pattern;
  */
 public class PreviewUiFactory extends SimpleUiFactory {
 
-    /** Mirrors {@code org.zkoss.zkpreview.IsolationMode.SYSTEM_PROPERTY}; duplicated as a
-     * literal so this hooks sourceSet stays compiled against ZK jars only (no
-     * cross-sourceSet compile dependency on the main launcher). */
-    private static final String ISOLATION_PROPERTY = "zkpreview.isolation";
-
     /** Matches a path whose last segment starts with an unresolved {@code @name(}
      * binding-annotation attempt, complete or half-typed. */
     private static final Pattern UNRESOLVED_ANNOTATION_PATH = Pattern.compile("(^|/)@\\w+\\(");
@@ -61,13 +61,9 @@ public class PreviewUiFactory extends SimpleUiFactory {
      * failing "Page not found". */
     private static final String EMPTY_PAGE_ZUML = "<zk/>";
 
-    private static boolean isolationEnabled() {
-        return !"false".equalsIgnoreCase(System.getProperty(ISOLATION_PROPERTY));
-    }
-
     @Override
     public Composer newComposer(Page page, String clsnm) throws ClassNotFoundException {
-        if (isolationEnabled()) {
+        if (IsolationScope.isEnabled()) {
             return new PreviewComposer();
         }
         return super.newComposer(page, clsnm);
@@ -75,7 +71,7 @@ public class PreviewUiFactory extends SimpleUiFactory {
 
     @Override
     public Composer newComposer(Page page, Class cls) {
-        if (isolationEnabled()) {
+        if (IsolationScope.isEnabled()) {
             return new PreviewComposer();
         }
         return super.newComposer(page, cls);

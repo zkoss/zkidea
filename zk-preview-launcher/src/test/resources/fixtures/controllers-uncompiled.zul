@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- P0-2 negative fixture: with controllers on, this ViewModel is not on the render classpath at all,
+     so the launcher must fall back to an isolated render of the same page. -->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Controllers uncompiled" border="normal"
+            viewModel="@id('vm') @init('org.zkoss.zkpreview.testcanary.NeverCompiledViewModel')">
+        <label value="@load(vm.greeting)"/>
+        <label value="static sibling"/>
+    </window>
+</zk>

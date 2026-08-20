@@ -2,8 +2,20 @@
 <!--
   Bundled inside the launcher jar and served to ZK in place of any WEB-INF/zk.xml
   under the user's own docroot (see MockServletContext): registers the isolation
-  hooks (RESEARCH.md U6) so a render never resolves a user ViewModel/composer class.
-  Toggle off by launching with -Dzkpreview.isolation=false (canary mode, AC-4(iii)).
+  hooks (RESEARCH.md U6), so a render does not resolve a user ViewModel/composer
+  class while isolation is on.
+  Isolation is the default and the only mode the IntelliJ plugin uses.
+
+  It can be turned off, which runs the project's real Composers/ViewModels: the
+  supported CLI option "isolation off" (P0-2, reached from the zul-writer skill as
+  "run controllers"), or process-wide with -Dzkpreview.isolation=false, which the
+  AC-4(iii) canary tests use. Per render, the launcher overrides the mode on the
+  rendering thread; see org.zkoss.zkpreview.hooks.IsolationScope.
+
+  NOTE for editors: no double hyphen may appear anywhere in this comment. XML
+  forbids it, ZK then fails to parse this file, and the failure mode is silent and
+  severe: every hook registered below is dropped and the preview runs
+  the project's controllers unisolated.
 -->
 <zk>
     <system-config>

@@ -27,10 +27,20 @@ public final class RenderEngineFactory {
 
     public static RenderEngine create(List<File> zkJars, Path webappDir, ForbiddenLoadTracker forbiddenLoadTracker)
             throws IOException {
+        return create(zkJars, webappDir, forbiddenLoadTracker, ControllerPolicy.fromProcessDefault());
+    }
+
+    /**
+     * As above, with an explicit {@link ControllerPolicy} -- what {@link Main} builds from
+     * {@code --isolation}/{@code --controller-timeout} (P0-2). The shorter overloads keep
+     * defaulting to isolated so every existing caller, and the IntelliJ plugin, is unaffected.
+     */
+    public static RenderEngine create(List<File> zkJars, Path webappDir, ForbiddenLoadTracker forbiddenLoadTracker,
+            ControllerPolicy controllerPolicy) throws IOException {
         ZkVariant variant = VariantDetector.detect(zkJars);
         if (variant == ZkVariant.JAKARTA) {
-            return new JakartaRenderEngine(zkJars, webappDir, forbiddenLoadTracker);
+            return new JakartaRenderEngine(zkJars, webappDir, forbiddenLoadTracker, controllerPolicy);
         }
-        return new JavaxRenderEngine(zkJars, webappDir, forbiddenLoadTracker);
+        return new JavaxRenderEngine(zkJars, webappDir, forbiddenLoadTracker, controllerPolicy);
     }
 }

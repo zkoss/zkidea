@@ -6,6 +6,7 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 
 import org.zkoss.zkpreview.AbstractRenderEngine;
+import org.zkoss.zkpreview.ControllerPolicy;
 import org.zkoss.zkpreview.ForbiddenLoadTracker;
 import org.zkoss.zkpreview.jakarta.mock.MockHttpServletRequest;
 import org.zkoss.zkpreview.jakarta.mock.MockHttpServletResponse;
@@ -33,6 +34,12 @@ public class JakartaRenderEngine extends AbstractRenderEngine {
 
     public JakartaRenderEngine(List<File> zkJars, Path webappDir, ForbiddenLoadTracker forbiddenLoadTracker) {
         super(zkJars, webappDir, forbiddenLoadTracker);
+    }
+
+    /** Same engine, with an explicit controller policy ({@code --isolation off}, P0-2). */
+    public JakartaRenderEngine(List<File> zkJars, Path webappDir, ForbiddenLoadTracker forbiddenLoadTracker,
+            ControllerPolicy controllerPolicy) {
+        super(zkJars, webappDir, forbiddenLoadTracker, controllerPolicy);
     }
 
     @Override

@@ -33,7 +33,8 @@ Both use the **same artifact**; the release asset is a versioned copy of the jar
 java -jar zk-preview-launcher-<version>.jar \
      --classpath <File.pathSeparator-separated ZK jars and resource dirs> \
      --webapp <docroot dir> \
-     --port <n>
+     --port <n> \
+     [--isolation on|off] [--controller-timeout <seconds>]
 ```
 
 | Flag | Required | Meaning |
@@ -41,6 +42,8 @@ java -jar zk-preview-launcher-<version>.jar \
 | `--classpath` | yes | Jars (and resource-root directories) forming the ZK runtime. Separated by the platform path separator: `:` on Unix, `;` on Windows. |
 | `--webapp` | yes | The document root. Requested `.zul` paths are resolved against it. |
 | `--port` | no | TCP port, `0` (default) for an ephemeral one. Always bound to `127.0.0.1`. |
+| `--isolation` | no | `on` (default) keeps the isolation hooks in place: no Composer, no ViewModel, dimmed placeholders. `off` runs the previewed project's real controllers — it **executes arbitrary project code** from `--classpath`, so it is opt-in and never used by the IntelliJ plugin. Also settable process-wide as `-Dzkpreview.isolation=false`, but the two are not equivalent: the property is the raw hooks-level switch the isolation canary tests rely on, so it runs the controllers with **no** `--controller-timeout` budget and **no** fail-soft isolated retry, and reports them as `executed` even when the render died inside one. `--isolation off` is the supported route that adds both. |
+| `--controller-timeout` | no | Wall-clock budget for a render with `--isolation off`, in seconds (default `10`). On expiry the render is retried isolated. It bounds the **whole** render, not controller time alone — the two are inseparable inside one `service` call. Ignored when isolation is on, so an isolated render can never newly time out. |
 | `--report-plugin`, `--report-ide`, `--report-build`, `--report-layout`, `--report-zkjars` | no | Cosmetic. They populate an environment block on the generated error page. Omit them all and the block is simply left out — the supported standalone case. |
 
 **stdout handshake.** Once the server is bound, and only then, the process prints exactly:
@@ -90,8 +93,8 @@ Three entry kinds, in this order — the order is part of the contract:
    module and the modules it depends on, so a page's own `<zscript>`, `use="…"` or custom EL
    function can resolve the project's classes. Take these from a *production-only* enumeration —
    `target/test-classes` must not reach the render. Isolation from ViewModels and Composers comes
-   from the launcher's `UiFactory` hook, which never resolves their class name, **not** from
-   keeping these roots off the classpath.
+   from the launcher's `UiFactory` hook, which never resolves their class name while isolation
+   is on, **not** from keeping these roots off the classpath.
 3. **Resource roots** such as `src/main/resources`, which is what makes ZK's `~./`
    `ClassWebResource` pages resolve. Last, mirroring a real container where `WEB-INF/classes` *is*
    the compiled output with the resources already copied into it.
@@ -117,6 +120,16 @@ process fails loudly on startup and never prints a port — check the stderr tai
 The launcher produces the **first paint, with no ViewModel and no Composer**. That means bound
 values appear as dimmed placeholder text, model-bound `<grid>`/`<listbox>`/`<tree>` show placeholder
 rows, and nothing needing a server round-trip (clicks, paging, sorting) happens.
+
+That describes the default, `--isolation on`. With `--isolation off` the project's own
+Composers/ViewModels are constructed and run, the real `Binder` resolves real values, and the
+placeholder injector stands down completely — so bound values, model-bound rows and anything an
+`apply=` composer fills are the real thing, and a field left blank is a real gap. That mode is
+fail-soft: if the controllers throw, cannot be loaded, or overrun `--controller-timeout`, the page
+is rendered again with isolation on and served normally, so a broken controller degrades the preview
+instead of destroying it. Every `.zul` response says which happened, on the
+`X-ZK-Preview-Controllers` header (`skipped` | `executed` | `failed`), with the cause on
+`X-ZK-Preview-Controller-Failure` when it failed.
 
 One binding is not placeholdered: a bound `src` (`<include>`, `<image>`, …) is a URI ZK *loads*
 rather than shows, so a constant literal is included for real and anything else leaves `src` unset —
