@@ -127,12 +127,19 @@ public abstract class AbstractRenderEngine implements RenderEngine {
      * (PreviewHttpServer's 8-thread pool) and a JVM-global flag flipped for one of them would
      * corrupt the others -- including a plugin preview that never asked to leave isolation.
      */
-    private RenderResult renderOnce(String zulPath, boolean isolated) {
+    private RenderResult renderOnce(String zulPath, boolean isolated, Map<String, String> headers) {
         ClassLoader prev = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(zkLoader);
         try {
             isolationScopeSet.invoke(null, isolated);
             MockHttpServletRequestCore req = createRequest(zulPath, null, "GET");
+            // P2-8: the only call site of setHeader in the whole launcher -- the mock has always
+            // had the setter and nothing ever called it, so ZK saw a request with no headers at
+            // all. Applied here, after the subclass built the request and before service(), so
+            // neither namespace adapter has to know about headers. The core lowercases the names
+            // on the way in, which is what makes the lookup case-insensitive as the servlet API
+            // requires; empty map = exactly today's behaviour.
+            headers.forEach(req::setHeader);
             MockHttpServletResponseCore resp = createResponse();
             layoutServiceMethod.invoke(layoutServlet, req, resp);
             return RenderResult.success(resp.getContent());
@@ -176,9 +183,14 @@ public abstract class AbstractRenderEngine implements RenderEngine {
      * attempt's {@link RenderError} is reported with <em>no</em> controller claim at all
      * ({@link ControllerOutcome#SKIPPED}, no cause line), and the error page and
      * {@code preview-zul.py}'s exit 1 for a genuinely broken ZUL read exactly as they do today.
+     *
+     * <p>P2-8: {@code headers} are the requesting browser's own, and only ever <em>travel</em> here
+     * -- to {@code renderOnce} on this thread, to {@code renderOnce} on the one-shot executor
+     * thread, and to the isolated retry. No branch reads them; they change nothing about the mode
+     * logic above.
      */
     @Override
-    public RenderResult renderZul(String zulPath) {
+    public RenderResult renderZul(String zulPath, Map<String, String> headers) {
         if (!controllerPolicy.runControllers()) {
             // A policy that asked for isolation explicitly (--isolation on, ControllerPolicy.of
             // with runControllers=false) means it: it must win over the process-wide property.
@@ -186,28 +198,28 @@ public abstract class AbstractRenderEngine implements RenderEngine {
             // -Dzkpreview.isolation=false with no CLI option and no explicit policy -- keeps
             // reaching the hooks raw: no executor, no budget, failures surfaced as failures.
             boolean isolated = controllerPolicy.forceIsolated() || IsolationMode.isEnabled();
-            return renderOnce(zulPath, isolated).withControllers(
+            return renderOnce(zulPath, isolated, headers).withControllers(
                     isolated ? ControllerOutcome.SKIPPED : ControllerOutcome.EXECUTED, null);
         }
         ExecutorService oneShot = Executors.newSingleThreadExecutor(controllerThreadFactory());
         try {
-            Future<RenderResult> attempt = oneShot.submit(() -> renderOnce(zulPath, false));
+            Future<RenderResult> attempt = oneShot.submit(() -> renderOnce(zulPath, false, headers));
             try {
                 RenderResult r = attempt.get(controllerPolicy.timeoutSeconds(), TimeUnit.SECONDS);
                 if (r.isSuccess()) {
                     return r.withControllers(ControllerOutcome.EXECUTED, null);
                 }
-                return retryIsolated(zulPath, controllerFailureLine(r.getError()));
+                return retryIsolated(zulPath, headers, controllerFailureLine(r.getError()));
             } catch (TimeoutException e) {
                 attempt.cancel(true);
-                return retryIsolated(zulPath, "the render exceeded the " + controllerPolicy.timeoutSeconds()
+                return retryIsolated(zulPath, headers, "the render exceeded the " + controllerPolicy.timeoutSeconds()
                         + "s controller budget (the budget covers the whole render, not controller time"
                         + " alone; raise it with --controller-timeout)");
             } catch (ExecutionException e) {
-                return retryIsolated(zulPath, oneLineCause(e.getCause() != null ? e.getCause() : e));
+                return retryIsolated(zulPath, headers, oneLineCause(e.getCause() != null ? e.getCause() : e));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                return retryIsolated(zulPath, "interrupted while running the project's controllers");
+                return retryIsolated(zulPath, headers, "interrupted while running the project's controllers");
             }
         } finally {
             // Interrupts an abandoned attempt if it is sleeping/waiting; a busy one simply
@@ -217,8 +229,20 @@ public abstract class AbstractRenderEngine implements RenderEngine {
     }
 
     /**
-     * The fail-soft half of {@link #renderZul}: today's isolated render, and the comparison that
-     * decides whether {@code failure} may be reported as a controller's.
+     * {@inheritDoc}
+     *
+     * <p>Delegates rather than duplicating, so every existing one-argument caller -- the IntelliJ
+     * plugin, and each of the launcher's own tests -- walks the identical code path with an empty
+     * header map (P2-8).
+     */
+    @Override
+    public RenderResult renderZul(String zulPath) {
+        return renderZul(zulPath, Map.of());
+    }
+
+    /**
+     * The fail-soft half of {@link #renderZul(String, Map)}: today's isolated render, and the
+     * comparison that decides whether {@code failure} may be reported as a controller's.
      *
      * <p>P0-2 item 5 scopes both {@code CONTROLLERS: failed -> isolated} and its WARNINGS entry to
      * "a page-level failure caused by user controller code", and the reader is told to go and fix
@@ -228,8 +252,10 @@ public abstract class AbstractRenderEngine implements RenderEngine {
      * failure -- outcome {@code SKIPPED}, no cause line -- which is byte-for-byte the report a
      * broken ZUL gets without {@code --run-controllers}.
      */
-    private RenderResult retryIsolated(String zulPath, String failure) {
-        RenderResult isolated = renderOnce(zulPath, true);
+    private RenderResult retryIsolated(String zulPath, Map<String, String> headers, String failure) {
+        // The retry carries the same headers as the first attempt: a header-dependent page must not
+        // render a different DOM just because the controllers-on attempt failed (P2-8).
+        RenderResult isolated = renderOnce(zulPath, true, headers);
         if (!isolated.isSuccess()) {
             System.err.println("[zk-preview] the isolated retry of " + zulPath
                     + " failed too, so the failure is not controller-caused; reporting it as-is."

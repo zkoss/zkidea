@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  P2-8: prints the User-Agent ZK's server side actually saw. The hyphen-free token "ua"
+  is planted immediately before the value with no separator (the el-empty concatenation
+  pattern), so an empty header map renders a bare "ua" and a forwarded one renders
+  "ua" followed by the value. The value itself may carry hyphens, which ZK 10 escapes
+  as '\-' in the zkmx bootstrap; the assertion de-escapes before matching (lesson #14).
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Preview Fixture P28" border="normal">
+        <zscript><![CDATA[
+            String ua = org.zkoss.zk.ui.Executions.getCurrent().getHeader("user-agent");
+        ]]></zscript>
+        <label value="ua${ua}"/>
+        <label value="static sibling"/>
+    </window>
+</zk>

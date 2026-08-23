@@ -9,6 +9,8 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -99,7 +101,7 @@ public final class PreviewHttpServer {
                 return;
             }
             if ("GET".equalsIgnoreCase(method) && path.endsWith(".zul")) {
-                RenderResult r = engine.renderZul(path);
+                RenderResult r = engine.renderZul(path, requestHeaders(exchange));
                 noStore(exchange);
                 reportControllers(exchange, r);
                 if (r.isSuccess()) {
@@ -123,6 +125,41 @@ public final class PreviewHttpServer {
         } finally {
             exchange.close();
         }
+    }
+
+    /**
+     * The incoming request's headers, shaped for the mock request (P2-8), so ZK's server-side reads
+     * -- {@code Executions.getCurrent().getHeader(...)}, {@code getBrowser()}, device resolution --
+     * see the real browser instead of an empty map.
+     *
+     * <p>{@code com.sun.net.httpserver.Headers} is a multimap while the mock holds one value per
+     * name, so the <em>first</em> value wins. That is not a compromise: it is exactly what
+     * {@code HttpServletRequest.getHeader} promises for a repeated header ("the first head" of the
+     * values). The knowing limitation is {@code getHeaders(name)}, which then reports that single
+     * value rather than every one the browser sent -- no rendering input ZK reads needs more.
+     *
+     * <p>Deliberately scoped to the {@code .zul} render dispatch and NOT to the {@code /zkau/web/*}
+     * resource branch above. Measured: with the browser's real {@code Accept-Encoding}
+     * ("gzip, deflate, br, zstd") in the mock request, ZK's extendlets honour it and hand back gzip
+     * bytes, but {@code ResourceResult} carries only status/contentType/body, so the
+     * {@code Content-Encoding} is dropped and gzip is served labelled {@code text/javascript}. The
+     * client then reports "Invalid or unexpected token" and "zk is not defined" and paints nothing.
+     * If forwarding there is ever wanted, try the cheap fix first: the AU servlet is initialised
+     * with no {@code compress} init param (see {@code AbstractRenderEngine}'s bootstrap, where the
+     * layout servlet already gets {@code compress=false}), and {@code DHtmlUpdateServlet.init}
+     * answers a false one with {@code ClassWebResource.setCompress(null)} -- no gzip at all, so
+     * nothing would need to carry an encoding. Only failing that does it need
+     * {@code Content-Encoding} carried through {@code ResourceResult}, or {@code Accept-Encoding}
+     * stripped. Until one of them is done, do not "complete" this change.
+     */
+    private static Map<String, String> requestHeaders(HttpExchange exchange) {
+        Map<String, String> headers = new HashMap<>();
+        exchange.getRequestHeaders().forEach((name, values) -> {
+            if (values != null && !values.isEmpty()) {
+                headers.put(name, values.get(0));
+            }
+        });
+        return headers;
     }
 
     /**
