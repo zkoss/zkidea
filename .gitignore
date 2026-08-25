@@ -7,3 +7,5 @@ build
 target
 *.iml
 bin
+# Verification screenshots under tasks/ are test results, not sources
+tasks/*.png

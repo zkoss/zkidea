@@ -1,0 +1,56 @@
+diff --git a/.github/workflows/validate-zul.yml b/.github/workflows/validate-zul.yml
+index dc5854c..ded8c17 100644
+--- a/.github/workflows/validate-zul.yml
++++ b/.github/workflows/validate-zul.yml
+@@ -6,6 +6,11 @@ name: Validate ZUL corpus
+ # (see test/run-regression.py and test/known-failures.txt).
+ 
+ on:
++  # The pinned-asset check below is the reason this job has a clock as well as a
++  # trigger: nothing in this repo changes when someone deletes a release asset in
++  # zkoss/zkidea, so a path-filtered push/PR run would never notice.
++  schedule:
++    - cron: "17 5 * * *"   # daily
+   push:
+     paths:
+       - "test/**"
+@@ -93,3 +98,39 @@ jobs:
+           if [ "$dbg" != "$plain" ]; then
+             echo "::error::--debug changed stdout"; exit 1
+           fi
++
++      # The render helper is downloaded from a GitHub Release and pinned by version +
++      # SHA-256 (LAUNCHER_URL / LAUNCHER_SHA256 in preview-zul.py). Both halves can rot
++      # without anything in this repo changing:
++      #   * the asset is deleted or the version bumped -> every user gets HTTP 404;
++      #   * the asset is replaced -> the pin no longer matches, and the download path
++      #     fails CLOSED by design, so every user gets a hard failure instead.
++      # Same class of breakage, so both are checked here rather than discovered by a
++      # user. The constants are read out of the script itself -- duplicating them in
++      # YAML would let the check pass against a pin nobody ships.
++      #
++      # HEAD needs -L: release assets 302 to objects.githubusercontent.com, and the
++      # redirect is where the 200 lives. --retry/--max-time so a github.com blip is a
++      # retry rather than a red build; the two error messages are worded to tell a
++      # maintainer which of the two it is.
++      - name: Check the pinned launcher release asset
++        run: |
++          PINS=$(python3 -c "import importlib.util as u; s=u.spec_from_file_location('pz','skills/zul-writer/scripts/preview-zul.py'); m=u.module_from_spec(s); s.loader.exec_module(m); print(m.LAUNCHER_URL, m.LAUNCHER_SHA256)")
++          URL=${PINS% *}
++          SHA=${PINS#* }
++          echo "pinned: $URL"
++          code=$(curl -sSIL -o /dev/null -w '%{http_code}' --max-time 30 --retry 2 "$URL" || echo 000)
++          if [ "$code" != "200" ]; then
++            echo "::error::the pinned launcher asset is not downloadable (HTTP $code): $URL"
++            echo "::error::either the release asset is gone / the pin is stale, or github.com is unreachable from this runner"
++            exit 1
++          fi
++          # -f here (and not on the HEAD above): a missing sidecar must yield an empty
++          # string, not GitHub's HTML 404 page dressed up as a digest.
++          published=$(curl -fsSL --max-time 30 --retry 2 "$URL.sha256" | awk 'NR==1{print $1}')
++          if [ "$published" != "$SHA" ]; then
++            echo "::error::the published asset does not match the pinned SHA-256 -- preview-zul.py fails closed on this, so every user machine is broken"
++            echo "::error::pinned    $SHA"
++            echo "::error::published ${published:-<no .sha256 published>}"
++            exit 1
++          fi
