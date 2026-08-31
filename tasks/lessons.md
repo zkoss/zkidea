@@ -105,3 +105,22 @@
     ```
     Corollary that made this expensive: the probe/verification step is what caught it, not review.
     A fixture is not verified until it has been *rendered*, not merely written.
+
+## 20. Check a claimed downstream impact in the downstream code before writing it into an issue
+
+**What happened.** Filing #71 (a missing `.zul` answered `200` with an empty body) I wrote that a
+mistyped path "produces a successful-looking run with a blank screenshot" through
+`preview-zul.py`, citing its `if status != 200: raise Skipped(...)` branch as dead code. The branch
+*is* unreachable for a missing page, but not for the reason given: `locate_zul` validates the
+argument against the filesystem first and exits `usage-error`, so a plain typo never reaches HTTP.
+I had read the branch that supported the claim and not the function that runs before it.
+
+**Why it matters.** The defect was real and the fix unchanged, but the issue told a maintainer the
+wrong story about who is hurt — and the genuinely affected consumer (the IntelliJ preview pane,
+which builds the URL with no pre-check) went unmentioned. A wrong impact statement mis-prioritises
+the fix and survives in the record long after the code is fixed.
+
+**Rule.** An impact claim about a *consumer* is a claim about that consumer's code. Before writing
+it: trace the consumer's path from its entry point to the line quoted, not just the line quoted.
+If the consumer cannot be run, say "reachable when …" rather than "currently produces …".
+Correct it in the issue as soon as it is found, in the thread where the claim was made.
