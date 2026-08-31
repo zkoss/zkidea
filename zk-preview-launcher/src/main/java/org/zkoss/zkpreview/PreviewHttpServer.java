@@ -25,7 +25,17 @@ import java.util.regex.Pattern;
  *   <li>{@code GET *.zul} -> page render</li>
  *   <li>{@code GET /zkau/web/*} -> resource (extendlet-processed JS/CSS)</li>
  *   <li>{@code POST /zkau} -> benign AU stub (first paint never issues an AU round-trip)</li>
+ *   <li>{@code GET|HEAD <anything else>} -> a regular file from the {@code --webapp} docroot,
+ *       confined to it; other methods on such a file get {@code 405}</li>
+ *   <li>anything left -> empty {@code 404}</li>
  * </ul>
+ *
+ * <p>Order is precedence, and the docroot route is deliberately last: a {@code .zul} is always
+ * rendered as a page rather than returned as source text, and {@code /zkau/**} always resolves off
+ * the classpath rather than off disk. The docroot route is this server's stand-in for the
+ * {@code DefaultServlet} a real servlet container would have contributed implicitly -- there being
+ * no container here, nothing supplied it, which is why docroot assets went unserved until it was
+ * added. See {@code doc/preview-launcher-architecture.md}.
  */
 public final class PreviewHttpServer {
 
@@ -121,10 +131,186 @@ public final class PreviewHttpServer {
                 }
                 return;
             }
+            // Last: the docroot's own files. Deliberately after the two ZK handlers above, so a
+            // .zul is always rendered as a page and a /zkau/** path always resolves off the
+            // classpath -- neither can be answered as file source by this branch.
+            Path file = staticFile(exchange.getRequestURI().getRawPath());
+            if (file != null) {
+                if ("GET".equalsIgnoreCase(method) || "HEAD".equalsIgnoreCase(method)) {
+                    sendStaticFile(exchange, file);
+                } else {
+                    exchange.getResponseHeaders().set("Allow", "GET, HEAD");
+                    send(exchange, 405, "text/plain;charset=UTF-8", new byte[0]);
+                }
+                return;
+            }
             send(exchange, 404, "text/plain;charset=UTF-8", new byte[0]);
         } finally {
             exchange.close();
         }
+    }
+
+    /**
+     * Resolves a request path to a regular file inside the docroot, or {@code null} for anything
+     * that must not be served -- which this server answers as a plain 404, disclosing nothing about
+     * whether the path exists, is a directory, or was refused on principle.
+     *
+     * <p>Until this method existed, no request path was ever resolved against the filesystem, so
+     * traversal was impossible by construction. That accidental safety is gone, and everything
+     * below replaces it. The order matters: <b>decode first, then validate</b>, so {@code %2e%2e}
+     * is rejected by the same check as {@code ../} rather than sneaking past a check that ran on
+     * the still-encoded form.
+     *
+     * <p>Refused, each by an explicit rule rather than as a side effect of path arithmetic:
+     * malformed percent-escapes (rejected, never repaired), a NUL byte, a backslash (a separator on
+     * Windows and never legitimate in a URL path here), any {@code ..} component, any component
+     * starting with {@code .} (keeps {@code .git/}, {@code .env} and editor state unreachable), and
+     * any {@code WEB-INF} / {@code META-INF} component at any depth in any case (those hold
+     * {@code web.xml}, {@code zk.xml}, and in a built webapp the application's own classes).
+     *
+     * <p>Containment is then re-checked on the resolved path via {@link Path#startsWith}, which
+     * compares name elements rather than string prefixes -- so a docroot of {@code /home/u/app}
+     * does not admit {@code /home/u/app-secrets/x}.
+     *
+     * <p><b>Documented limitation, by decision -- not an oversight.</b> {@code normalize()} is
+     * lexical: it does not resolve symbolic links, so a symlink inside the docroot pointing outside
+     * it <em>is</em> served. Refusing it is a withdrawn requirement (spec S3), for three reasons:
+     * a docroot-bounded {@code toRealPath()} would 404 legitimate assets, because a preview docroot
+     * is a live source tree where symlinked asset folders are normal; the threat model does not
+     * justify it, since previewing an untrusted project already grants code execution in this JVM
+     * through {@code <zscript>}, next to which reading one file through a link is a strict
+     * downgrade; and the only non-breaking version -- bounding the check by the project's content
+     * roots -- costs more than all the other confinement rules combined for no change in what an
+     * attacker can do. This server is a developer tool on {@code 127.0.0.1} pointed at the
+     * developer's own tree, and must not be used to serve untrusted content. If ever revisited,
+     * bound the check by the content roots, never by the docroot.
+     */
+    private Path staticFile(String rawPath) {
+        if (webappDir == null || rawPath == null) {
+            return null;
+        }
+        String decoded = decodeStrict(rawPath);
+        if (decoded == null || decoded.indexOf('\0') >= 0 || decoded.indexOf('\\') >= 0) {
+            return null;
+        }
+        Path root = webappDir.toAbsolutePath().normalize();
+        Path resolved = root;
+        for (String part : decoded.split("/")) {
+            if (part.isEmpty() || ".".equals(part)) {
+                continue;
+            }
+            if (part.startsWith(".") || "WEB-INF".equalsIgnoreCase(part) || "META-INF".equalsIgnoreCase(part)) {
+                return null;
+            }
+            resolved = resolved.resolve(part);
+        }
+        resolved = resolved.normalize();
+        if (!resolved.startsWith(root) || !Files.isRegularFile(resolved)) {
+            return null;
+        }
+        return resolved;
+    }
+
+    /**
+     * Percent-decodes a URL path, returning {@code null} rather than a repaired string when an
+     * escape is malformed (a truncated or non-hex {@code %} sequence). Decodes the bytes first and
+     * interprets the result as UTF-8, so a multi-byte character split across escapes survives.
+     * {@code +} is left alone: it means a literal plus in a path, not a space.
+     */
+    private static String decodeStrict(String rawPath) {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(rawPath.length());
+        for (int i = 0; i < rawPath.length(); i++) {
+            char c = rawPath.charAt(i);
+            if (c != '%') {
+                if (c > 0x7F) {
+                    // A raw non-ASCII char in the request line: keep its UTF-8 bytes.
+                    out.writeBytes(String.valueOf(c).getBytes(StandardCharsets.UTF_8));
+                } else {
+                    out.write(c);
+                }
+                continue;
+            }
+            if (i + 2 >= rawPath.length()) {
+                return null;
+            }
+            int hi = Character.digit(rawPath.charAt(i + 1), 16);
+            int lo = Character.digit(rawPath.charAt(i + 2), 16);
+            if (hi < 0 || lo < 0) {
+                return null;
+            }
+            out.write((hi << 4) | lo);
+            i += 2;
+        }
+        return out.toString(StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Streams a docroot file. Never read whole into memory ({@link Files#copy}): a webapp's assets
+     * reach tens of megabytes and the launcher runs on the default heap.
+     *
+     * <p>Carries the same no-store headers as a rendered page, and deliberately no {@code ETag} or
+     * {@code Last-Modified}. The pane re-requests the same URLs on every save while the developer
+     * is editing those very files, so a {@code 304} would repaint a previous version -- the exact
+     * failure the page handler's cache directives already exist to prevent.
+     */
+    private static void sendStaticFile(HttpExchange exchange, Path file) throws IOException {
+        long size = Files.size(file);
+        noStore(exchange);
+        exchange.getResponseHeaders().set("Content-Type", contentType(file.getFileName().toString()));
+        if ("HEAD".equalsIgnoreCase(exchange.getRequestMethod()) || size == 0) {
+            // -1 means "no body"; the length still has to be advertised by hand, because the
+            // JDK server only derives Content-Length from a body it is actually going to write.
+            exchange.getResponseHeaders().set("Content-Length", Long.toString(size));
+            exchange.sendResponseHeaders(200, -1);
+            return;
+        }
+        exchange.sendResponseHeaders(200, size);
+        try (OutputStream os = exchange.getResponseBody()) {
+            Files.copy(file, os);
+        }
+    }
+
+    /**
+     * Extension-to-MIME mapping for docroot files.
+     *
+     * <p>Owned here rather than delegated to {@code ServletContext.getMimeType}, which the mock
+     * context always answers {@code null} -- an asset served with no {@code Content-Type} is
+     * refused outright by a strict browser, which would look exactly like the bug this route fixes.
+     */
+    private static final Map<String, String> CONTENT_TYPES = Map.ofEntries(
+            Map.entry("css", "text/css"),
+            Map.entry("js", "text/javascript"),
+            Map.entry("mjs", "text/javascript"),
+            Map.entry("json", "application/json"),
+            Map.entry("map", "application/json"),
+            Map.entry("png", "image/png"),
+            Map.entry("jpg", "image/jpeg"),
+            Map.entry("jpeg", "image/jpeg"),
+            Map.entry("gif", "image/gif"),
+            Map.entry("svg", "image/svg+xml"),
+            Map.entry("webp", "image/webp"),
+            Map.entry("ico", "image/vnd.microsoft.icon"),
+            Map.entry("woff", "font/woff"),
+            Map.entry("woff2", "font/woff2"),
+            Map.entry("ttf", "font/ttf"),
+            Map.entry("eot", "application/vnd.ms-fontobject"),
+            Map.entry("txt", "text/plain"),
+            Map.entry("html", "text/html"),
+            Map.entry("htm", "text/html"));
+
+    /**
+     * {@code Content-Type} for a file name. Unknown extensions get
+     * {@code application/octet-stream}; {@code text/*} additionally declares UTF-8, matching the
+     * charset every other response from this server uses.
+     */
+    static String contentType(String fileName) {
+        String lower = fileName.toLowerCase(java.util.Locale.ROOT);
+        int dot = lower.lastIndexOf('.');
+        String type = dot < 0 ? null : CONTENT_TYPES.get(lower.substring(dot + 1));
+        if (type == null) {
+            return "application/octet-stream";
+        }
+        return type.startsWith("text/") ? type + ";charset=UTF-8" : type;
     }
 
     /**
@@ -276,6 +462,14 @@ public final class PreviewHttpServer {
 
     private static void send(HttpExchange exchange, int status, String contentType, byte[] body) throws IOException {
         exchange.getResponseHeaders().set("Content-Type", contentType);
+        // A HEAD must carry no body, and the JDK server logs a warning if one is announced for it.
+        // Reachable here only via the docroot route's 404/405, the sole non-GET paths in this
+        // server; every other caller is GET-only and behaves exactly as before.
+        if ("HEAD".equalsIgnoreCase(exchange.getRequestMethod())) {
+            exchange.getResponseHeaders().set("Content-Length", String.valueOf(body.length));
+            exchange.sendResponseHeaders(status, -1);
+            return;
+        }
         exchange.sendResponseHeaders(status, body.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(body);
