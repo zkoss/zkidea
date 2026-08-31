@@ -79,6 +79,10 @@
     ]]></description>
 
      <change-notes><![CDATA[
+      <p>1.0.3</p>
+      <ul>
+          <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/70">#70 Layout Preview: images, stylesheets and scripts from your own webapp folder never load</a> — the preview now serves regular files out of your <code>src/main/webapp</code>. Before this, a page with <code>&lt;image src="/img/logo.png"/&gt;</code> previewed as an empty box even though the file was right there, and a page's own CSS and JavaScript silently never applied, so the pane showed half-styled output with nothing to indicate why. Serving is confined to the webapp folder: <code>WEB-INF</code>, <code>META-INF</code>, dot-files and any path escaping the folder are refused, directories are never listed, and assets are never cached so an edit shows up on the next save.</li>
+      </ul>
       <p>1.0.2</p>
       <ul>
           <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/69">#69 Layout Preview: an &lt;include&gt; whose <code>src</code> is a data binding fails to load ("No dispatcher available to include …")</a> — a bound <code>src</code> is no longer written into the page as raw expression text. When the binding names a constant path (<code>src="@load('~./page.zul')"</code>) the page is now included for real; when the path comes from the ViewModel (which never runs in the preview) the include simply contributes nothing, instead of leaving an error box in the middle of the layout.</li>

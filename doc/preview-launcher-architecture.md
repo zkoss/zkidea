@@ -1,8 +1,7 @@
 # Why the ZUL Layout Preview runs without a servlet container
 
-**Status:** reference. Describes `zk-preview-launcher` on `master`; the docroot file route in
-§6 and §10 ships in 1.0.3.
-**Last verified:** 2026-08-31, against the 1.0.2 source tree and a live launcher process.
+**Status:** reference. Describes `zk-preview-launcher` as of version 1.0.3.
+**Last verified:** 2026-08-31, against the 1.0.3 source tree and a live launcher process.
 
 The Layout Preview renders a `.zul` page by driving ZK's real rendering servlets inside a helper
 JVM that contains **no Jetty, no Tomcat, and no servlet container of any kind**. Because that is

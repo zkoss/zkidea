@@ -10,7 +10,7 @@ group 'org.zkoss.zkpreview'
 // URL from the tag name, so this number MUST equal the tag the asset is published under;
 // `.github/workflows/release-launcher.yml` refuses to publish when the two disagree.
 // See README.md.
-version '1.0.2'
+version '1.0.3'
 
 java.sourceCompatibility = JavaVersion.VERSION_17
 java.targetCompatibility = JavaVersion.VERSION_17
