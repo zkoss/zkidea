@@ -8,7 +8,7 @@ Answer: **yes, since the docroot file route was added** ([#70](https://github.co
 Before it, every docroot file returned `404` — images blank, the page's own stylesheet and script
 silently never applied. These fixtures now serve as the regression guard for that route; the
 requirements they were written against are in
-[`tasks/launcher-static-asset-serving-spec.md`](../../../../../../tasks/launcher-static-asset-serving-spec.md).
+[`doc/launcher-static-asset-serving-spec.md`](../../../../../../doc/launcher-static-asset-serving-spec.md).
 
 Each fixture pairs the docroot asset with a **control** that is known to work, so a blank
 result can only mean one thing. The control in case 1 is a ZK classpath image

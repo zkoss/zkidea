@@ -366,6 +366,6 @@ Two known limitations that a new route must account for rather than inherit:
 * [`doc/feature_overview.md`](feature_overview.md) §10 — the preview subsystem's class-by-class map.
 * [`manual-test/src/main/webapp/preview/static/`](../manual-test/src/main/webapp/preview/static/) —
   docroot static-asset fixtures and their probe script.
-* The static-asset serving requirements currently live in
-  `tasks/launcher-static-asset-serving-spec.md` and move into this directory once the
-  implementation lands and the requirements are settled.
+* [`doc/launcher-static-asset-serving-spec.md`](launcher-static-asset-serving-spec.md) — the
+  docroot file route's requirements, security rules and acceptance criteria, including the one
+  withdrawn requirement (S3, symlink escape) and why it was withdrawn.

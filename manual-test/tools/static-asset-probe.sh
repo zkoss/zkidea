@@ -91,6 +91,6 @@ if [[ $fails -eq 0 ]]; then
     echo "ALL PASS: the launcher serves docroot static files."
 else
     echo "$fails FAILED. The launcher is not serving static files from the webapp docroot."
-    echo "See tasks/launcher-static-asset-serving-spec.md and doc/preview-launcher-architecture.md."
+    echo "See doc/launcher-static-asset-serving-spec.md and doc/preview-launcher-architecture.md."
 fi
 exit $((fails > 0))

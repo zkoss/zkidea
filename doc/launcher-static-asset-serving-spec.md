@@ -6,8 +6,8 @@
 covered by `zk-preview-launcher`'s `StaticAssetServingTest` (61 cases) plus the manual-test
 fixtures and `manual-test/tools/static-asset-probe.sh`. **S3 was withdrawn** — symlink escape is a
 documented non-goal, see its section. No requirement here is open.
-**Filing:** this document stays under `tasks/` while the requirements are still moving; it moves to
-`doc/` once the implementation lands and the requirements are settled (decided 2026-08-31).
+**Filing:** moved from `tasks/` to `doc/` on 2026-08-31, once the implementation landed and the
+last open requirement (S3) was resolved — it is a reference now, not a work item.
 **Security test placement:** the §6 / §8 security rows are verified by `zk-preview-launcher`'s own
 automated tests, which build throwaway docroots — not by committed fixtures in `manual-test`
 (decided 2026-08-31).
