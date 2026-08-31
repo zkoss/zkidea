@@ -82,6 +82,7 @@
       <p>1.0.3</p>
       <ul>
           <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/70">#70 Layout Preview: images, stylesheets and scripts from your own webapp folder never load</a> — the preview now serves regular files out of your <code>src/main/webapp</code>. Before this, a page with <code>&lt;image src="/img/logo.png"/&gt;</code> previewed as an empty box even though the file was right there, and a page's own CSS and JavaScript silently never applied, so the pane showed half-styled output with nothing to indicate why. Serving is confined to the webapp folder: <code>WEB-INF</code>, <code>META-INF</code>, dot-files and any path escaping the folder are refused, directories are never listed, and assets are never cached so an edit shows up on the next save.</li>
+          <li>[bug] <a href="https://github.com/zkoss/zkidea/issues/71">#71 Layout Preview: a .zul path with no file behind it looked like a page that rendered blank</a> — the preview pane now shows <em>which</em> path was not found and <em>which</em> webapp folder it was looked for in, instead of a silent blank pane. Before this, the render server answered such a request as if it had succeeded, with an empty page and no message anywhere, so a preview of the wrong path was indistinguishable from a page that really does render to nothing.</li>
       </ul>
       <p>1.0.2</p>
       <ul>

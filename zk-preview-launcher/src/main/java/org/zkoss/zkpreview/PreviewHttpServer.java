@@ -22,7 +22,8 @@ import java.util.regex.Pattern;
  * JDK built-in HTTP server bridging plain HTTP to the mock servlet environment.
  * Dispatch:
  * <ul>
- *   <li>{@code GET *.zul} -> page render</li>
+ *   <li>{@code GET *.zul} -> page render; no such page -> the status ZK answered with
+ *       ({@code 404}) and a plain-text line naming the path and the docroot</li>
  *   <li>{@code GET /zkau/web/*} -> resource (extendlet-processed JS/CSS)</li>
  *   <li>{@code POST /zkau} -> benign AU stub (first paint never issues an AU round-trip)</li>
  *   <li>{@code GET|HEAD <anything else>} -> a regular file from the {@code --webapp} docroot,
@@ -114,7 +115,12 @@ public final class PreviewHttpServer {
                 RenderResult r = engine.renderZul(path, requestHeaders(exchange));
                 noStore(exchange);
                 reportControllers(exchange, r);
-                if (r.isSuccess()) {
+                if (r.isNotServed()) {
+                    // Before isSuccess(), and before anything reads getError(): a page that is not
+                    // there has no error to render (#71).
+                    send(exchange, r.getNotServedStatus(), "text/plain;charset=UTF-8",
+                            notServedBody(r));
+                } else if (r.isSuccess()) {
                     send(exchange, 200, "text/html;charset=UTF-8",
                             withCanvasBackground(r.getHtml()).getBytes(StandardCharsets.UTF_8));
                 } else {
@@ -268,6 +274,27 @@ public final class PreviewHttpServer {
         try (OutputStream os = exchange.getResponseBody()) {
             Files.copy(file, os);
         }
+    }
+
+    /**
+     * The diagnostic a caller gets instead of an empty body (#71).
+     *
+     * <p>Two lines: the engine's reason, and the docroot the path was resolved against -- the fact
+     * that turns "no such page" into an actionable answer, because a mistyped preview path and a
+     * launcher pointed at the wrong docroot look identical from the outside. Plain text rather than
+     * an HTML error page, and a {@code 404} rather than a {@code 500}, so that this stays
+     * distinguishable from a render failure: {@code preview-zul.py} scrapes an error page only for
+     * {@code status >= 500}, and reports anything else as "the render server answered HTTP
+     * &lt;status&gt;" with the hint to check the path -- which is the right advice here.
+     */
+    private byte[] notServedBody(RenderResult r) {
+        StringBuilder sb = new StringBuilder()
+                .append("HTTP ").append(r.getNotServedStatus()).append(": ")
+                .append(r.getNotServedReason()).append('\n');
+        if (webappDir != null) {
+            sb.append("docroot: ").append(webappDir.toAbsolutePath().normalize()).append('\n');
+        }
+        return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     /**

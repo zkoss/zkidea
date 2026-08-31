@@ -101,6 +101,30 @@ public abstract class AbstractRenderEngine implements RenderEngine {
     }
 
     /**
+     * ZK answered an error status instead of a page (#71). The only status observed in practice is
+     * {@code 404}, which is how ZK reports a page it cannot find: {@code DHtmlLayoutServlet} fails
+     * to obtain a desktop and calls {@code sendError} on the response. The gate is {@code >= 400}
+     * rather than {@code == 404} because the alternative is the bug this replaces -- any other
+     * status ZK chooses to set (its own {@code 503} when a session hits its concurrent-request
+     * limit, reachable here since every preview shares one mock session) would otherwise be
+     * answered as an empty {@code 200} again.
+     *
+     * <p>The captured body is deliberately dropped: {@code sendError} means "discard the buffer and
+     * use the container's error page" in the servlet contract, and the measured body is empty
+     * anyway. The reader gets the line built here instead, which the HTTP layer completes with the
+     * docroot -- the one fact this engine does not know and the one a mistyped path needs.
+     */
+    private static RenderResult pageNotServed(String zulPath, int status) {
+        String reason = status == 404
+                ? "no such page: " + zulPath
+                : "ZK's page renderer answered HTTP " + status + " for " + zulPath;
+        // The launcher was silent on a miss, so neither the response nor the console distinguished
+        // "no such page" from "rendered blank". preview-zul.py tails stderr for diagnostics.
+        System.err.println("[zk-preview] " + reason);
+        return RenderResult.notServed(status, reason);
+    }
+
+    /**
      * Makes ZK re-stat a cached page definition on every request instead of trusting it for the
      * next 5 seconds ({@code ResourceCache}'s default check period).
      *
@@ -142,6 +166,10 @@ public abstract class AbstractRenderEngine implements RenderEngine {
             headers.forEach(req::setHeader);
             MockHttpServletResponseCore resp = createResponse();
             layoutServiceMethod.invoke(layoutServlet, req, resp);
+            int status = resp.getStatus();
+            if (status >= 400) {
+                return pageNotServed(zulPath, status);
+            }
             return RenderResult.success(resp.getContent());
         } catch (InvocationTargetException e) {
             return RenderResult.failure(ErrorMapper.map(zulPath, e.getCause() != null ? e.getCause() : e));
@@ -198,8 +226,9 @@ public abstract class AbstractRenderEngine implements RenderEngine {
             // -Dzkpreview.isolation=false with no CLI option and no explicit policy -- keeps
             // reaching the hooks raw: no executor, no budget, failures surfaced as failures.
             boolean isolated = controllerPolicy.forceIsolated() || IsolationMode.isEnabled();
-            return renderOnce(zulPath, isolated, headers).withControllers(
-                    isolated ? ControllerOutcome.SKIPPED : ControllerOutcome.EXECUTED, null);
+            RenderResult r = renderOnce(zulPath, isolated, headers);
+            return r.withControllers(
+                    isolated || r.isNotServed() ? ControllerOutcome.SKIPPED : ControllerOutcome.EXECUTED, null);
         }
         ExecutorService oneShot = Executors.newSingleThreadExecutor(controllerThreadFactory());
         try {
@@ -208,6 +237,13 @@ public abstract class AbstractRenderEngine implements RenderEngine {
                 RenderResult r = attempt.get(controllerPolicy.timeoutSeconds(), TimeUnit.SECONDS);
                 if (r.isSuccess()) {
                     return r.withControllers(ControllerOutcome.EXECUTED, null);
+                }
+                if (r.isNotServed()) {
+                    // Terminal, and never retried: there is no page, so no controller can have
+                    // caused it and a second attempt would find the same nothing. Retrying would
+                    // also print "the isolated retry failed too" over a file that does not exist,
+                    // sending the reader to look for a fault instead of a typo (#71).
+                    return r.withControllers(ControllerOutcome.SKIPPED, null);
                 }
                 return retryIsolated(zulPath, headers, controllerFailureLine(r.getError()));
             } catch (TimeoutException e) {
