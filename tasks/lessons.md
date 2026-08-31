@@ -86,3 +86,22 @@
 35. **A compound `cd A && … && git …` sends every later command into A, including the one meant for repo B.** Third occurrence across this engagement, same shape every time: two repos are in play (`agent-skill` for the skill, `zkidea` for the log), the command opens with `cd` into one, and a `git add`/`git status` intended for the other silently targets the first. This time it failed loudly (`pathspec 'tasks/preview-launcher-implementation.md' did not match any files`); the earlier two failed *quietly*, printing one repo's status twice and looking like a clean answer. Rule: **never put a `cd` and a git write for the other repo in one command.** Use `git -C <abs-path>` for every git call when more than one repo is in play, or split the calls. A quiet wrong answer is the dangerous version.
 
 36. **A `criteria`-only run only covers what the criteria happened to ask, and the gap is usually inherited from the brief.** The shipped text claimed "a page whose root region is `vflex`/`hflex` is exactly viewport-tall". True of `vflex`, false of `hflex` — it is a *width*; measured, an `hflex`-only root page holding 1400px of content stitches to 1600x1400, so `--full-page` is right there and `--height` is not. Every generated criterion asked about `vflex`, so the lens passed it. The pairing came from the spec and **I carried it into the brief myself**, so the generator inherited the error rather than inventing it. Second consecutive run where hand verification found a false claim the lens missed (P2-5's raw-argument `zul` was the first). Rule: when writing the brief, check the spec's own phrasing for claims you are about to launder into "measured facts" — and when the lens passes, re-read the shipped text for claims *no criterion mentioned*.
+
+19. **A `--` inside an XML comment makes a `.zul` unparseable — hit twice in one session.** XML
+    forbids a double hyphen anywhere inside `<!-- ... -->`, so the em-dash-as-`--` habit used in
+    Java comments and Markdown throughout this repo produces a `SAXParseException` ("The string
+    "--" is not permitted within comments") and a 500 from the preview. Both times the fixture
+    looked fine and the failure surfaced only when the page was actually rendered. Rule: after
+    writing or editing any `.zul` comment, run the check below before claiming the fixture works —
+    and never trust that a `.zul` is valid because it *reads* valid.
+    ```bash
+    python3 - <<'PY'
+    import pathlib, re
+    for f in pathlib.Path(".").rglob("*.zul"):
+        for m in re.finditer(r"<!--(.*?)-->", f.read_text(), re.S):
+            if "--" in m.group(1):
+                print("ILLEGAL '--' in comment:", f)
+    PY
+    ```
+    Corollary that made this expensive: the probe/verification step is what caught it, not review.
+    A fixture is not verified until it has been *rendered*, not merely written.

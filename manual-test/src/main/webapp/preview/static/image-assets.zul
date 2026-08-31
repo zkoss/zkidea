@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Static docroot assets, case 1 of 3: images.
+
+     Four image requests on one page, three from the webapp docroot and one from the
+     ZK classpath. The classpath one is the control: the launcher is known to serve
+     /zkau/web/** correctly, so if it draws and the other three do not, the docroot
+     is the variable, not the browser, the markup or the ZK Image component.
+
+     PASS = all four images visible.
+     FAIL = only the ZK-powered logo (bottom row) visible, three empty boxes above. That was the
+     behaviour before the docroot file route existed, and is what a regression would look like.
+-->
+<zk xmlns="http://www.zkoss.org/2005/zul"
+    xmlns:n="native">
+    <window title="Static docroot assets - images" border="normal" width="520px">
+        <vlayout spacing="14">
+
+            <hlayout valign="middle" spacing="12">
+                <label value="1. docroot PNG, ZK &lt;image&gt;:" width="230px"/>
+                <image src="/preview/static/assets/docroot-logo.png"/>
+            </hlayout>
+
+            <hlayout valign="middle" spacing="12">
+                <label value="2. docroot SVG, ZK &lt;image&gt;:" width="230px"/>
+                <image src="/preview/static/assets/docroot-icon.svg"/>
+            </hlayout>
+
+            <hlayout valign="middle" spacing="12">
+                <label value="3. docroot PNG, raw HTML &lt;img&gt;:" width="230px"/>
+                <n:img src="/preview/static/assets/docroot-logo.png" width="160" height="80"/>
+            </hlayout>
+
+            <hlayout valign="middle" spacing="12">
+                <label value="4. CONTROL - classpath PNG:" width="230px"/>
+                <image src="~./zk/img/zkpowered.png"/>
+            </hlayout>
+
+            <label value="All four rows must draw. Any empty box is a regression."
+                   style="color:#888;font-size:11px"/>
+        </vlayout>
+    </window>
+</zk>

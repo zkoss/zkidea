@@ -205,7 +205,9 @@ Defined in `plugin.xml` as an action group `ZK_Feedback_Group` added to `HelpMen
 >
 > Companion docs: the **user guide** is [zul-preview-feature.md](zul-preview-feature.md);
 > the **engineering contract**, the itemized limitations and the still-open review
-> findings are in [zul_preview_spec.md](zul_preview_spec.md).
+> findings are in [zul_preview_spec.md](zul_preview_spec.md); why the renderer runs with
+> **no servlet container** — the options evaluated and the reasons each was rejected — is in
+> [preview-launcher-architecture.md](preview-launcher-architecture.md).
 
 ### What it does
 Adds a side-by-side **Layout Preview** to the ZUL editor (Markdown-editor style): the

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Static docroot assets, case 2 of 3: the page's own stylesheet.
+
+     docroot.css declares one class, .docroot-css-loaded, that paints a green banner.
+     If the launcher serves the file, the first label below is a white-on-green pill.
+     If it 404s, the label is plain default text, so the page silently renders unstyled,
+     which is the failure mode that makes a preview screenshot unrepresentative.
+
+     PASS = first label is a green pill.
+     FAIL = first label is plain text. That was the behaviour before the docroot file route
+     existed, and is what a regression would look like — note it comes with no error at all.
+-->
+<?link rel="stylesheet" type="text/css" href="/preview/static/assets/docroot.css"?>
+<zk xmlns="http://www.zkoss.org/2005/zul">
+    <window title="Static docroot assets - stylesheet" border="normal" width="520px">
+        <vlayout spacing="14">
+            <label value="docroot.css was served" sclass="docroot-css-loaded"/>
+            <label value="CONTROL - this label is never styled by docroot.css."/>
+            <label value="The first label must be a green pill. Plain text is a regression."
+                   style="color:#888;font-size:11px"/>
+        </vlayout>
+    </window>
+</zk>

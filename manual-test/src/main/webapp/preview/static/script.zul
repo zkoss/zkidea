@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Static docroot assets, case 3 of 3: the page's own script.
+
+     docroot.js rewrites the placeholder below on DOMContentLoaded. If the launcher
+     serves the file the text changes; if it 404s the authored placeholder text stays.
+     The control label proves the page itself rendered, so a stale placeholder means
+     "script not served", not "page not rendered".
+
+     Note the probe stamps on zk.afterMount, not on DOMContentLoaded: a ZK page's DOM is built
+     client-side by the zkmx(...) bootstrap that the launcher emits after the <script> tag, so the
+     placeholder does not exist yet when docroot.js executes. A DOMContentLoaded-only probe reports
+     a false failure even when the file was served perfectly.
+
+     PASS = placeholder reads "docroot.js RAN ..." in green.
+     FAIL = placeholder still reads "docroot.js DID NOT RUN ...". That was the behaviour before the
+     docroot file route existed, and is what a regression would look like.
+-->
+<?script type="text/javascript" src="/preview/static/assets/docroot.js"?>
+<zk xmlns="http://www.zkoss.org/2005/zul"
+    xmlns:n="native">
+    <window title="Static docroot assets - script" border="normal" width="520px">
+        <vlayout spacing="14">
+            <n:div id="docroot-js-probe">docroot.js DID NOT RUN -- static script was not served</n:div>
+            <label value="CONTROL - the page itself rendered."/>
+            <label value="The placeholder must change to 'docroot.js RAN'. Unchanged is a regression."
+                   style="color:#888;font-size:11px"/>
+        </vlayout>
+    </window>
+</zk>
