@@ -94,8 +94,12 @@ TBD
 
 
 ## 1. Version Updates
-Update version numbers in two locations:
+Update the version in three locations. All three must agree with each other **and** with the
+`v<version>` tag created in step 3:
 - `build.gradle` - Update the `version` property
+- `zk-preview-launcher/build.gradle` - Update the `version` property. The launcher release
+  workflow refuses to publish when this disagrees with the tag, so a missed bump here fails
+  the release after the tag is already pushed.
 - `src/main/resources/META-INF/plugin.xml` - Add new version entry to `<change-notes>`
 
 ## 2. Testing and Validation
@@ -115,26 +119,46 @@ Update version numbers in two locations:
 ./gradlew runIde
 ```
 
-## 3. Build and Publish to JetBrains Marketplace
+## 3. Push and Tag
+
+**The tag comes before publishing, not after.** The launcher release workflow
+(`.github/workflows/release-launcher.yml`) builds `zk-preview-launcher-<VER>.jar` *from the
+tag*, so tagging last would put the plugin on the Marketplace before the jar released
+alongside it exists, and would leave a window in which the published ZIP and the tagged
+commit can diverge. Everything in step 2 has to be green first: once the tag carries a
+published Release its bytes are pinned by external consumers and it must never be re-cut —
+bump the version instead.
+
+```bash
+git push origin master        # master first, so the Release is built from a commit on master
+git tag v<VER>
+git push origin v<VER>
+git describe --tags --exact-match   # must print v<VER>
+```
+
+`--tags` is required: `git tag v<VER>` creates a *lightweight* tag, and `git describe
+--exact-match` alone considers only annotated tags, so it fails with "no tag exactly
+matches" even when the tag is right there.
+
+Pushing the tag triggers the workflow, which attaches the launcher jar and its `.sha256` to
+the Release. That half has its own procedure, including a **mandatory** follow-up in
+`zkoss-demo/agent-skill` that must not be skipped:
+[doc/release-launcher-procedure.md](doc/release-launcher-procedure.md).
+
+## 4. Build and Publish to JetBrains Marketplace
 ```bash
 # it automatically runs `buildPlugin` first, so no need to run them separately.
 ./gradlew publishPlugin
 ```
 
-## 4. Post-Release
-1. **Create Git Tag**
-   ```bash
-   git tag v0.1.X
-   git push origin v0.1.X
-   ```
+## 5. Post-Release
+1. **Update Development Version**
 
-2. **Update Development Version**
-
-3. **Verify Publication**
+2. **Verify Publication**
    - Check plugin appears on [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/7855)
    - Test installation from marketplace
 
-4. **Update the Marketplace Listing Media**
+3. **Update the Marketplace Listing Media**
    - Screenshots and GIFs are *not* part of the plugin ZIP and are not covered by
      `intellijPublishToken`. Upload them by hand: sign in at
      [plugins.jetbrains.com/plugin/7855-zk](https://plugins.jetbrains.com/plugin/7855-zk)

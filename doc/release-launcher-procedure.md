@@ -255,7 +255,10 @@ ZUL_WRITER_LAUNCHER_JAR="$WORK/zk-preview-launcher-<VER>.jar" \
   python3 test/run-preview-tests.py
 ```
 
-**驗收**：`20 checks | 0 failed`、`Result: ✓ CLI contract holds`、離開碼 0。
+**驗收**：`0 failed`、`Result: ✓ CLI contract holds`、離開碼 0。
+
+> 前面的檢查項數會隨套件擴充而變（1.0.2 當時 20 項，1.0.3 時已是 29 項），
+> **不要拿數字當驗收條件** —— 判準是「0 failed 且離開碼 0」。
 
 > **陷阱 1**：這個套件用 `sys.executable` spawn 子行程，**必須**用一個裝了
 > `playwright` 的直譯器。用沒有 playwright 的 python 會得到 18/20 失敗，
@@ -272,7 +275,7 @@ ZUL_WRITER_LAUNCHER_JAR="$WORK/zk-preview-launcher-<VER>.jar" \
 > **陷阱 2（1.0.2 踩過，已修）**：這套測試曾經把 `WARNINGS` 區塊當成必定出現，
 > 因為當時釘的 digest 永遠對不上，每次都會噴指紋警告。指紋修正後警告消失，
 > A1 golden page 反而會失敗 —— 「修好了才失敗」。
-> 現在 `BLOCK_ORDER` 已把 `WARNINGS` 改為選配，兩種情況都應該 20/20。
+> 現在 `BLOCK_ORDER` 已把 `WARNINGS` 改為選配，兩種情況都應該全數通過。
 > 若又看到 A1 因區塊順序失敗，先確認是不是同一類的過期期待，再懷疑真的壞了。
 
 ### 步驟 8 — 提交消費者端的改動
@@ -297,7 +300,7 @@ git commit -m "fix(zul-writer): pin the digest of the published <VER> launcher"
 - [ ] `LAUNCHER_VERSION` 為 `"<VER>"`，`LAUNCHER_URL` 未被手動改動
 - [ ] 清空快取後、**不帶** `--launcher-jar` 的預覽 `STATUS: ok`，且**沒有** `is not the pinned launcher` 警告
 - [ ] 快取中的 jar digest 等於已發布的 digest
-- [ ] 命令列合約套件 20/20、離開碼 0
+- [ ] 命令列合約套件 `0 failed`、離開碼 0（項數不固定，見步驟 7）
 - [ ] 只提交了 `preview-zul.py` 一個檔案
 
 ---
@@ -314,7 +317,7 @@ git commit -m "fix(zul-writer): pin the digest of the published <VER> launcher"
 | 步驟 4 的兩個值不一致 | 上傳的位元組與 sidecar 不符 | **停止**。這是發布本身有問題 |
 | 步驟 6 出現 `is not the pinned launcher` | 常數改錯，或抄成了本機建置的值 | 回到步驟 4，重新從**已發布**的 sidecar 取值 |
 | 步驟 6 出現 `PREVIEW_SKIPPED … HTTP 404` | Release 或資產檔名不對 | 資產檔名必須正好是 `zk-preview-launcher-<VER>.jar`，tag 必須正好是 `v<VER>` |
-| 步驟 7 得到 18/20 | 直譯器沒有 playwright | 見步驟 7 陷阱 1 |
+| 步驟 7 幾乎全數失敗（1.0.2 當時是 18/20） | 直譯器沒有 playwright | 見步驟 7 陷阱 1 |
 | 需要重發同一版 | `--clobber` 會破壞已釘住的 URL | **改發下一個版號**，不要重跑同一個 tag |
 
 手動發布的備援程序記錄在 `zk-preview-launcher/README.md`。

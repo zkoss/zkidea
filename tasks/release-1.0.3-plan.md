@@ -207,7 +207,9 @@ Missing sidecar → stop; it is the only authoritative digest source.
 ```bash
 cd "$ZKIDEA"
 git status --porcelain          # must be clean
-git describe --exact-match      # must print v1.0.3 — publish the tagged commit, nothing else
+git describe --tags --exact-match   # must print v1.0.3 — publish the tagged commit, nothing
+                                    # else. --tags is required: `git tag` makes a lightweight
+                                    # tag, which --exact-match alone does not consider.
 withjdk.sh 17 ./gradlew publishPlugin
 ```
 
@@ -242,7 +244,8 @@ uv run skills/zul-writer/scripts/preview-zul.py --width 1280 --out /tmp/verify.p
 ```
 
 **Gate:** `STATUS: ok`; `LAUNCHER: 1.0.3 (downloaded)`; **no** `is not the pinned launcher`
-warning; then `python3 test/run-preview-tests.py` → `20 checks | 0 failed`.
+warning; then `python3 test/run-preview-tests.py` → `0 failed`, exit 0. The check count grows
+with the suite (20 at 1.0.2, 29 at 1.0.3), so the verdict is the criterion, not the number.
 
 ---
 
@@ -256,7 +259,7 @@ warning; then `python3 test/run-preview-tests.py` → `20 checks | 0 failed`.
       `404` diagnostic for a bad path (#71)
 - [ ] `preview-zul.py` pins the **published** digest; only that one file committed
 - [ ] Cache-cleared download path: `STATUS: ok`, no pin warning
-- [ ] CLI contract suite 20/20
+- [ ] CLI contract suite `0 failed`, exit 0
 - [ ] **Marketplace compatibility check came back clean** (stands in for the waived local
       verifier — check the version's status on the vendor page, do not assume)
 - [ ] **Release `v1.0.3` title and notes edited by hand** to cover the plugin as well as the
