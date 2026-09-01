@@ -29,7 +29,18 @@ There are many existing examples of feedback forms in other products. Here are a
 Google Chrome has a feedback form that users can use to report bugs, suggest features, or provide other feedback.
 
 ## Notion
-![notion-help.png](notion-help.png)
+
+A circular **?** button sits in the bottom-right corner of the window. Clicking it opens a menu
+whose entries are grouped by weight rather than listed flat:
+
+* **Help & documentation** and **Message support** — the two actions, each with an icon, at the top;
+* **Keyboard shortcuts**, **What's new?**, **Join us** — plain text, no icons;
+* **Twitter – @NotionHQ**, **Terms & privacy**, **Status** — muted, clearly secondary;
+* the build version, the desktop version and "Updated 2 days ago" — dimmest of all, informational.
+
+The shape worth copying is that grouping: one always-available anchor in a corner that never
+competes with the content, opening a menu that puts the two things a stuck user needs at the top and
+demotes everything else.
 
 # Feedback feature
 
@@ -96,6 +107,11 @@ The IntelliJ Platform provides an `iconMapper` extension point (`com.intellij.ic
    }
    ```
 3. Created `src/main/resources/icons/newui/feedback-menu.svg` — the New UI icon variant
+
+None of those three exists in the tree today: the attempt did not work and was reverted, leaving
+only the classic `src/main/resources/icons/feedback-menu.svg`. The paths above are deliberately left
+as they were written — `icons/newui/feedback-menu.svg` was a *second, New-UI-specific file*, not
+another way of spelling the classic icon's path, and the mapping only makes sense as that pair.
 
 Despite these changes being structurally consistent with how IntelliJ's own bundled plugins (e.g., `SpellcheckerIconMappings.json`) use this mechanism, the icon still does not appear in the Help menu under the New UI.
 
