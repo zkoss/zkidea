@@ -77,7 +77,9 @@ explanatory message with a "Report on GitHub" link (see FR-19).
   entries. Isolation against user classes is **not** the classpath — it is the `UiFactory` hook
   (FR-16), which never resolves a ViewModel/Composer class name at all. Compiled output used to be
   excluded here as a second boundary; it made every `<zscript>` that names a project class abort
-  the render (`tasks/class-not-found.md`), for no guarantee the hook does not already give.
+  the render — a page whose zscript did `new demo.data.BigList(1000)` failed *entirely*, with
+  BeanShell's `Class or variable not found: demo.data.BigList` surfacing as a page-level
+  `UiException` rather than as one dead statement — for no guarantee the hook does not already give.
 - **FR-8 (docroot)** `DocrootResolver.resolveWithLayout` returns the docroot **and which rule
   matched** (`DocrootResolver.Layout`), in this order:
 
