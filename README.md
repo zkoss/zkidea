@@ -92,6 +92,25 @@ TBD
 
 # Release Process
 
+Two artifacts come out of this repository under one version and one `v*` tag: the **plugin**,
+published to the JetBrains Marketplace, and **`zk-preview-launcher.jar`**, attached to the
+GitHub Release *and* bundled inside the plugin at `<plugin>/lib/`. They share a version
+because external consumers build the launcher's download URL out of the tag name.
+
+**They do not have to ship together.** A release whose changes are confined to the launcher
+can stop after step 3: pushing the tag publishes the jar, and step 4 is simply not run.
+
+**1.0.2 was such a release, and deliberately so.** All of it was preview-launcher work done
+for what the `zul-writer` agent skill needed — no plugin code changed, only the
+`<change-notes>` entry. The jar was published for the skill to pin; the plugin was not
+published. That is why the Marketplace listing goes 1.0.1 → 1.0.3, and the gap is planned
+rather than a missed release.
+
+The reverse also happens, so do not read the above as "launcher-only changes never need a
+plugin release". 1.0.3 changed no plugin code either, yet was published: its fixes reach
+plugin users *through* the bundled jar, and those two (#70, #71) were worth shipping to them.
+Whether to run step 4 is a judgement about who needs the change, not a mechanical consequence
+of which directory it landed in.
 
 ## 1. Version Updates
 Update the version in three locations. All three must agree with each other **and** with the
