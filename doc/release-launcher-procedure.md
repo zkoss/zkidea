@@ -70,6 +70,35 @@ LAUNCHER_URL     = (...)       # 由 VERSION 組出來，永遠不要手動改
 **若只發布 jar 而不改 `LAUNCHER_SHA256`**：下載成功 → digest 不符 → 硬失敗，
 而且錯誤訊息會讓使用者以為檔案被竄改。**這是唯一會讓情況倒退的錯誤，務必避免。**
 
+### 2.1 要測 digest 不符的行為時，得用「有效但不同」的 jar
+
+直覺做法是往 jar 尾巴附加一個位元組把 digest 改掉 —— **那樣測不到東西**：附加位元組會讓
+archive 本身失效，JVM 在任何 digest 邏輯跑到之前就先拒絕它，你看到的錯誤不是你要測的那個。
+
+正確做法是產生一個仍然合法、但內容不同的 jar：
+
+```bash
+cp zk-preview-launcher-<VER>.jar wrong-digest.jar
+zip -q wrong-digest.jar extra.txt      # 仍是合法 archive，digest 已不同
+```
+
+### 2.2 建議補上的 CI 檢查（尚未實作）
+
+這個釘值有兩種「什麼都沒改卻壞掉」的方式，兩種都不會被消費者 repo 的任何 push 觸發：
+
+* 資產被刪除或版本被改名 → 使用者拿到 HTTP 404；
+* 資產被覆蓋（例如對同一個 tag 重跑 workflow）→ 釘值不符，而下載路徑是 **fail closed**，
+  使用者拿到硬失敗。
+
+因此值得在消費者 repo（`zkoss-demo/agent-skill`）的 `.github/workflows/validate-zul.yml`
+加一個**每日排程**的檢查：從 `preview-zul.py` 讀出 `LAUNCHER_URL` 與 `LAUNCHER_SHA256`
+（讀腳本本身，不要在 YAML 裡重寫一份，否則檢查會對著沒人在用的釘值通過），
+`curl -sSIL` 確認資產可下載（要 `-L`，release 資產會 302 到 objects.githubusercontent.com），
+再抓 `.sha256` sidecar 比對。
+
+> 一份可直接套用的 patch 曾放在 `tasks/p01b-ci-head-check.patch`，
+> 隨階段性文件清理一併移除；需要時可從 git 歷史取回（該檔最後存在於 `2d683d1`）。
+
 ---
 
 ## 3. 絕對不要做的三件事

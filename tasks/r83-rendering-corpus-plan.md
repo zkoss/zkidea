@@ -1,10 +1,15 @@
 # R-8.3 — Rendering corpus job: rough plan
 
 **Status: PLAN ONLY. Not approved, not started, nothing built.** Written 2026-08-23 at the product
-owner's request ("a rough plan, standalone, do not execute yet"). Deliberately kept out of
-`tasks/preview-launcher-implementation.md`: that log records work that happened, this file records
-work that has not been decided. Level of detail is intentionally coarse — the four open decisions in
-§5 are what a detailed plan would need first, and only the product owner can close them.
+owner's request ("a rough plan, standalone, do not execute yet"), and still undecided as of
+2026-09-01 — which is why it survived the clean-out of `tasks/` that removed the finished work logs
+around it. Level of detail is intentionally coarse: the four open decisions in §5 are what a
+detailed plan would need first, and only the product owner can close them.
+
+> References below to the implementation log, its numbered decisions, and requirement IDs (P0-2,
+> P1-3) point at work that is finished and shipped; the log itself was deleted once it was. Recover
+> it from git history if a decision's original wording is ever needed — it last existed at
+> `2d683d1`.
 
 ---
 

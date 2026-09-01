@@ -124,3 +124,21 @@ the fix and survives in the record long after the code is fixed.
 it: trace the consumer's path from its entry point to the line quoted, not just the line quoted.
 If the consumer cannot be run, say "reachable when …" rather than "currently produces …".
 Correct it in the issue as soon as it is found, in the thread where the claim was made.
+
+## 21. Assert from a measurement, not from your memory of a document
+
+**What happened.** Building the CLI contract suite for `preview-zul.py`, four of my assertions
+failed and the tool's documented contract held every time: I expected no PNG on the exit-1 path
+(the error page is captured on purpose), that `--width` was clamped to 1024–1920 (that sentence is
+an instruction to the agent; nothing clamps), that `--report` changed stdout (my two runs used
+different `--out` paths, so `SCREENSHOT:` differed by itself), and that a mutation proof had passed
+(the mutant ran from `/tmp`, so its `REPO_ROOT` broke).
+
+**Why it matters.** Three of the four came from reading a sentence in a document as a promise about
+behaviour without checking the code; the fourth from not reading my own harness. A test built on a
+remembered document tests the memory, not the tool — and when it fails, the first instinct is to
+"fix" working code.
+
+**Rule.** Before asserting behaviour, run it or read the code that implements it. A doc sentence is
+a claim to verify, not a specification to encode. This is the same mistake as lesson 20 above: an
+assertion about something else's behaviour is a claim about that thing's code.
